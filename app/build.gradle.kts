@@ -74,6 +74,7 @@ dependencies {
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
     implementation("dev.ffmpegkit-maintained:ffmpeg-kit-full:8.1.7")
     implementation("com.linkedin.android.litr:litr:1.5.7")
+    implementation("androidx.media3:media3-transformer:1.11.0")
     // The maintained FFmpegKit AAR currently omits this runtime dependency
     // from its published POM, although its Java API still calls it.
     implementation("com.arthenica:smart-exception-java:0.2.1")

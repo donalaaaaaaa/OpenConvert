@@ -66,8 +66,6 @@ class MediaConverter(
                     }
                 }
             }
-            val inputPath = resolveInputPath(workDir, task)
-            reportProgress(10)
 
             val durationMs = readDurationMs(Uri.parse(task.sourceUri))
             val codecs = if (shouldProbe(task)) {
@@ -78,6 +76,35 @@ class MediaConverter(
             }
             reportProgress(15)
             var plan = MediaEncodePlanner.plan(task.targetFormat, task.quality, task.resolution, codecs)
+
+            // MP4 re-encode: Media3/MediaCodec is the primary engine; FFmpeg only as fallback.
+            if (plan.mode == EncodeMode.HARDWARE_H264) {
+                android.util.Log.i("OpenConvert", "engine=media3 task=${task.id}")
+                when (
+                    val media3 = Media3Transcoder(context, onProgress).transcode(
+                        sourceUri = Uri.parse(task.sourceUri),
+                        outputFile = outputFile,
+                        videoBitrateBps = Media3Transcoder.parseBitrateBps(plan.videoBitrate),
+                        resolution = task.resolution,
+                    )
+                ) {
+                    Media3Transcoder.Outcome.Success -> {
+                        android.util.Log.i("OpenConvert", "engine=media3 result=success task=${task.id}")
+                        return@withContext finishOutput(outputFile, outputUri)
+                    }
+                    Media3Transcoder.Outcome.Cancelled -> return@withContext ConversionResult.Cancelled
+                    is Media3Transcoder.Outcome.Failure -> {
+                        android.util.Log.w(
+                            "OpenConvert",
+                            "engine=media3 result=fallback reason=${media3.message} task=${task.id}",
+                        )
+                    }
+                }
+            }
+
+            val inputPath = resolveInputPath(workDir, task)
+            reportProgress(10)
+
             var arguments = MediaCommandBuilder.build(
                 inputPath = inputPath,
                 outputPath = outputFile.absolutePath,
@@ -104,18 +131,7 @@ class MediaConverter(
             if (!outcome.success) {
                 throw IOException(outcome.errorMessage.ifBlank { "FFmpeg 编码失败" })
             }
-            if (!outputFile.isFile || outputFile.length() <= 0L) {
-                throw IOException("转换完成但没有生成有效文件")
-            }
-
-            reportProgress(94)
-            resolver.openOutputStream(outputUri, "wt")?.use { output ->
-                outputFile.inputStream().use { input -> BoundedIo.copy(input, output) }
-            } ?: throw FileNotFoundException("无法写入目标文件")
-
-            val outputSize = outputFile.length()
-            reportProgress(100)
-            ConversionResult.Success(outputUri.toString(), outputSize)
+            finishOutput(outputFile, outputUri)
         } catch (cancelled: CancellationException) {
             deleteIncompleteOutput(outputUri)
             throw cancelled
@@ -125,6 +141,19 @@ class MediaConverter(
         } finally {
             workDir.deleteRecursively()
         }
+    }
+
+    private suspend fun finishOutput(outputFile: File, outputUri: Uri): ConversionResult {
+        if (!outputFile.isFile || outputFile.length() <= 0L) {
+            throw IOException("转换完成但没有生成有效文件")
+        }
+        reportProgress(94)
+        resolver.openOutputStream(outputUri, "wt")?.use { output ->
+            outputFile.inputStream().use { input -> BoundedIo.copy(input, output) }
+        } ?: throw FileNotFoundException("无法写入目标文件")
+        val outputSize = outputFile.length()
+        reportProgress(100)
+        return ConversionResult.Success(outputUri.toString(), outputSize)
     }
 
     private suspend fun execute(
