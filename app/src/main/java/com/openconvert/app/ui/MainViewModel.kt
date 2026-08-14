@@ -41,6 +41,10 @@ data class ConversionDraft(
     val targetFormat: FileFormat,
     val quality: QualityPreset = QualityPreset.BALANCED,
     val resolution: ResolutionPreset = ResolutionPreset.ORIGINAL,
+    val rotateDegrees: Int = 0,
+    val cropAspect: String = "free",
+    val flip: Int = 0,
+    val stripMetadata: Boolean = false,
 ) {
     val suggestedOutputName: String
         get() = suggestedOutputName(document.name, targetFormat)
@@ -256,6 +260,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _draft.value = _draft.value?.copy(resolution = resolution)
     }
 
+    fun selectRotate(degrees: Int) {
+        _draft.value = _draft.value?.copy(rotateDegrees = degrees)
+    }
+
+    fun selectCropAspect(aspect: String) {
+        _draft.value = _draft.value?.copy(cropAspect = aspect)
+    }
+
+    fun selectFlip(flip: Int) {
+        _draft.value = _draft.value?.copy(flip = flip)
+    }
+
+    fun selectStripMetadata(strip: Boolean) {
+        _draft.value = _draft.value?.copy(stripMetadata = strip)
+    }
+
     fun onImagesPicked(uris: List<Uri>): Boolean {
         val uniqueUris = uris.distinct()
         if (uniqueUris.isEmpty()) return false
@@ -392,6 +412,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 progress = 1,
                 status = ConversionStatus.PENDING,
                 kind = ConversionKind.SINGLE,
+                payload = ConversionPayload(
+                    rotateDegrees = current.rotateDegrees,
+                    cropAspect = current.cropAspect,
+                    flip = current.flip,
+                    stripMetadata = current.stripMetadata,
+                ),
                 outputName = current.suggestedOutputName,
             ),
         )

@@ -41,9 +41,16 @@
 
 ## 下一步（未做）
 
-- Phase 4 图片高级：裁剪比例 / 旋转 / 翻转 / 压缩等级 / EXIF 元数据（libvips 已支持 mode 0/1/2，可扩展 JNI 增加旋转翻转）
-- Phase 8 Convert Hub：FileTypeDetector（magic number）、ConversionGraph、ConverterRegistry 统一 fallback 日志
 - Phase 5 视频：视频→GIF、静音、裁剪、H.265 参数化
 - Phase 6 音频：OGG / OPUS
 - Phase 9 性能：磁盘空间预测 UI、电量 / 温度保护
 - Phase 10 UI：4 导航（首页/历史/工具/设置）
+
+## 2026-08-14 追加：图片高级功能（Phase 4）
+
+- libvips JNI 扩展：`convertBuffer` 增加 rotate（90/180/270）与 flip（水平/垂直），WSL 重编译 libvips_android.so（14.3MB）
+- Bitmap 路径同样支持旋转/翻转/裁剪（回退一致）
+- 裁剪比例：free / 1:1 / 4:3 / 3:2 / 16:9 / 9:16（cover-crop 居中裁剪）
+- 隐私模式：删除全部元数据（EXIF/GPS），强制走 Bitmap 路径（Bitmap.compress 不写 EXIF）
+- `ImageEditMath` 纯逻辑单测 6 项；真机 5/5（旋转换尺寸、180° 像素翻转、水平镜像、方形裁剪、去元数据）
+- Convert Hub（Phase 8）同批落地：FileTypeDetector（magic number 三层识别接入 SAF）、ConversionGraph（能力图单一来源）、ConverterRegistry（统一引擎注册 + engine/elapsed 日志）

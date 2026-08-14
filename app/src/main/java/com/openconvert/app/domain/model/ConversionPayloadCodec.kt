@@ -14,6 +14,9 @@ object ConversionPayloadCodec {
         json.put("outputUris", JSONArray(payload.outputUris))
         json.put("rotateDegrees", payload.rotateDegrees)
         json.put("batchId", payload.batchId ?: JSONObject.NULL)
+        json.put("cropAspect", payload.cropAspect)
+        json.put("flip", payload.flip)
+        json.put("stripMetadata", payload.stripMetadata)
         return json.toString()
     }
 
@@ -29,6 +32,9 @@ object ConversionPayloadCodec {
             outputUris = json.optJSONArray("outputUris").toStringList(),
             rotateDegrees = json.optInt("rotateDegrees"),
             batchId = json.optionalString("batchId"),
+            cropAspect = json.optString("cropAspect", "free"),
+            flip = json.optInt("flip"),
+            stripMetadata = json.optBoolean("stripMetadata"),
         )
     }
 

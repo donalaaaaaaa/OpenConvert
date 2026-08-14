@@ -67,13 +67,15 @@ Java_com_openconvert_app_domain_converter_VipsNative_probeBuffer(
 /*
  * Scale an image buffer to target width/height.
  * mode: 0 = scale (ignore aspect), 1 = cover-crop (fill), 2 = contain (fit).
+ * rotate: 0 = none, 1 = 90 CW, 2 = 180, 3 = 270 CW.
+ * flip: 0 = none, 1 = horizontal, 2 = vertical.
  * Returns encoded bytes in fmt: "jpg" | "png" | "webp".
  * quality 1..100.
  */
 JNIEXPORT jbyteArray JNICALL
 Java_com_openconvert_app_domain_converter_VipsNative_convertBuffer(
     JNIEnv *env, jclass cls, jbyteArray input, jint tw, jint th,
-    jint mode, jstring fmt, jint quality) {
+    jint mode, jstring fmt, jint quality, jint rotate, jint flip) {
     (void)cls;
     jsize len = (*env)->GetArrayLength(env, input);
     jbyte *buf = (*env)->GetByteArrayElements(env, input, NULL);
@@ -91,6 +93,31 @@ Java_com_openconvert_app_domain_converter_VipsNative_convertBuffer(
             img = rotated;
         } else {
             vips_error_clear(); /* orientation missing -> keep as is */
+        }
+    }
+
+    /* User rotation: 90 / 180 / 270 degrees clockwise. */
+    if (rotate == 1 || rotate == 2 || rotate == 3) {
+        VipsImage *rotated = NULL;
+        VipsAngle angle = (rotate == 1) ? VIPS_ANGLE_D90 :
+                         (rotate == 2) ? VIPS_ANGLE_D180 : VIPS_ANGLE_D270;
+        if (vips_rot(img, &rotated, angle, NULL) == 0) {
+            g_object_unref(img);
+            img = rotated;
+        } else {
+            vips_error_clear(); /* keep original if rotation fails */
+        }
+    }
+
+    /* Flip: 1 = horizontal (mirror left-right), 2 = vertical (mirror top-bottom). */
+    if (flip == 1 || flip == 2) {
+        VipsImage *flipped = NULL;
+        VipsDirection dir = (flip == 1) ? VIPS_DIRECTION_HORIZONTAL : VIPS_DIRECTION_VERTICAL;
+        if (vips_flip(img, &flipped, dir, NULL) == 0) {
+            g_object_unref(img);
+            img = flipped;
+        } else {
+            vips_error_clear();
         }
     }
 

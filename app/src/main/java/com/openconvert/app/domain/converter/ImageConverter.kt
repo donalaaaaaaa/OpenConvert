@@ -47,7 +47,8 @@ class ImageConverter(
 
             // Primary engine: libvips (SIMD, low-memory, high quality).
             // Any failure falls back to the BitmapFactory path below.
-            if (vipsCanConvert(task.sourceFormat, task.targetFormat)) {
+            // stripMetadata 时强制走 Bitmap 路径：Bitmap.compress 不写 EXIF，天然实现"删除全部元数据"。
+            if (vipsCanConvert(task.sourceFormat, task.targetFormat) && !task.payload.stripMetadata) {
                 val vipsResult = runCatching {
                     convertWithVips(task, sourceUri, outputUri)
                 }
@@ -72,6 +73,7 @@ class ImageConverter(
 
             reportProgress(48)
             bitmap = scaleBitmap(bitmap, bounds.first, bounds.second, task.resolution.scalePercent)
+            bitmap = applyAdvancedEdits(bitmap, task)
             bitmap = flattenForJpegIfNeeded(bitmap, task.targetFormat)
 
             reportProgress(68)
@@ -139,8 +141,22 @@ class ImageConverter(
         if (bytes.isEmpty()) throw IOException("源文件为空")
 
         val (ow, oh) = readOrientedBounds(sourceUri)
-        val targetWidth = (ow * task.resolution.scalePercent / 100f).toInt().coerceAtLeast(1)
-        val targetHeight = (oh * task.resolution.scalePercent / 100f).toInt().coerceAtLeast(1)
+        // 旋转 90/270 后宽高互换，先算目标比例再决定输出尺寸。
+        val rotated = task.payload.rotateDegrees % 180 != 0
+        val baseWidth = if (rotated) oh else ow
+        val baseHeight = if (rotated) ow else oh
+        var targetWidth = (baseWidth * task.resolution.scalePercent / 100f).toInt().coerceAtLeast(1)
+        var targetHeight = (baseHeight * task.resolution.scalePercent / 100f).toInt().coerceAtLeast(1)
+
+        // 裁剪比例：cover-crop 模式（mode=1）按目标比例居中裁剪。
+        val aspect = ImageEditMath.parseAspectRatio(task.payload.cropAspect)
+        var mode = 0
+        if (aspect != null) {
+            mode = 1
+            val (aw, ah) = ImageEditMath.coverCropSize(targetWidth, targetHeight, aspect)
+            targetWidth = aw
+            targetHeight = ah
+        }
 
         reportProgress(30)
         // autorotate applies EXIF orientation inside libvips (same result as the bitmap path).
@@ -148,9 +164,11 @@ class ImageConverter(
             bytes,
             targetWidth,
             targetHeight,
-            mode = 0,
+            mode = mode,
             fmt = vipsExtension(task.targetFormat),
             quality = task.quality.compressionQuality,
+            rotate = ImageEditMath.rotateCode(task.payload.rotateDegrees),
+            flip = task.payload.flip,
         )
         reportProgress(85)
 
@@ -262,6 +280,51 @@ class ImageConverter(
         }
         source.recycle()
         return flattened
+    }
+
+    /**
+     * 图片高级编辑（Bitmap 路径）：旋转 / 翻转 / 裁剪比例。
+     * libvips 主引擎失败回退时同样生效。
+     */
+    private fun applyAdvancedEdits(source: Bitmap, task: ConversionTask): Bitmap {
+        var current = source
+        val rotateDegrees = task.payload.rotateDegrees % 360
+        val flip = task.payload.flip
+        val aspect = ImageEditMath.parseAspectRatio(task.payload.cropAspect)
+
+        val needsRotate = rotateDegrees != 0
+        val needsFlip = flip != 0
+        val needsCrop = aspect != null
+        if (!needsRotate && !needsFlip && !needsCrop) return current
+
+        val matrix = Matrix()
+        if (needsRotate) matrix.postRotate(rotateDegrees.toFloat())
+        if (flip == 1) matrix.postScale(-1f, 1f)
+        if (flip == 2) matrix.postScale(1f, -1f)
+
+        if (needsRotate || needsFlip) {
+            val transformed = Bitmap.createBitmap(
+                current, 0, 0, current.width, current.height, matrix, true,
+            )
+            if (transformed !== current) {
+                current.recycle()
+                current = transformed
+            }
+        }
+
+        if (needsCrop) {
+            val (cw, ch) = ImageEditMath.coverCropSize(current.width, current.height, aspect)
+            if (cw != current.width || ch != current.height) {
+                val left = (current.width - cw) / 2
+                val top = (current.height - ch) / 2
+                val cropped = Bitmap.createBitmap(current, left, top, cw, ch)
+                if (cropped !== current) {
+                    current.recycle()
+                    current = cropped
+                }
+            }
+        }
+        return current
     }
 
     private fun writeBitmap(

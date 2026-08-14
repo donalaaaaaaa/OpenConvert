@@ -266,6 +266,10 @@ fun OpenConvertApp(viewModel: MainViewModel = viewModel()) {
                         onTarget = viewModel::selectTarget,
                         onQuality = viewModel::selectQuality,
                         onResolution = viewModel::selectResolution,
+                        onRotate = viewModel::selectRotate,
+                        onCropAspect = viewModel::selectCropAspect,
+                        onFlip = viewModel::selectFlip,
+                        onStripMetadata = viewModel::selectStripMetadata,
                         onStart = viewModel::startConversion,
                     )
                     is ConversionUiState.Running -> ConversionProgressScreen(
@@ -1429,6 +1433,10 @@ private fun ConversionScreen(
     onTarget: (FileFormat) -> Unit,
     onQuality: (QualityPreset) -> Unit,
     onResolution: (ResolutionPreset) -> Unit,
+    onRotate: (Int) -> Unit,
+    onCropAspect: (String) -> Unit,
+    onFlip: (Int) -> Unit,
+    onStripMetadata: (Boolean) -> Unit,
     onStart: (Uri) -> Unit,
 ) {
     if (draft == null) {
@@ -1565,6 +1573,94 @@ private fun ConversionScreen(
                             )
                             Text(preset.label, fontWeight = FontWeight.Medium)
                         }
+                    }
+                }
+            }
+        }
+        if (draft.targetFormat.category == FileCategory.IMAGE) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    FieldLabel("旋转")
+                    listOf(0 to "不旋转", 90 to "90°", 180 to "180°", 270 to "270°").forEach { (degrees, label) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onRotate(degrees) }
+                                .padding(vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = draft.rotateDegrees == degrees,
+                                onClick = { onRotate(degrees) },
+                            )
+                            Text(label, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+            }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    FieldLabel("裁剪比例")
+                    listOf(
+                        "free" to "原始比例",
+                        "1:1" to "1:1 方形",
+                        "4:3" to "4:3",
+                        "3:2" to "3:2",
+                        "16:9" to "16:9",
+                        "9:16" to "9:16 竖屏",
+                    ).forEach { (aspect, label) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onCropAspect(aspect) }
+                                .padding(vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = draft.cropAspect == aspect,
+                                onClick = { onCropAspect(aspect) },
+                            )
+                            Text(label, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+            }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    FieldLabel("翻转")
+                    listOf(0 to "不翻转", 1 to "水平翻转", 2 to "垂直翻转").forEach { (flip, label) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onFlip(flip) }
+                                .padding(vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = draft.flip == flip,
+                                onClick = { onFlip(flip) },
+                            )
+                            Text(label, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+            }
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onStripMetadata(!draft.stripMetadata) }
+                        .padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Checkbox(
+                        checked = draft.stripMetadata,
+                        onCheckedChange = onStripMetadata,
+                    )
+                    Column {
+                        Text("删除全部元数据（隐私模式）", fontWeight = FontWeight.Medium)
+                        Text("移除 EXIF、GPS 位置等拍摄信息", color = Muted, fontSize = 12.sp)
                     }
                 }
             }
