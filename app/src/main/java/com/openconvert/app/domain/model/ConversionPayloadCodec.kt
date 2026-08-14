@@ -1,0 +1,49 @@
+package com.openconvert.app.domain.model
+
+import org.json.JSONArray
+import org.json.JSONObject
+
+object ConversionPayloadCodec {
+    fun encode(payload: ConversionPayload): String {
+        val json = JSONObject()
+        json.put("sourceUris", JSONArray(payload.sourceUris))
+        json.put("pageRanges", payload.pageRanges)
+        json.put("pages", JSONArray(payload.pages))
+        json.put("outputTreeUri", payload.outputTreeUri ?: JSONObject.NULL)
+        json.put("outputUris", JSONArray(payload.outputUris))
+        return json.toString()
+    }
+
+    fun decode(raw: String?): ConversionPayload {
+        if (raw.isNullOrBlank()) return ConversionPayload()
+        val json = JSONObject(raw)
+        return ConversionPayload(
+            sourceUris = json.optJSONArray("sourceUris").toStringList(),
+            pageRanges = json.optString("pageRanges"),
+            pages = json.optJSONArray("pages").toIntList(),
+            outputTreeUri = json.optionalString("outputTreeUri"),
+            outputUris = json.optJSONArray("outputUris").toStringList(),
+        )
+    }
+
+    private fun JSONArray?.toStringList(): List<String> {
+        if (this == null) return emptyList()
+        return buildList(length()) {
+            for (index in 0 until length()) {
+                optString(index).takeIf { it.isNotEmpty() }?.let(::add)
+            }
+        }
+    }
+
+    private fun JSONArray?.toIntList(): List<Int> {
+        if (this == null) return emptyList()
+        return buildList(length()) {
+            for (index in 0 until length()) add(optInt(index))
+        }
+    }
+
+    private fun JSONObject.optionalString(key: String): String? {
+        if (!has(key) || isNull(key)) return null
+        return optString(key).takeIf { it.isNotEmpty() }
+    }
+}

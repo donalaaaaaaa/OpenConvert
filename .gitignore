@@ -1,0 +1,24 @@
+# Gradle
+.gradle/
+build/
+app/build/
+
+# Local configuration (SDK path, etc.)
+local.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Keystores / signing
+*.keystore
+*.jks
+signing.properties
+
+# Hermes working files
+.hermes/
