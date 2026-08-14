@@ -7,10 +7,13 @@ object ConversionPayloadCodec {
     fun encode(payload: ConversionPayload): String {
         val json = JSONObject()
         json.put("sourceUris", JSONArray(payload.sourceUris))
+        json.put("sourceNames", JSONArray(payload.sourceNames))
         json.put("pageRanges", payload.pageRanges)
         json.put("pages", JSONArray(payload.pages))
         json.put("outputTreeUri", payload.outputTreeUri ?: JSONObject.NULL)
         json.put("outputUris", JSONArray(payload.outputUris))
+        json.put("rotateDegrees", payload.rotateDegrees)
+        json.put("batchId", payload.batchId ?: JSONObject.NULL)
         return json.toString()
     }
 
@@ -19,10 +22,13 @@ object ConversionPayloadCodec {
         val json = JSONObject(raw)
         return ConversionPayload(
             sourceUris = json.optJSONArray("sourceUris").toStringList(),
+            sourceNames = json.optJSONArray("sourceNames").toStringList(),
             pageRanges = json.optString("pageRanges"),
             pages = json.optJSONArray("pages").toIntList(),
             outputTreeUri = json.optionalString("outputTreeUri"),
             outputUris = json.optJSONArray("outputUris").toStringList(),
+            rotateDegrees = json.optInt("rotateDegrees"),
+            batchId = json.optionalString("batchId"),
         )
     }
 

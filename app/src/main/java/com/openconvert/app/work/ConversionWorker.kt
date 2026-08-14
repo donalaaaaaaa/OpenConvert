@@ -8,8 +8,10 @@ import androidx.work.WorkerParameters
 import com.openconvert.app.OpenConvertApplication
 import com.openconvert.app.domain.converter.ConversionExecutor
 import com.openconvert.app.domain.converter.ExecutionResult
+import com.openconvert.app.domain.model.BatchJobStatus
 import com.openconvert.app.domain.model.ConversionStatus
 import com.openconvert.app.domain.model.ConversionTask
+import com.openconvert.app.domain.work.BatchConcurrency
 import kotlinx.coroutines.CancellationException
 
 class ConversionWorker(
@@ -34,22 +36,33 @@ class ConversionWorker(
             ConversionStatus.PENDING, ConversionStatus.RUNNING -> Unit
         }
 
+        // 批量任务：batch 已被暂停/取消时，直接让出（保留任务状态以便恢复）。
+        val batchId = task.payload.batchId
+        if (!batchId.isNullOrBlank()) {
+            val batch = repo.getBatch(batchId)
+            if (batch == null) return Result.failure()
+            if (batch.status == BatchJobStatus.PAUSED) return Result.success()
+            if (batch.status == BatchJobStatus.CANCELLED) return Result.success()
+        }
+
         setForeground(ConversionNotifier.foregroundInfo(applicationContext, task))
         task = task.copy(status = ConversionStatus.RUNNING, progress = maxOf(task.progress, 1))
         repo.save(task)
         ConversionNotifier.notifyProgress(applicationContext, task)
 
         return try {
-            val result = ConversionExecutor(applicationContext).execute(task) { progress ->
-                if (isStopped) throw CancellationException()
-                val latest = repo.get(taskId)
-                if (latest?.status == ConversionStatus.CANCELLED) throw CancellationException()
-                val updated = (latest ?: task).copy(
-                    progress = progress,
-                    status = ConversionStatus.RUNNING,
-                )
-                repo.save(updated)
-                ConversionNotifier.notifyProgress(applicationContext, updated)
+            val result = BatchConcurrency.withPermit(task) {
+                ConversionExecutor(applicationContext).execute(task) { progress ->
+                    if (isStopped) throw CancellationException()
+                    val latest = repo.get(taskId)
+                    if (latest?.status == ConversionStatus.CANCELLED) throw CancellationException()
+                    val updated = (latest ?: task).copy(
+                        progress = progress,
+                        status = ConversionStatus.RUNNING,
+                    )
+                    repo.save(updated)
+                    ConversionNotifier.notifyProgress(applicationContext, updated)
+                }
             }
 
             val latest = repo.get(taskId)
@@ -71,6 +84,7 @@ class ConversionWorker(
                     )
                     repo.save(done)
                     ConversionNotifier.notifyFinished(applicationContext, done)
+                    updateBatchProgress(repo, taskId)
                     Result.success()
                 }
 
@@ -82,6 +96,7 @@ class ConversionWorker(
                     )
                     repo.save(failed)
                     ConversionNotifier.notifyFinished(applicationContext, failed)
+                    updateBatchProgress(repo, taskId)
                     Result.failure()
                 }
 
@@ -101,12 +116,50 @@ class ConversionWorker(
             )
             repo.save(failed)
             ConversionNotifier.notifyFinished(applicationContext, failed)
+            updateBatchProgress(repo, taskId)
             Result.failure()
         }
     }
 
+    /**
+     * 批量任务结束时刷新 BatchJob 的 done/failed 计数。
+     * 全部完成（含失败）时置 COMPLETED（部分失败也视为批量结束）。
+     */
+    private suspend fun updateBatchProgress(
+        repo: com.openconvert.app.data.repository.ConversionHistoryRepository,
+        taskId: String,
+    ) {
+        val task = repo.get(taskId) ?: return
+        val batchId = task.payload.batchId ?: return
+        val batch = repo.getBatch(batchId) ?: return
+        val tasks = repo.batchTasks(batchId)
+        if (tasks.any { it.status == ConversionStatus.PENDING || it.status == ConversionStatus.RUNNING }) return
+        val done = tasks.count { it.status == ConversionStatus.COMPLETED }
+        val failed = tasks.count { it.status == ConversionStatus.FAILED }
+        repo.saveBatch(
+            batch.copy(
+                status = BatchJobStatus.COMPLETED,
+                done = done,
+                failed = failed,
+                finishedAt = System.currentTimeMillis(),
+            ),
+        )
+    }
+
     private suspend fun finalizeCancelled(task: ConversionTask) {
         if (task.status != ConversionStatus.COMPLETED) {
+            // 批量暂停：保留任务 PENDING，等待恢复。
+            val batchId = task.payload.batchId
+            if (!batchId.isNullOrBlank()) {
+                val batch = repository()?.getBatch(batchId)
+                if (batch?.status == BatchJobStatus.PAUSED) {
+                    repository()?.save(
+                        task.copy(status = ConversionStatus.PENDING, progress = 1),
+                    )
+                    ConversionNotifier.dismissProgress(applicationContext)
+                    return
+                }
+            }
             task.outputUri?.let { uri ->
                 runCatching { applicationContext.contentResolver.delete(Uri.parse(uri), null, null) }
             }

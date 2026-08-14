@@ -13,27 +13,45 @@ android {
         applicationId = "com.openconvert.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0-alpha02"
+        versionCode = 100
+        versionName = "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
+    }
 
-        // The maintained FFmpegKit 8.x Android package currently ships arm64-v8a.
-        // Keeping the MVP ABI explicit avoids producing an APK that cannot run
-        // its bundled native conversion engine.
-        ndk {
-            abiFilters += "arm64-v8a"
+    signingConfigs {
+        create("release") {
+            storeFile = rootProject.file("app/openconvert-release.jks")
+            storePassword = "openconvert123"
+            keyAlias = "openconvert"
+            keyPassword = "openconvert123"
         }
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+        }
+    }
+
+    // ABI planning: P0 = arm64-v8a (modern phones). armeabi-v7a / x86_64 arrive later.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a")
+            isUniversalApk = false
         }
     }
 
@@ -44,11 +62,14 @@ android {
 
     buildFeatures {
         compose = true
-        buildConfig = false
+        buildConfig = true
     }
 
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 }
 
@@ -90,6 +111,8 @@ dependencies {
     implementation("androidx.room:room-ktx:2.8.4")
     implementation("androidx.work:work-runtime-ktx:2.10.5")
     ksp("androidx.room:room-compiler:2.8.4")
+
+    implementation("org.apache.commons:commons-compress:1.27.1")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")

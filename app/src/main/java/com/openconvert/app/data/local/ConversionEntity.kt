@@ -30,6 +30,7 @@ data class ConversionEntity(
     val payloadJson: String?,
     val errorMessage: String?,
     val outputName: String?,
+    val batchId: String? = null,
 )
 
 fun ConversionEntity.toDomain() = ConversionTask(
@@ -72,4 +73,5 @@ fun ConversionTask.toEntity() = ConversionEntity(
     payloadJson = ConversionPayloadCodec.encode(payload),
     errorMessage = errorMessage,
     outputName = outputName,
+    batchId = payload.batchId,
 )

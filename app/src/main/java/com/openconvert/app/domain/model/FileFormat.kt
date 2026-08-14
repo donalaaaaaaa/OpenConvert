@@ -5,6 +5,7 @@ enum class FileCategory {
     PDF,
     AUDIO,
     VIDEO,
+    ARCHIVE,
     UNKNOWN,
 }
 
@@ -27,6 +28,11 @@ enum class FileFormat(
     MOV("MOV", FileCategory.VIDEO, setOf("mov"), "video/quicktime"),
     MKV("MKV", FileCategory.VIDEO, setOf("mkv"), "video/x-matroska"),
     WEBM("WEBM", FileCategory.VIDEO, setOf("webm"), "video/webm"),
+    ZIP("ZIP", FileCategory.ARCHIVE, setOf("zip"), "application/zip"),
+    TAR("TAR", FileCategory.ARCHIVE, setOf("tar"), "application/x-tar"),
+    TAR_GZ("TAR.GZ", FileCategory.ARCHIVE, setOf("tar.gz", "tgz"), "application/gzip"),
+    GZIP("GZIP", FileCategory.ARCHIVE, setOf("gz"), "application/gzip"),
+    BZIP2("BZIP2", FileCategory.ARCHIVE, setOf("bz2"), "application/x-bzip2"),
     UNKNOWN("未知", FileCategory.UNKNOWN, emptySet(), "application/octet-stream");
 
     val preferredExtension: String
@@ -34,8 +40,19 @@ enum class FileFormat(
 
     companion object {
         fun fromFileName(fileName: String): FileFormat {
-            val extension = fileName.substringAfterLast('.', missingDelimiterValue = "").lowercase()
-            return entries.firstOrNull { extension in it.extensions } ?: UNKNOWN
+            val lower = fileName.lowercase()
+            val extension = lower.substringAfterLast('.', missingDelimiterValue = "")
+            val doubleExtension = lower.substringAfterLast('.', missingDelimiterValue = "")
+                .let { single ->
+                    if (single == "gz" || single == "bz2") {
+                        lower.substringBeforeLast('.').substringAfterLast('.', missingDelimiterValue = "")
+                    } else {
+                        ""
+                    }
+                }
+            return entries.firstOrNull {
+                extension in it.extensions || (doubleExtension.isNotEmpty() && "$doubleExtension.$extension" in it.extensions)
+            } ?: UNKNOWN
         }
     }
 }
@@ -45,6 +62,7 @@ fun FileFormat.canConvertLocallyTo(target: FileFormat): Boolean =
         FileCategory.IMAGE -> target.category == FileCategory.IMAGE && this != target
         FileCategory.AUDIO -> target.category == FileCategory.AUDIO && this != target
         FileCategory.VIDEO -> target in availableTargets()
+        FileCategory.ARCHIVE -> target in availableTargets()
         else -> false
     }
 
@@ -88,5 +106,10 @@ fun FileFormat.availableTargets(): List<FileFormat> = when (this) {
         FileFormat.FLAC,
         FileFormat.M4A,
     )
+    FileFormat.ZIP -> listOf(FileFormat.TAR, FileFormat.TAR_GZ)
+    FileFormat.TAR -> listOf(FileFormat.ZIP, FileFormat.TAR_GZ, FileFormat.GZIP, FileFormat.BZIP2)
+    FileFormat.TAR_GZ -> listOf(FileFormat.TAR, FileFormat.ZIP, FileFormat.GZIP)
+    FileFormat.GZIP -> listOf(FileFormat.ZIP, FileFormat.TAR)
+    FileFormat.BZIP2 -> listOf(FileFormat.ZIP, FileFormat.TAR, FileFormat.GZIP)
     FileFormat.UNKNOWN -> emptyList()
 }

@@ -5,6 +5,7 @@ import android.net.Uri
 import com.openconvert.app.domain.model.ConversionKind
 import com.openconvert.app.domain.model.ConversionResult
 import com.openconvert.app.domain.model.ConversionTask
+import com.openconvert.app.domain.model.suggestedOutputName
 import com.openconvert.app.domain.work.StorageGuard
 
 sealed interface ExecutionResult {
@@ -35,15 +36,61 @@ class ConversionExecutor(private val context: Context) {
         }
 
         return when (task.kind) {
-            ConversionKind.SINGLE -> mapResult(
-                ConversionRouter(
-                    listOf(
-                        ImageConverter(resolver, onProgress),
-                        MediaConverter(context, onProgress),
+            ConversionKind.SINGLE -> {
+                val outputUri = task.outputUri?.let { Uri.parse(it) }
+                    ?: createBatchOutput(task)
+                    ?: return ExecutionResult.Failure("没有选择输出文件")
+                val withOutput = task.copy(outputUri = outputUri.toString())
+                mapResult(
+                    ConversionRouter(
+                        listOf(
+                            ImageConverter(resolver, onProgress),
+                            MediaConverter(context, onProgress),
+                        ),
+                    ).convert(withOutput),
+                    fallbackName = task.outputName,
+                )
+            }
+
+            ConversionKind.BATCH ->
+                ExecutionResult.Failure("批量任务由 ConversionWorker 逐文件调度，不直接执行")
+
+            ConversionKind.ARCHIVE_COMPRESS -> {
+                val outputUri = task.outputUri?.let { Uri.parse(it) }
+                    ?: return ExecutionResult.Failure("没有选择输出文件")
+                val uris = sourceUris(task)
+                val names = task.payload.sourceNames.ifEmpty {
+                    uris.mapIndexed { index, _ ->
+                        if (index == 0) task.sourceName else "文件${index + 1}"
+                    }
+                }
+                mapResult(
+                    ArchiveConverter(context, onProgress).compress(
+                        inputUris = uris,
+                        inputNames = names,
+                        outputUri = outputUri,
+                        targetFormat = task.targetFormat,
                     ),
-                ).convert(task),
-                fallbackName = task.outputName,
-            )
+                    fallbackName = task.outputName,
+                )
+            }
+
+            ConversionKind.ARCHIVE_EXTRACT -> {
+                val inputUri = sourceUris(task).firstOrNull()
+                    ?: return ExecutionResult.Failure("没有选择压缩包")
+                val treeUri = task.payload.outputTreeUri?.let { Uri.parse(it) }
+                    ?: return ExecutionResult.Failure("没有选择解压目录")
+                val directory = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, treeUri)
+                    ?: return ExecutionResult.Failure("无法访问所选文件夹")
+                mapResult(
+                    ArchiveConverter(context, onProgress).extract(
+                        inputUri = inputUri,
+                        outputDirectory = directory,
+                        sourceName = task.sourceName,
+                    ),
+                    fallbackName = task.outputName,
+                )
+            }
 
             ConversionKind.IMAGES_TO_PDF -> {
                 val outputUri = task.outputUri?.let(Uri::parse)
@@ -107,11 +154,55 @@ class ConversionExecutor(private val context: Context) {
                     fallbackName = task.outputName,
                 )
             }
+
+            ConversionKind.PDF_DELETE_PAGES -> {
+                val inputUri = sourceUris(task).firstOrNull()
+                    ?: return ExecutionResult.Failure("没有选择 PDF")
+                val outputUri = task.outputUri?.let(Uri::parse)
+                    ?: return ExecutionResult.Failure("没有选择输出文件")
+                if (task.payload.pages.isEmpty()) {
+                    return ExecutionResult.Failure("没有选择需要删除的页面")
+                }
+                mapResult(
+                    PdfDeletePagesConverter(context, onProgress).convert(
+                        inputUri = inputUri,
+                        outputUri = outputUri,
+                        pagesToDelete = task.payload.pages,
+                        sourceName = task.sourceName,
+                    ),
+                    fallbackName = task.outputName,
+                )
+            }
+
+            ConversionKind.PDF_ROTATE_PAGES -> {
+                val inputUri = sourceUris(task).firstOrNull()
+                    ?: return ExecutionResult.Failure("没有选择 PDF")
+                val outputUri = task.outputUri?.let(Uri::parse)
+                    ?: return ExecutionResult.Failure("没有选择输出文件")
+                mapResult(
+                    PdfRotatePagesConverter(context, onProgress).convert(
+                        inputUri = inputUri,
+                        outputUri = outputUri,
+                        degrees = task.payload.rotateDegrees,
+                        pages = task.payload.pages.ifEmpty { null },
+                    ),
+                    fallbackName = task.outputName,
+                )
+            }
         }
     }
 
     private fun sourceUris(task: ConversionTask): List<Uri> =
         task.payload.sourceUris.ifEmpty { listOf(task.sourceUri) }.map(Uri::parse)
+
+    /** 批量任务：在输出目录里按建议文件名创建输出文档。 */
+    private fun createBatchOutput(task: ConversionTask): Uri? {
+        val treeUri = task.payload.outputTreeUri?.let(Uri::parse) ?: return null
+        val directory = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, treeUri)
+            ?: return null
+        val name = task.outputName ?: suggestedOutputName(task.sourceName, task.targetFormat)
+        return directory.createFile(task.targetFormat.mimeType, name)?.uri
+    }
 
     private fun mapResult(result: ConversionResult, fallbackName: String?): ExecutionResult = when (result) {
         is ConversionResult.Success -> ExecutionResult.Success(
