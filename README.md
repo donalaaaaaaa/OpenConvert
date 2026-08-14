@@ -2,6 +2,16 @@
 
 OpenConvert 是一款 Android 全本地文件转换工具。当前版本 `0.1.0`（Release 工程化完成：R8 + 签名 + ABI Split）。
 
+## 双 Flavor
+
+- `basic`（默认）：轻量版，不含 Office 引擎（APK ≈ 35 MB Release / 53 MB Debug）
+- `office`：内置 LibreOfficeKit，支持 DOCX / PPTX / XLSX → PDF（APK ≈ 95 MB Release / 130 MB Debug）
+
+```powershell
+.\gradlew.bat :app:assembleBasicRelease   # 轻量版
+.\gradlew.bat :app:assembleOfficeRelease  # Office 版
+```
+
 ## 当前已实现
 
 - Kotlin + Jetpack Compose + Material 3 单 Activity 架构
@@ -18,6 +28,7 @@ OpenConvert 是一款 Android 全本地文件转换工具。当前版本 `0.1.0`
 - 大文件流式拷贝与缓存空间预检
 - Room 历史记录 1→2→3→4 迁移（v4 增加 batchId 与 batch_jobs 表）
 - Manifest 明确不申请 `INTERNET` 权限
+- Office 转换（office flavor）：DOCX / PPTX / XLSX → PDF，引擎 LibreOfficeKit（MPL-2.0），真机验证通过
 
 ## PDF 工具
 

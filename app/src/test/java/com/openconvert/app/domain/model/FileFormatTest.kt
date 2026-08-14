@@ -14,7 +14,8 @@ class FileFormatTest {
 
     @Test
     fun `returns unknown when extension is unsupported`() {
-        assertEquals(FileFormat.UNKNOWN, FileFormat.fromFileName("notes.docx"))
+        assertEquals(FileFormat.UNKNOWN, FileFormat.fromFileName("notes.txt"))
+        assertEquals(FileFormat.DOCX, FileFormat.fromFileName("notes.docx"))
     }
 
     @Test

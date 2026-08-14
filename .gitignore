@@ -28,3 +28,22 @@ signing.properties
 
 # Test/verification artifacts
 output/
+
+# LibreOfficeKit large native libs (fetched via scripts/fetch-office-pack.ps1)
+app/src/office/jniLibs/
+app/src/androidTest/assets/office-pack.zip
+
+# Office verification scratch project
+office-verify/
+
+# Downloaded LO artifacts (large, regenerable)
+native/dist/*.so
+native/dist/*.apk
+native/dist/*.zip
+native/dist/*.pdf
+native/dist/*.docx
+native/dist/*.pptx
+native/dist/*.xlsx
+native/dist/*.dex
+native/dist/*.py
+native/dist/lokit-arm64/

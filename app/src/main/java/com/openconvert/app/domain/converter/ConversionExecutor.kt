@@ -26,6 +26,7 @@ class ConversionExecutor(private val context: Context) {
         listOf(
             ImageConverter(resolver),
             MediaConverter(context),
+            OfficeConverter(context),
         ),
     )
 

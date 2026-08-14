@@ -36,6 +36,12 @@ object FileTypeDetector {
             "application/x-tar" -> FileFormat.TAR
             "application/gzip", "application/x-gzip" -> FileFormat.GZIP
             "application/x-bzip2" -> FileFormat.BZIP2
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/msword" -> FileFormat.DOCX
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/vnd.ms-powerpoint" -> FileFormat.PPTX
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.ms-excel" -> FileFormat.XLSX
             else -> null
         }
     }
@@ -140,11 +146,18 @@ object FileTypeDetector {
         mimeType: String?,
         input: InputStream?,
     ): FileFormat {
-        val magic = input?.let { fromMagicNumber(it) }
-        if (magic != null && magic != FileFormat.UNKNOWN) return magic
+        val byName = if (fileName.isNullOrBlank()) null else fromFileName(fileName)
         val byMime = fromMimeType(mimeType)
+        val magic = input?.let { fromMagicNumber(it) }
+
+        // Office 文档（docx/pptx/xlsx）本质是 ZIP 容器，magic 只能识别到 ZIP；
+        // 此时扩展名与 MIME 更能说明真实类型，优先采用。
+        if (byName?.category == FileCategory.OFFICE && magic == FileFormat.ZIP) return byName
+        if (byName?.category == FileCategory.OFFICE && byMime == null) return byName
+
+        if (magic != null && magic != FileFormat.UNKNOWN) return magic
         if (byMime != null && byMime != FileFormat.UNKNOWN) return byMime
-        return if (fileName.isNullOrBlank()) FileFormat.UNKNOWN else fromFileName(fileName)
+        return byName ?: FileFormat.UNKNOWN
     }
 
     private fun detectMp4Family(h: ByteArray, n: Int): FileFormat {

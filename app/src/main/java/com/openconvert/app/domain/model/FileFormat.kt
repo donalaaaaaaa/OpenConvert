@@ -6,6 +6,7 @@ enum class FileCategory {
     AUDIO,
     VIDEO,
     ARCHIVE,
+    OFFICE,
     UNKNOWN,
 }
 
@@ -33,6 +34,9 @@ enum class FileFormat(
     TAR_GZ("TAR.GZ", FileCategory.ARCHIVE, setOf("tar.gz", "tgz"), "application/gzip"),
     GZIP("GZIP", FileCategory.ARCHIVE, setOf("gz"), "application/gzip"),
     BZIP2("BZIP2", FileCategory.ARCHIVE, setOf("bz2"), "application/x-bzip2"),
+    DOCX("DOCX", FileCategory.OFFICE, setOf("docx"), "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+    PPTX("PPTX", FileCategory.OFFICE, setOf("pptx"), "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
+    XLSX("XLSX", FileCategory.OFFICE, setOf("xlsx"), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
     UNKNOWN("未知", FileCategory.UNKNOWN, emptySet(), "application/octet-stream");
 
     val preferredExtension: String
@@ -63,6 +67,7 @@ fun FileFormat.canConvertLocallyTo(target: FileFormat): Boolean =
         FileCategory.AUDIO -> target.category == FileCategory.AUDIO && this != target
         FileCategory.VIDEO -> target in availableTargets()
         FileCategory.ARCHIVE -> target in availableTargets()
+        FileCategory.OFFICE -> target in availableTargets()
         else -> false
     }
 

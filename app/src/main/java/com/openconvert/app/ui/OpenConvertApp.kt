@@ -101,6 +101,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.openconvert.app.domain.model.ConversionStatus
 import com.openconvert.app.domain.model.ConversionTask
+import com.openconvert.app.domain.converter.OfficePackManager
+import java.io.File
 import com.openconvert.app.domain.model.BatchJob
 import com.openconvert.app.domain.model.BatchJobStatus
 import com.openconvert.app.domain.model.FileCategory
@@ -2060,6 +2062,28 @@ private fun SettingsScreen(
     onPrivacy: () -> Unit,
 ) {
     var picking by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    var officePackInstalled by remember { mutableStateOf(OfficePackManager.isInstalled(context)) }
+    var officeMessage by remember { mutableStateOf<String?>(null) }
+    val packPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            val copied = File(context.cacheDir, "office-pack.zip")
+            runCatching {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    copied.outputStream().use { output -> input.copyTo(output) }
+                }
+            }
+            val result = OfficePackManager.install(context, copied)
+            officePackInstalled = result.isSuccess && OfficePackManager.isInstalled(context)
+            officeMessage = if (officePackInstalled) {
+                "Office 支持包安装完成"
+            } else {
+                "安装失败：${result.exceptionOrNull()?.message ?: "包不完整"}"
+            }
+        }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -2081,6 +2105,29 @@ private fun SettingsScreen(
                 SettingRow("图片默认质量", imageQuality.label, onClick = { picking = "image" })
                 HorizontalDivider(color = Border)
                 SettingRow("视频默认质量", videoQuality.label, onClick = { picking = "video" })
+            }
+        }
+        item { SectionTitle("Office 支持包") }
+        item {
+            SettingsGroup {
+                SettingRow(
+                    if (officePackInstalled) "已安装（约 180 MB）" else "未安装",
+                    if (officePackInstalled) "DOCX / PPTX / XLSX → PDF 可用" else "用于 Office 文档转 PDF",
+                )
+                HorizontalDivider(color = Border)
+                SettingRow(
+                    if (officePackInstalled) "卸载 Office 支持包" else "选择 office-pack.zip 安装",
+                    if (officePackInstalled) "释放存储空间" else "LibreOffice 引擎 · 完全本地",
+                    onClick = {
+                        if (officePackInstalled) {
+                            OfficePackManager.uninstall(context)
+                            officePackInstalled = false
+                            officeMessage = "已卸载 Office 支持包"
+                        } else {
+                            packPicker.launch(arrayOf("application/zip", "application/octet-stream"))
+                        }
+                    },
+                )
             }
         }
         item { SectionTitle("关于") }
@@ -2130,6 +2177,17 @@ private fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { picking = null }) { Text("关闭", color = Ink) }
+            },
+            containerColor = MaterialTheme.colorScheme.background,
+        )
+    }
+    officeMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = { officeMessage = null },
+            title = { Text("Office 支持包") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = { officeMessage = null }) { Text("好", color = Ink) }
             },
             containerColor = MaterialTheme.colorScheme.background,
         )

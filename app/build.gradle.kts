@@ -29,6 +29,19 @@ android {
         }
     }
 
+    // 双 Flavor：basic（轻量，Office 需后续下载）/ office（内置 LibreOfficeKit）
+    flavorDimensions += "edition"
+    productFlavors {
+        create("basic") {
+            dimension = "edition"
+            versionNameSuffix = ""
+        }
+        create("office") {
+            dimension = "edition"
+            versionNameSuffix = "-office"
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"

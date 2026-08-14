@@ -74,6 +74,11 @@ object ConversionGraph {
         put(FileFormat.TAR_GZ, listOf(FileFormat.TAR, FileFormat.ZIP, FileFormat.GZIP))
         put(FileFormat.GZIP, listOf(FileFormat.ZIP, FileFormat.TAR))
         put(FileFormat.BZIP2, listOf(FileFormat.ZIP, FileFormat.TAR, FileFormat.GZIP))
+
+        // Office（LibreOfficeKit，可选下载包）
+        put(FileFormat.DOCX, listOf(FileFormat.PDF))
+        put(FileFormat.PPTX, listOf(FileFormat.PDF))
+        put(FileFormat.XLSX, listOf(FileFormat.PDF))
     }
 
     /** 输入格式支持的所有输出格式（空 = 不支持转换）。 */
