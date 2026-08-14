@@ -22,3 +22,9 @@ signing.properties
 
 # Hermes working files
 .hermes/
+
+# Kotlin compiler error logs
+.kotlin/
+
+# Test/verification artifacts
+output/
