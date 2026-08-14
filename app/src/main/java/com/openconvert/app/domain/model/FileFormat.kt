@@ -72,44 +72,4 @@ fun suggestedOutputName(sourceName: String, target: FileFormat): String {
     return "$baseName.${target.preferredExtension}"
 }
 
-fun FileFormat.availableTargets(): List<FileFormat> = when (this) {
-    FileFormat.JPG -> listOf(FileFormat.PNG, FileFormat.WEBP, FileFormat.PDF)
-    FileFormat.PNG -> listOf(FileFormat.JPG, FileFormat.WEBP, FileFormat.PDF)
-    FileFormat.WEBP -> listOf(FileFormat.JPG, FileFormat.PNG)
-    FileFormat.PDF -> listOf(FileFormat.JPG, FileFormat.PNG)
-    FileFormat.MP3 -> listOf(FileFormat.AAC, FileFormat.WAV, FileFormat.FLAC, FileFormat.M4A)
-    FileFormat.AAC -> listOf(FileFormat.MP3, FileFormat.WAV, FileFormat.FLAC, FileFormat.M4A)
-    FileFormat.WAV -> listOf(FileFormat.MP3, FileFormat.AAC, FileFormat.FLAC, FileFormat.M4A)
-    FileFormat.FLAC -> listOf(FileFormat.MP3, FileFormat.AAC, FileFormat.WAV, FileFormat.M4A)
-    FileFormat.M4A -> listOf(FileFormat.MP3, FileFormat.AAC, FileFormat.WAV, FileFormat.FLAC)
-    FileFormat.MP4 -> listOf(
-        FileFormat.WEBM,
-        FileFormat.MP3,
-        FileFormat.AAC,
-        FileFormat.WAV,
-        FileFormat.FLAC,
-        FileFormat.M4A,
-    )
-    FileFormat.MOV, FileFormat.MKV -> listOf(
-        FileFormat.MP4,
-        FileFormat.MP3,
-        FileFormat.AAC,
-        FileFormat.WAV,
-        FileFormat.FLAC,
-        FileFormat.M4A,
-    )
-    FileFormat.WEBM -> listOf(
-        FileFormat.MP4,
-        FileFormat.MP3,
-        FileFormat.AAC,
-        FileFormat.WAV,
-        FileFormat.FLAC,
-        FileFormat.M4A,
-    )
-    FileFormat.ZIP -> listOf(FileFormat.TAR, FileFormat.TAR_GZ)
-    FileFormat.TAR -> listOf(FileFormat.ZIP, FileFormat.TAR_GZ, FileFormat.GZIP, FileFormat.BZIP2)
-    FileFormat.TAR_GZ -> listOf(FileFormat.TAR, FileFormat.ZIP, FileFormat.GZIP)
-    FileFormat.GZIP -> listOf(FileFormat.ZIP, FileFormat.TAR)
-    FileFormat.BZIP2 -> listOf(FileFormat.ZIP, FileFormat.TAR, FileFormat.GZIP)
-    FileFormat.UNKNOWN -> emptyList()
-}
+fun FileFormat.availableTargets(): List<FileFormat> = ConversionGraph.targetsFor(this)

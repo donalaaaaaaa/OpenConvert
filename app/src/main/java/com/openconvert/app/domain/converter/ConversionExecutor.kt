@@ -22,6 +22,12 @@ sealed interface ExecutionResult {
 
 class ConversionExecutor(private val context: Context) {
     private val resolver = context.contentResolver
+    private val registry = ConverterRegistry(
+        listOf(
+            ImageConverter(resolver),
+            MediaConverter(context),
+        ),
+    )
 
     suspend fun execute(
         task: ConversionTask,
@@ -42,12 +48,7 @@ class ConversionExecutor(private val context: Context) {
                     ?: return ExecutionResult.Failure("没有选择输出文件")
                 val withOutput = task.copy(outputUri = outputUri.toString())
                 mapResult(
-                    ConversionRouter(
-                        listOf(
-                            ImageConverter(resolver, onProgress),
-                            MediaConverter(context, onProgress),
-                        ),
-                    ).convert(withOutput),
+                    registry.convert(withOutput),
                     fallbackName = task.outputName,
                 )
             }

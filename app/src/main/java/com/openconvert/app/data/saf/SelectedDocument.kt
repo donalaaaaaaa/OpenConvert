@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.net.Uri
 import android.provider.OpenableColumns
 import com.openconvert.app.domain.model.FileFormat
+import com.openconvert.app.domain.model.FileTypeDetector
 
 data class SelectedDocument(
     val uri: Uri,
@@ -11,6 +12,8 @@ data class SelectedDocument(
     val sizeBytes: Long,
     val mimeType: String?,
     val format: FileFormat,
+    /** true = 由 Magic Number 确认，而非仅靠扩展名。 */
+    val magicVerified: Boolean = false,
 )
 
 fun ContentResolver.readSelectedDocument(uri: Uri): SelectedDocument {
@@ -26,12 +29,30 @@ fun ContentResolver.readSelectedDocument(uri: Uri): SelectedDocument {
         }
     }
 
+    val mimeType = getType(uri)
+
+    // 第三层 Magic Number：读文件头，避免单纯依赖扩展名。
+    var magicVerified = false
+    val magicFormat = runCatching {
+        openInputStream(uri)?.use { stream ->
+            FileTypeDetector.fromMagicNumber(stream).takeIf { it != FileFormat.UNKNOWN }
+        }
+    }.getOrNull()
+
+    val format = when {
+        magicFormat != null -> {
+            magicVerified = true
+            magicFormat
+        }
+        else -> FileTypeDetector.fromMimeType(mimeType) ?: FileFormat.fromFileName(name)
+    }
+
     return SelectedDocument(
         uri = uri,
         name = name,
         sizeBytes = size,
-        mimeType = getType(uri),
-        format = FileFormat.fromFileName(name),
+        mimeType = mimeType,
+        format = format,
+        magicVerified = magicVerified,
     )
 }
-
