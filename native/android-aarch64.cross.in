@@ -1,0 +1,19 @@
+[binaries]
+c = '@CC@'
+cpp = '@CXX@'
+ar = '@AR@'
+ranlib = '@RANLIB@'
+strip = '@STRIP@'
+pkgconfig = '@PKGCONFIG@'
+
+[properties]
+c_args = ['-I@PREFIX@/include', '-fPIC', '-O2', '-fvisibility=hidden']
+c_link_args = ['-L@PREFIX@/lib']
+cpp_args = ['-I@PREFIX@/include', '-fPIC', '-O2', '-fvisibility=hidden']
+cpp_link_args = ['-L@PREFIX@/lib']
+
+[host_machine]
+system = 'android'
+cpu_family = 'aarch64'
+cpu = 'aarch64'
+endian = 'little'

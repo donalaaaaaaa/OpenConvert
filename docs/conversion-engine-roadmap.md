@@ -17,7 +17,7 @@
 - 大文件：流式读写；ARM64-v8a
 - PDF：PdfBox-Android + 系统 PdfRenderer；合并用 setupMixed 内存设置
 - **图片→PDF §8**：JPEG 且无 EXIF 旋转时 `JPEGFactory.createFromStream` 直接嵌入压缩流，不解码、不重新压缩（更快、无损、体积更小、内存更低）；其他格式走 `LosslessFactory` 位图路径
-- 图片互转：当前仍是 BitmapFactory（后续换 libvips）
+- **图片互转（2026-08-14）**：主引擎 libvips 8.18.5（WSL + Linux NDK r28c 交叉编译：vips/glib/ffi/pcre2/zlib/iconv/expat/png/jpeg-turbo/webp 全静态，链成单个 `libvips_android.so` 8.2MB，version script 只导出 JNI 符号）。JNI 入口：probeBuffer / convertBuffer（EXIF 旋转用 vips_autorot）。BitmapFactory 自动兜底。注意：libwebp 需 `-Dsharp-yuv=enabled` 且 libwebpdemux/libwebpmux 要一起链
 
 ## 已知约束
 
@@ -26,7 +26,7 @@
 
 ## 下一阶段引擎（未做）
 
-- 图片：libvips + JNI；AVIF=libavif；HEIC=libheif 精简 codec
+- 图片：AVIF=libavif；HEIC=libheif 精简 codec
 - PDF 高速渲染可选 MuPDF（注意授权）
 - Office / 压缩包 / 字幕按清单分引擎，不塞进 FFmpeg
 

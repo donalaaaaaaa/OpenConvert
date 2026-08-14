@@ -44,6 +44,21 @@ class ImageConverter(
         try {
             reportProgress(8)
             val sourceUri = Uri.parse(task.sourceUri)
+
+            // Primary engine: libvips (SIMD, low-memory, high quality).
+            // Any failure falls back to the BitmapFactory path below.
+            if (vipsCanConvert(task.sourceFormat, task.targetFormat)) {
+                val vipsResult = runCatching {
+                    convertWithVips(task, sourceUri, outputUri)
+                }
+                vipsResult.fold(
+                    onSuccess = { return@withContext it },
+                    onFailure = {
+                        android.util.Log.w("OpenConvert", "libvips path failed, falling back", it)
+                    },
+                )
+            }
+
             val bounds = readBounds(sourceUri)
             val sampleSize = calculateSampleSize(
                 width = bounds.first,
@@ -84,6 +99,68 @@ class ImageConverter(
             deleteIncompleteOutput(outputUri)
             ConversionResult.Failure(error.toUserMessage(), error)
         }
+    }
+
+    private fun vipsCanConvert(source: FileFormat, target: FileFormat): Boolean =
+        VipsNative.isAvailable &&
+            source in setOf(FileFormat.JPG, FileFormat.PNG, FileFormat.WEBP) &&
+            target in setOf(FileFormat.JPG, FileFormat.PNG, FileFormat.WEBP)
+
+    private fun vipsExtension(target: FileFormat): String = when (target) {
+        FileFormat.JPG -> "jpg"
+        FileFormat.PNG -> "png"
+        FileFormat.WEBP -> "webp"
+        else -> throw IOException("目标格式不是图片")
+    }
+
+    /** Bounds after EXIF orientation, mirroring the bitmap path. */
+    private fun readOrientedBounds(uri: Uri): Pair<Int, Int> {
+        val (w, h) = readBounds(uri)
+        val orientation = runCatching {
+            contentResolver.openInputStream(uri)?.use { stream ->
+                ExifInterface(stream).getAttributeInt(
+                    ExifInterface.TAG_ORIENTATION,
+                    ExifInterface.ORIENTATION_NORMAL,
+                )
+            }
+        }.getOrDefault(ExifInterface.ORIENTATION_NORMAL)
+        val swapped = orientation in setOf(
+            ExifInterface.ORIENTATION_ROTATE_90,
+            ExifInterface.ORIENTATION_ROTATE_270,
+            ExifInterface.ORIENTATION_TRANSPOSE,
+            ExifInterface.ORIENTATION_TRANSVERSE,
+        )
+        return if (swapped) h to w else w to h
+    }
+
+    private suspend fun convertWithVips(task: ConversionTask, sourceUri: Uri, outputUri: Uri): ConversionResult {
+        val bytes = contentResolver.openInputStream(sourceUri)?.use { it.readBytes() }
+            ?: throw FileNotFoundException("无法读取源文件")
+        if (bytes.isEmpty()) throw IOException("源文件为空")
+
+        val (ow, oh) = readOrientedBounds(sourceUri)
+        val targetWidth = (ow * task.resolution.scalePercent / 100f).toInt().coerceAtLeast(1)
+        val targetHeight = (oh * task.resolution.scalePercent / 100f).toInt().coerceAtLeast(1)
+
+        reportProgress(30)
+        // autorotate applies EXIF orientation inside libvips (same result as the bitmap path).
+        val out = VipsNative.convertBuffer(
+            bytes,
+            targetWidth,
+            targetHeight,
+            mode = 0,
+            fmt = vipsExtension(task.targetFormat),
+            quality = task.quality.compressionQuality,
+        )
+        reportProgress(85)
+
+        contentResolver.openOutputStream(outputUri, "wt")?.use { stream ->
+            stream.write(out)
+            stream.flush()
+        } ?: throw FileNotFoundException("无法写入目标文件")
+
+        reportProgress(100)
+        return ConversionResult.Success(outputUri.toString(), out.size.toLong())
     }
 
     private suspend fun reportProgress(progress: Int) {

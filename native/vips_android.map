@@ -1,0 +1,7 @@
+{
+  global:
+    Java_com_openconvert_*;
+    JNI_OnLoad;
+  local:
+    *;
+};
