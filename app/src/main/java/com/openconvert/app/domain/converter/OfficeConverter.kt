@@ -49,7 +49,7 @@ class OfficeConverter(
         }
         if (!OfficeEngine.isAvailable(context)) {
             return@withContext ConversionResult.Failure(
-                "Office 转换引擎未安装，请先在设置中下载 Office 支持包",
+                "Office 转换引擎不可用，请检查运行环境",
             )
         }
         try {

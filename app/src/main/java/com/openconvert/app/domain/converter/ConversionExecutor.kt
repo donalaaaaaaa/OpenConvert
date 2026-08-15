@@ -191,6 +191,132 @@ class ConversionExecutor(private val context: Context) {
                     fallbackName = task.outputName,
                 )
             }
+
+            ConversionKind.PDF_COMPRESS -> {
+                val inputUri = sourceUris(task).firstOrNull()
+                    ?: return ExecutionResult.Failure("没有选择 PDF")
+                val outputUri = task.outputUri?.let(Uri::parse)
+                    ?: return ExecutionResult.Failure("没有选择输出文件")
+                val res = runCatching {
+                    PdfCompressConverter(context, onProgress).compress(
+                        inputUri = inputUri,
+                        outputUri = outputUri,
+                        customDpi = task.payload.compressDpi,
+                        customQuality = task.payload.compressQuality,
+                    )
+                }.getOrElse { return ExecutionResult.Failure(it.message ?: "PDF 压缩失败") }
+                ExecutionResult.Success(
+                    outputUri = outputUri.toString(),
+                    outputUris = listOf(outputUri.toString()),
+                    outputSize = res.outputSizeBytes,
+                    outputName = task.outputName ?: res.message,
+                )
+            }
+
+            ConversionKind.PDF_PAGE_MANAGER -> {
+                val inputUri = sourceUris(task).firstOrNull()
+                    ?: return ExecutionResult.Failure("没有选择 PDF")
+                val outputUri = task.outputUri?.let(Uri::parse)
+                    ?: return ExecutionResult.Failure("没有选择输出文件")
+                val pageItems = task.payload.pages.mapIndexed { idx, orig ->
+                    com.openconvert.app.domain.pdf.PdfPageItem(
+                        id = "page_$idx",
+                        originalPageIndex = orig,
+                        rotationDegrees = task.payload.rotateDegrees,
+                    )
+                }
+                val size = runCatching {
+                    com.openconvert.app.domain.pdf.PdfPageManager(context).exportPdf(
+                        inputUri = inputUri,
+                        outputUri = outputUri,
+                        pageLayout = pageItems,
+                        onProgress = onProgress,
+                    )
+                }.getOrElse { return ExecutionResult.Failure(it.message ?: "页面导出失败") }
+                ExecutionResult.Success(
+                    outputUri = outputUri.toString(),
+                    outputUris = listOf(outputUri.toString()),
+                    outputSize = size,
+                    outputName = task.outputName,
+                )
+            }
+
+            ConversionKind.PDF_SECURITY -> {
+                val inputUri = sourceUris(task).firstOrNull()
+                    ?: return ExecutionResult.Failure("没有选择 PDF")
+                val outputUri = task.outputUri?.let(Uri::parse)
+                    ?: return ExecutionResult.Failure("没有选择输出文件")
+                val size = runCatching {
+                    if (task.payload.isEncrypt) {
+                        PdfSecurityConverter(context, onProgress).encrypt(
+                            inputUri = inputUri,
+                            outputUri = outputUri,
+                            userPassword = task.payload.password,
+                        )
+                    } else {
+                        PdfSecurityConverter(context, onProgress).decrypt(
+                            inputUri = inputUri,
+                            outputUri = outputUri,
+                            password = task.payload.password,
+                        )
+                    }
+                }.getOrElse { return ExecutionResult.Failure(it.message ?: "PDF 安全处理失败") }
+                ExecutionResult.Success(
+                    outputUri = outputUri.toString(),
+                    outputUris = listOf(outputUri.toString()),
+                    outputSize = size,
+                    outputName = task.outputName,
+                )
+            }
+
+            ConversionKind.PDF_CROP -> {
+                val inputUri = sourceUris(task).firstOrNull()
+                    ?: return ExecutionResult.Failure("没有选择 PDF")
+                val outputUri = task.outputUri?.let(Uri::parse)
+                    ?: return ExecutionResult.Failure("没有选择输出文件")
+                val size = runCatching {
+                    PdfCropConverter(context, onProgress).crop(
+                        inputUri = inputUri,
+                        outputUri = outputUri,
+                        margins = PdfCropMargins(
+                            leftPt = task.payload.cropMarginsLeft,
+                            topPt = task.payload.cropMarginsTop,
+                            rightPt = task.payload.cropMarginsRight,
+                            bottomPt = task.payload.cropMarginsBottom,
+                        ),
+                        targetPages = task.payload.pages.takeIf { it.isNotEmpty() }?.toSet(),
+                    )
+                }.getOrElse { return ExecutionResult.Failure(it.message ?: "PDF 裁剪失败") }
+                ExecutionResult.Success(
+                    outputUri = outputUri.toString(),
+                    outputUris = listOf(outputUri.toString()),
+                    outputSize = size,
+                    outputName = task.outputName,
+                )
+            }
+
+            ConversionKind.PDF_METADATA -> {
+                val inputUri = sourceUris(task).firstOrNull()
+                    ?: return ExecutionResult.Failure("没有选择 PDF")
+                val outputUri = task.outputUri?.let(Uri::parse)
+                    ?: return ExecutionResult.Failure("没有选择输出文件")
+                val size = runCatching {
+                    com.openconvert.app.domain.pdf.PdfMetadataManager(context).updateMetadata(
+                        inputUri = inputUri,
+                        outputUri = outputUri,
+                        title = task.payload.metadataTitle,
+                        author = task.payload.metadataAuthor,
+                        subject = task.payload.metadataSubject,
+                        keywords = task.payload.metadataKeywords,
+                    )
+                }.getOrElse { return ExecutionResult.Failure(it.message ?: "PDF 元数据修改失败") }
+                ExecutionResult.Success(
+                    outputUri = outputUri.toString(),
+                    outputUris = listOf(outputUri.toString()),
+                    outputSize = size,
+                    outputName = task.outputName,
+                )
+            }
         }
     }
 

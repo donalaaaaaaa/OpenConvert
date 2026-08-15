@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,6 +33,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.OpenInNew
@@ -58,6 +60,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -101,6 +105,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.openconvert.app.domain.model.ConversionStatus
 import com.openconvert.app.domain.model.ConversionTask
+import com.openconvert.app.domain.converter.OfficeEngine
 import com.openconvert.app.domain.converter.OfficePackManager
 import java.io.File
 import com.openconvert.app.domain.model.BatchJob
@@ -132,9 +137,15 @@ private const val PDF_MERGE = "pdf_merge"
 private const val PDF_SPLIT = "pdf_split"
 private const val PDF_DELETE = "pdf_delete"
 private const val PDF_ROTATE = "pdf_rotate"
+private const val PDF_COMPRESS = "pdf_compress"
+private const val PDF_SECURITY = "pdf_security"
+private const val PDF_CROP = "pdf_crop"
+private const val PDF_METADATA = "pdf_metadata"
+private const val PDF_PAGE_MANAGER = "pdf_page_manager"
 private const val ARCHIVE = "archive"
 private const val ARCHIVE_COMPRESS_SCREEN = "archive_compress"
 private const val ARCHIVE_EXTRACT_SCREEN = "archive_extract"
+private const val OFFICE_TOOLS = "office_tools"
 
 private data class MainDestination(
     val route: String,
@@ -229,6 +240,7 @@ fun OpenConvertApp(viewModel: MainViewModel = viewModel()) {
                     onPdfTools = { navController.navigate(PDF_TOOLS) },
                     onBatch = { navController.navigate(BATCH) },
                     onArchive = { navController.navigate(ARCHIVE) },
+                    onOffice = { navController.navigate(OFFICE_TOOLS) },
                     onSettings = { navController.navigate(SETTINGS) },
                     onReuse = { task ->
                         if (viewModel.reuseConversion(task)) navController.navigate(CONVERT)
@@ -256,6 +268,16 @@ fun OpenConvertApp(viewModel: MainViewModel = viewModel()) {
                     onImageQuality = viewModel::setImageQualityPreference,
                     onVideoQuality = viewModel::setVideoQualityPreference,
                     onPrivacy = { navController.navigate(PRIVACY) },
+                    onOfficeTools = { navController.navigate(OFFICE_TOOLS) },
+                    onClearCache = viewModel::clearCache,
+                )
+            }
+            composable(OFFICE_TOOLS) {
+                OfficeToolsScreen(
+                    onBack = navController::popBackStack,
+                    onOfficePicked = { uri ->
+                        if (viewModel.onDocumentPicked(uri)) navController.navigate(CONVERT)
+                    },
                 )
             }
             composable(CONVERT) {
@@ -476,7 +498,175 @@ fun OpenConvertApp(viewModel: MainViewModel = viewModel()) {
                     onPdfToRotatePicked = { uri ->
                         if (viewModel.onPdfToRotatePicked(uri)) navController.navigate(PDF_ROTATE)
                     },
+                    onPdfCompressPicked = { uri ->
+                        if (viewModel.onPdfCompressPicked(uri)) navController.navigate(PDF_COMPRESS)
+                    },
+                    onPdfSecurityPicked = { uri ->
+                        if (viewModel.onPdfSecurityPicked(uri, isEncrypt = true)) navController.navigate(PDF_SECURITY)
+                    },
+                    onPdfCropPicked = { uri ->
+                        if (viewModel.onPdfCropPicked(uri)) navController.navigate(PDF_CROP)
+                    },
+                    onPdfMetadataPicked = { uri ->
+                        if (viewModel.onPdfMetadataPicked(uri)) navController.navigate(PDF_METADATA)
+                    },
+                    onPdfPageManagerPicked = { uri ->
+                        if (viewModel.onPdfPageManagerPicked(uri)) navController.navigate(PDF_PAGE_MANAGER)
+                    },
                 )
+            }
+            composable(PDF_COMPRESS) {
+                val draft by viewModel.pdfCompressDraft.collectAsStateWithLifecycle()
+                val conversionState by viewModel.conversionState.collectAsStateWithLifecycle()
+                when (val state = conversionState) {
+                    ConversionUiState.Configuring -> PdfCompressScreen(
+                        draft = draft,
+                        onBack = navController::popBackStack,
+                        onPreset = viewModel::selectPdfCompressPreset,
+                        onStart = viewModel::startPdfCompress,
+                    )
+                    is ConversionUiState.Running -> ConversionProgressScreen(state.task, viewModel::cancelConversion)
+                    is ConversionUiState.Completed -> ConversionCompleteScreen(
+                        state.task,
+                        state.outputName,
+                        state.outputUris,
+                        onDone = {
+                            viewModel.resetConversion()
+                            navController.popBackStack(PDF_TOOLS, false)
+                        },
+                    )
+                    is ConversionUiState.Failed -> ConversionFailedScreen(
+                        state.message,
+                        viewModel::retryConversion,
+                        onBack = {
+                            viewModel.resetConversion()
+                            navController.popBackStack(PDF_TOOLS, false)
+                        },
+                    )
+                }
+            }
+            composable(PDF_SECURITY) {
+                val draft by viewModel.pdfSecurityDraft.collectAsStateWithLifecycle()
+                val conversionState by viewModel.conversionState.collectAsStateWithLifecycle()
+                when (val state = conversionState) {
+                    ConversionUiState.Configuring -> PdfSecurityScreen(
+                        draft = draft,
+                        onBack = navController::popBackStack,
+                        onPasswordChange = viewModel::setPdfSecurityPassword,
+                        onStart = viewModel::startPdfSecurity,
+                    )
+                    is ConversionUiState.Running -> ConversionProgressScreen(state.task, viewModel::cancelConversion)
+                    is ConversionUiState.Completed -> ConversionCompleteScreen(
+                        state.task,
+                        state.outputName,
+                        state.outputUris,
+                        onDone = {
+                            viewModel.resetConversion()
+                            navController.popBackStack(PDF_TOOLS, false)
+                        },
+                    )
+                    is ConversionUiState.Failed -> ConversionFailedScreen(
+                        state.message,
+                        viewModel::retryConversion,
+                        onBack = {
+                            viewModel.resetConversion()
+                            navController.popBackStack(PDF_TOOLS, false)
+                        },
+                    )
+                }
+            }
+            composable(PDF_CROP) {
+                val draft by viewModel.pdfCropDraft.collectAsStateWithLifecycle()
+                val conversionState by viewModel.conversionState.collectAsStateWithLifecycle()
+                when (val state = conversionState) {
+                    ConversionUiState.Configuring -> PdfCropScreen(
+                        draft = draft,
+                        onBack = navController::popBackStack,
+                        onMarginChange = viewModel::setPdfCropMargins,
+                        onStart = viewModel::startPdfCrop,
+                    )
+                    is ConversionUiState.Running -> ConversionProgressScreen(state.task, viewModel::cancelConversion)
+                    is ConversionUiState.Completed -> ConversionCompleteScreen(
+                        state.task,
+                        state.outputName,
+                        state.outputUris,
+                        onDone = {
+                            viewModel.resetConversion()
+                            navController.popBackStack(PDF_TOOLS, false)
+                        },
+                    )
+                    is ConversionUiState.Failed -> ConversionFailedScreen(
+                        state.message,
+                        viewModel::retryConversion,
+                        onBack = {
+                            viewModel.resetConversion()
+                            navController.popBackStack(PDF_TOOLS, false)
+                        },
+                    )
+                }
+            }
+            composable(PDF_METADATA) {
+                val draft by viewModel.pdfMetadataDraft.collectAsStateWithLifecycle()
+                val conversionState by viewModel.conversionState.collectAsStateWithLifecycle()
+                when (val state = conversionState) {
+                    ConversionUiState.Configuring -> PdfMetadataScreen(
+                        draft = draft,
+                        onBack = navController::popBackStack,
+                        onSave = { title, author, subject, keywords, uri ->
+                            viewModel.startPdfMetadata(uri, title, author, subject, keywords)
+                        },
+                    )
+                    is ConversionUiState.Running -> ConversionProgressScreen(state.task, viewModel::cancelConversion)
+                    is ConversionUiState.Completed -> ConversionCompleteScreen(
+                        state.task,
+                        state.outputName,
+                        state.outputUris,
+                        onDone = {
+                            viewModel.resetConversion()
+                            navController.popBackStack(PDF_TOOLS, false)
+                        },
+                    )
+                    is ConversionUiState.Failed -> ConversionFailedScreen(
+                        state.message,
+                        viewModel::retryConversion,
+                        onBack = {
+                            viewModel.resetConversion()
+                            navController.popBackStack(PDF_TOOLS, false)
+                        },
+                    )
+                }
+            }
+            composable(PDF_PAGE_MANAGER) {
+                val draft by viewModel.pdfPageManagerDraft.collectAsStateWithLifecycle()
+                val conversionState by viewModel.conversionState.collectAsStateWithLifecycle()
+                when (val state = conversionState) {
+                    ConversionUiState.Configuring -> PdfPageManagerScreen(
+                        draft = draft,
+                        onBack = navController::popBackStack,
+                        onReorder = viewModel::reorderPdfPages,
+                        onRotate = viewModel::rotatePdfPages,
+                        onDelete = viewModel::deletePdfPages,
+                        onStart = viewModel::startPdfPageManagerExport,
+                    )
+                    is ConversionUiState.Running -> ConversionProgressScreen(state.task, viewModel::cancelConversion)
+                    is ConversionUiState.Completed -> ConversionCompleteScreen(
+                        state.task,
+                        state.outputName,
+                        state.outputUris,
+                        onDone = {
+                            viewModel.resetConversion()
+                            navController.popBackStack(PDF_TOOLS, false)
+                        },
+                    )
+                    is ConversionUiState.Failed -> ConversionFailedScreen(
+                        state.message,
+                        viewModel::retryConversion,
+                        onBack = {
+                            viewModel.resetConversion()
+                            navController.popBackStack(PDF_TOOLS, false)
+                        },
+                    )
+                }
             }
             composable(IMAGES_TO_PDF) {
                 val pdfDraft by viewModel.imagesToPdfDraft.collectAsStateWithLifecycle()
@@ -676,6 +866,7 @@ private fun HomeScreen(
     onPdfTools: () -> Unit,
     onBatch: () -> Unit,
     onArchive: () -> Unit,
+    onOffice: () -> Unit,
     onSettings: () -> Unit,
     onReuse: (ConversionTask) -> Unit,
     onDelete: (ConversionTask) -> Unit,
@@ -731,7 +922,7 @@ private fun HomeScreen(
                         )
                     }
                     Text("选择文件", fontSize = 18.sp, fontWeight = FontWeight.Medium)
-                    Text("PDF · 图片 · 视频 · 音频", color = Muted, fontSize = 13.sp)
+                    Text("PDF · 图片 · 视频 · 音频 · Office", color = Muted, fontSize = 13.sp)
                 }
             }
         }
@@ -786,6 +977,15 @@ private fun HomeScreen(
                         Icons.Outlined.Folder,
                         Modifier.weight(1f),
                         onClick = onArchive,
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ToolCard(
+                        "Office 转换",
+                        "DOCX · PPTX · XLSX → PDF",
+                        Icons.AutoMirrored.Outlined.Article,
+                        Modifier.fillMaxWidth(),
+                        onClick = onOffice,
                     )
                 }
             }
@@ -872,6 +1072,11 @@ private fun PdfToolsScreen(
     onPdfToSplitPicked: (Uri) -> Unit,
     onPdfToDeletePicked: (Uri) -> Unit,
     onPdfToRotatePicked: (Uri) -> Unit,
+    onPdfCompressPicked: (Uri) -> Unit = {},
+    onPdfSecurityPicked: (Uri) -> Unit = {},
+    onPdfCropPicked: (Uri) -> Unit = {},
+    onPdfMetadataPicked: (Uri) -> Unit = {},
+    onPdfPageManagerPicked: (Uri) -> Unit = {},
 ) {
     val imagesPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments(),
@@ -891,6 +1096,21 @@ private fun PdfToolsScreen(
     val rotatePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri -> uri?.let(onPdfToRotatePicked) }
+    val compressPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> uri?.let(onPdfCompressPicked) }
+    val securityPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> uri?.let(onPdfSecurityPicked) }
+    val cropPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> uri?.let(onPdfCropPicked) }
+    val metadataPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> uri?.let(onPdfMetadataPicked) }
+    val pageManagerPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> uri?.let(onPdfPageManagerPicked) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
@@ -904,9 +1124,27 @@ private fun PdfToolsScreen(
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("PDF 工具", fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
-                Text("转换、合并和拆分都在本地完成", color = Muted, fontSize = 14.sp)
+                Text("PDF 工具箱", fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+                Text("全部操作 100% 离线完成，保护文件隐私", color = Muted, fontSize = 14.sp)
             }
+        }
+        item {
+            ToolCard(
+                "PDF 页面管理器",
+                "可视化页面网格、拖拽重排、旋转与删除",
+                Icons.Outlined.Description,
+                Modifier.fillMaxWidth(),
+                onClick = { pageManagerPicker.launch(arrayOf(FileFormat.PDF.mimeType)) },
+            )
+        }
+        item {
+            ToolCard(
+                "PDF 智能压缩",
+                "图像降采样与智能压缩，大幅减小体积",
+                Icons.Outlined.Refresh,
+                Modifier.fillMaxWidth(),
+                onClick = { compressPicker.launch(arrayOf(FileFormat.PDF.mimeType)) },
+            )
         }
         item {
             ToolCard(
@@ -942,6 +1180,33 @@ private fun PdfToolsScreen(
                 Icons.Outlined.Description,
                 Modifier.fillMaxWidth(),
                 onClick = { splitPicker.launch(arrayOf(FileFormat.PDF.mimeType)) },
+            )
+        }
+        item {
+            ToolCard(
+                "PDF 加密 / 解密",
+                "设置密码保护或移除已知密码导出副本",
+                Icons.Outlined.Lock,
+                Modifier.fillMaxWidth(),
+                onClick = { securityPicker.launch(arrayOf(FileFormat.PDF.mimeType)) },
+            )
+        }
+        item {
+            ToolCard(
+                "PDF 边距裁剪",
+                "自动识别或自定义裁剪上下左右边距",
+                Icons.Outlined.Description,
+                Modifier.fillMaxWidth(),
+                onClick = { cropPicker.launch(arrayOf(FileFormat.PDF.mimeType)) },
+            )
+        }
+        item {
+            ToolCard(
+                "PDF 元数据",
+                "查看与编辑文档标题、作者与关键词信息",
+                Icons.Outlined.Description,
+                Modifier.fillMaxWidth(),
+                onClick = { metadataPicker.launch(arrayOf(FileFormat.PDF.mimeType)) },
             )
         }
         item {
@@ -1243,6 +1508,357 @@ private fun PdfRotatePagesScreen(
                 onClick = {
                     createDocument.launch("${draft.document.name.substringBeforeLast('.')}_旋转${draft.degrees}.pdf")
                 },
+            )
+        }
+        item { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { PrivacyHint() } }
+    }
+}
+
+@Composable
+private fun PdfCompressScreen(
+    draft: PdfCompressDraft?,
+    onBack: () -> Unit,
+    onPreset: (com.openconvert.app.domain.converter.PdfCompressPreset) -> Unit,
+    onStart: (Uri) -> Unit,
+) {
+    if (draft == null) return EmptyPdfSelection("没有已选择的 PDF")
+    val createDocument = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(FileFormat.PDF.mimeType),
+    ) { uri -> uri?.let(onStart) }
+
+    PdfConfigurationScaffold(
+        title = "PDF 智能压缩",
+        subtitle = "优化内置图像流与降采样，大幅节省空间",
+        onBack = onBack,
+    ) {
+        item {
+            FileCard(draft.document.name, "PDF · ${formatFileSize(draft.document.sizeBytes)}")
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                FieldLabel("压缩档位")
+                com.openconvert.app.domain.converter.PdfCompressPreset.entries.forEach { preset ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().clickable { onPreset(preset) },
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, if (draft.preset == preset) Ink else Border),
+                        color = if (draft.preset == preset) SurfaceSoft else MaterialTheme.colorScheme.background,
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(selected = draft.preset == preset, onClick = { onPreset(preset) })
+                            Spacer(Modifier.width(8.dp))
+                            Column {
+                                Text(preset.displayName, fontWeight = FontWeight.SemiBold)
+                                Text("目标分辨率 ${preset.maxDpi} DPI", color = Muted, fontSize = 13.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        item {
+            PrimaryPdfButton(
+                "选择保存位置并开始压缩",
+                onClick = {
+                    createDocument.launch("${draft.document.name.substringBeforeLast('.')}_compressed.pdf")
+                },
+            )
+        }
+        item { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { PrivacyHint() } }
+    }
+}
+
+@Composable
+private fun PdfSecurityScreen(
+    draft: PdfSecurityDraft?,
+    onBack: () -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onStart: (Uri) -> Unit,
+) {
+    if (draft == null) return EmptyPdfSelection("没有已选择的 PDF")
+    val createDocument = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(FileFormat.PDF.mimeType),
+    ) { uri -> uri?.let(onStart) }
+
+    PdfConfigurationScaffold(
+        title = if (draft.isEncrypt) "PDF 加密保护" else "PDF 解密",
+        subtitle = if (draft.isEncrypt) "设置打开密码与保护策略" else "验证已知密码并导出未加密副本",
+        onBack = onBack,
+    ) {
+        item {
+            FileCard(draft.document.name, "PDF · ${formatFileSize(draft.document.sizeBytes)}")
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                FieldLabel(if (draft.isEncrypt) "设置保护密码" else "输入文档密码")
+                OutlinedTextField(
+                    value = draft.password,
+                    onValueChange = onPasswordChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("请输入密码...") },
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true,
+                )
+            }
+        }
+        item {
+            PrimaryPdfButton(
+                if (draft.isEncrypt) "保存加密 PDF" else "导出解密副本",
+                onClick = {
+                    val suffix = if (draft.isEncrypt) "_protected" else "_unlocked"
+                    createDocument.launch("${draft.document.name.substringBeforeLast('.')}$suffix.pdf")
+                },
+                enabled = draft.password.isNotBlank(),
+            )
+        }
+        item { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { PrivacyHint() } }
+    }
+}
+
+@Composable
+private fun PdfCropScreen(
+    draft: PdfCropDraft?,
+    onBack: () -> Unit,
+    onMarginChange: (Float, Float, Float, Float) -> Unit,
+    onStart: (Uri) -> Unit,
+) {
+    if (draft == null) return EmptyPdfSelection("没有已选择的 PDF")
+    val createDocument = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(FileFormat.PDF.mimeType),
+    ) { uri -> uri?.let(onStart) }
+
+    var left by remember { mutableStateOf(draft.leftPt) }
+    var top by remember { mutableStateOf(draft.topPt) }
+    var right by remember { mutableStateOf(draft.rightPt) }
+    var bottom by remember { mutableStateOf(draft.bottomPt) }
+
+    PdfConfigurationScaffold(
+        title = "PDF 边距裁剪",
+        subtitle = "调整页面四周裁切边距（单位：Point）",
+        onBack = onBack,
+    ) {
+        item {
+            FileCard(draft.document.name, "PDF · ${draft.pageCount} 页 · ${formatFileSize(draft.document.sizeBytes)}")
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                FieldLabel("裁剪边距（左 / 上 / 右 / 下）")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = left.toString(),
+                        onValueChange = {
+                            left = it.toFloatOrNull() ?: left
+                            onMarginChange(left, top, right, bottom)
+                        },
+                        label = { Text("左") },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                    )
+                    OutlinedTextField(
+                        value = top.toString(),
+                        onValueChange = {
+                            top = it.toFloatOrNull() ?: top
+                            onMarginChange(left, top, right, bottom)
+                        },
+                        label = { Text("上") },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                    )
+                    OutlinedTextField(
+                        value = right.toString(),
+                        onValueChange = {
+                            right = it.toFloatOrNull() ?: right
+                            onMarginChange(left, top, right, bottom)
+                        },
+                        label = { Text("右") },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                    )
+                    OutlinedTextField(
+                        value = bottom.toString(),
+                        onValueChange = {
+                            bottom = it.toFloatOrNull() ?: bottom
+                            onMarginChange(left, top, right, bottom)
+                        },
+                        label = { Text("下") },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                    )
+                }
+            }
+        }
+        item {
+            PrimaryPdfButton(
+                "选择保存位置并裁剪 PDF",
+                onClick = {
+                    createDocument.launch("${draft.document.name.substringBeforeLast('.')}_cropped.pdf")
+                },
+            )
+        }
+        item { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { PrivacyHint() } }
+    }
+}
+
+@Composable
+private fun PdfMetadataScreen(
+    draft: PdfMetadataDraft?,
+    onBack: () -> Unit,
+    onSave: (String, String, String, String, Uri) -> Unit,
+) {
+    if (draft == null) return EmptyPdfSelection("没有已选择的 PDF")
+    var title by remember { mutableStateOf(draft.metadata.title) }
+    var author by remember { mutableStateOf(draft.metadata.author) }
+    var subject by remember { mutableStateOf(draft.metadata.subject) }
+    var keywords by remember { mutableStateOf(draft.metadata.keywords) }
+
+    val createDocument = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(FileFormat.PDF.mimeType),
+    ) { uri -> uri?.let { onSave(title, author, subject, keywords, it) } }
+
+    PdfConfigurationScaffold(
+        title = "PDF 元数据管理",
+        subtitle = "查看与修改文档属性信息",
+        onBack = onBack,
+    ) {
+        item {
+            FileCard(draft.document.name, "PDF · ${draft.metadata.pageCount} 页 · ${formatFileSize(draft.metadata.fileSizeBytes)}")
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("文档标题 (Title)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                )
+                OutlinedTextField(
+                    value = author,
+                    onValueChange = { author = it },
+                    label = { Text("作者 (Author)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                )
+                OutlinedTextField(
+                    value = subject,
+                    onValueChange = { subject = it },
+                    label = { Text("主题 (Subject)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                )
+                OutlinedTextField(
+                    value = keywords,
+                    onValueChange = { keywords = it },
+                    label = { Text("关键词 (Keywords)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                )
+            }
+        }
+        item {
+            PrimaryPdfButton(
+                "保存并导出 PDF",
+                onClick = {
+                    createDocument.launch("${draft.document.name.substringBeforeLast('.')}_meta.pdf")
+                },
+            )
+        }
+        item { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { PrivacyHint() } }
+    }
+}
+
+@Composable
+private fun PdfPageManagerScreen(
+    draft: PdfPageManagerDraft?,
+    onBack: () -> Unit,
+    onReorder: (Int, Int) -> Unit,
+    onRotate: (Set<String>, Int) -> Unit,
+    onDelete: (Set<String>) -> Unit,
+    onStart: (Uri) -> Unit,
+) {
+    if (draft == null) return EmptyPdfSelection("没有已选择的 PDF")
+    val createDocument = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(FileFormat.PDF.mimeType),
+    ) { uri -> uri?.let(onStart) }
+
+    var selectedIds by remember { mutableStateOf(setOf<String>()) }
+
+    PdfConfigurationScaffold(
+        title = "PDF 页面管理器",
+        subtitle = "共 ${draft.pages.size} 页 · 支持拖拽重排、旋转与批量删除",
+        onBack = onBack,
+    ) {
+        item {
+            FileCard(draft.document.name, "PDF · ${draft.pages.size} 页 · ${formatFileSize(draft.document.sizeBytes)}")
+        }
+        item {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = { onRotate(selectedIds.ifEmpty { draft.pages.map { it.id }.toSet() }, 90) },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp),
+                ) {
+                    Icon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("顺时针 90°")
+                }
+                OutlinedButton(
+                    onClick = {
+                        if (selectedIds.isNotEmpty()) {
+                            onDelete(selectedIds)
+                            selectedIds = emptySet()
+                        }
+                    },
+                    enabled = selectedIds.isNotEmpty() && draft.pages.size > selectedIds.size,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp),
+                ) {
+                    Icon(Icons.Outlined.DeleteOutline, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("删除所选")
+                }
+            }
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                draft.pages.forEachIndexed { index, page ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            selectedIds = if (page.id in selectedIds) selectedIds - page.id else selectedIds + page.id
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, if (page.id in selectedIds) Ink else Border),
+                        color = if (page.id in selectedIds) SurfaceSoft else MaterialTheme.colorScheme.background,
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("第 ${index + 1} 页 (原第 ${page.originalPageIndex + 1} 页)", fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                            if (page.rotationDegrees != 0) {
+                                Text("${page.rotationDegrees}°", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(end = 8.dp))
+                            }
+                            IconButton(onClick = { onReorder(index, (index - 1).coerceAtLeast(0)) }, enabled = index > 0) {
+                                Icon(Icons.Outlined.KeyboardArrowUp, contentDescription = "上移")
+                            }
+                            IconButton(onClick = { onReorder(index, (index + 1).coerceAtMost(draft.pages.size - 1)) }, enabled = index < draft.pages.size - 1) {
+                                Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = "下移")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        item {
+            PrimaryPdfButton(
+                "选择保存位置并导出新 PDF",
+                onClick = {
+                    createDocument.launch("${draft.document.name.substringBeforeLast('.')}_reordered.pdf")
+                },
+                enabled = draft.pages.isNotEmpty(),
             )
         }
         item { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { PrivacyHint() } }
@@ -2020,7 +2636,7 @@ private fun HistoryActionSheet(
                 fontSize = 13.sp,
             )
             Spacer(Modifier.height(8.dp))
-            HistoryActionRow(Icons.Outlined.OpenInNew, "打开文件", enabled = outputs.isNotEmpty(), onClick = onOpen)
+            HistoryActionRow(Icons.AutoMirrored.Outlined.OpenInNew, "打开文件", enabled = outputs.isNotEmpty(), onClick = onOpen)
             HistoryActionRow(Icons.Outlined.Share, "分享", enabled = outputs.isNotEmpty(), onClick = onShare)
             HistoryActionRow(Icons.Outlined.Refresh, "再次转换", onClick = onReuse)
             HistoryActionRow(Icons.Outlined.DeleteOutline, "删除记录", tint = Muted, onClick = onDelete)
@@ -2060,10 +2676,14 @@ private fun SettingsScreen(
     onImageQuality: (QualityPreset) -> Unit,
     onVideoQuality: (QualityPreset) -> Unit,
     onPrivacy: () -> Unit,
+    onOfficeTools: () -> Unit,
+    onClearCache: () -> Unit = {},
 ) {
     var picking by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
-    var officePackInstalled by remember { mutableStateOf(OfficePackManager.isInstalled(context)) }
+    var officePackInstalled by remember {
+        mutableStateOf(OfficeEngine.isAvailable(context) || OfficePackManager.isInstalled(context))
+    }
     var officeMessage by remember { mutableStateOf<String?>(null) }
     val packPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
@@ -2076,7 +2696,7 @@ private fun SettingsScreen(
                 }
             }
             val result = OfficePackManager.install(context, copied)
-            officePackInstalled = result.isSuccess && OfficePackManager.isInstalled(context)
+            officePackInstalled = result.isSuccess && (OfficeEngine.isAvailable(context) || OfficePackManager.isInstalled(context))
             officeMessage = if (officePackInstalled) {
                 "Office 支持包安装完成"
             } else {
@@ -2107,26 +2727,28 @@ private fun SettingsScreen(
                 SettingRow("视频默认质量", videoQuality.label, onClick = { picking = "video" })
             }
         }
-        item { SectionTitle("Office 支持包") }
+        item { SectionTitle("系统能力与性能") }
         item {
             SettingsGroup {
                 SettingRow(
-                    if (officePackInstalled) "已安装（约 180 MB）" else "未安装",
-                    if (officePackInstalled) "DOCX / PPTX / XLSX → PDF 可用" else "用于 Office 文档转 PDF",
+                    "硬件编解码加速",
+                    "H.264 / H.265 / VP8 芯片加速已就绪",
                 )
                 HorizontalDivider(color = Border)
                 SettingRow(
-                    if (officePackInstalled) "卸载 Office 支持包" else "选择 office-pack.zip 安装",
-                    if (officePackInstalled) "释放存储空间" else "LibreOffice 引擎 · 完全本地",
-                    onClick = {
-                        if (officePackInstalled) {
-                            OfficePackManager.uninstall(context)
-                            officePackInstalled = false
-                            officeMessage = "已卸载 Office 支持包"
-                        } else {
-                            packPicker.launch(arrayOf("application/zip", "application/octet-stream"))
-                        }
-                    },
+                    "清理缓存",
+                    "一键清理转换中间件与缩略图缓存",
+                    onClick = onClearCache,
+                )
+            }
+        }
+        item { SectionTitle("Office 引擎") }
+        item {
+            SettingsGroup {
+                SettingRow(
+                    "LibreOfficeKit 引擎",
+                    "已内置 · DOCX / PPTX / XLSX 离线转 PDF",
+                    onClick = onOfficeTools,
                 )
             }
         }
@@ -2135,7 +2757,7 @@ private fun SettingsScreen(
             SettingsGroup {
                 SettingRow("隐私", "无网络权限 · 本地处理", onClick = onPrivacy)
                 HorizontalDivider(color = Border)
-                SettingRow("OpenConvert", "0.1.0 Alpha")
+                SettingRow("OpenConvert", "1.0.0 正式版")
             }
         }
     }
@@ -2828,5 +3450,171 @@ private fun ArchiveExtractScreen(
             )
         }
         item { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { PrivacyHint() } }
+    }
+}
+
+@Composable
+private fun OfficeToolsScreen(
+    onBack: () -> Unit,
+    onOfficePicked: (Uri) -> Unit,
+) {
+    val docPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> uri?.let(onOfficePicked) }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().statusBarsPadding(),
+        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        item {
+            IconButton(onClick = onBack, modifier = Modifier.size(44.dp)) {
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "返回")
+            }
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Office 转换", fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+                Text("Word · PPT · Excel 离线转换为 PDF", color = Muted, fontSize = 14.sp)
+            }
+        }
+
+        // 状态卡片
+        item {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceSoft),
+                border = BorderStroke(1.dp, Border),
+            ) {
+                Column(
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(Icons.AutoMirrored.Outlined.Article, contentDescription = null, tint = Ink)
+                            Text("LibreOfficeKit 引擎", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Ink,
+                        ) {
+                            Text(
+                                "已内置就绪",
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            )
+                        }
+                    }
+
+                    Text(
+                        "已内置完整 LibreOffice 离线文档渲染引擎。支持将 DOCX、PPTX、XLSX 高保真转换为 PDF，所有渲染 100% 在本地沙箱中完成，完全无需联网。",
+                        color = Muted,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp,
+                    )
+                }
+            }
+        }
+
+        // 核心操作
+        item {
+            Button(
+                onClick = {
+                    docPicker.launch(
+                        arrayOf(
+                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            "application/msword",
+                            "application/vnd.ms-powerpoint",
+                            "application/vnd.ms-excel",
+                            "*/*",
+                        ),
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Ink),
+            ) {
+                Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("选择 Office 文档转换", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            }
+        }
+
+        item { SectionTitle("支持转换格式") }
+
+        item {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceSoft),
+                border = BorderStroke(1.dp, Border),
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    OfficeFormatRow("Word 文档", "DOCX / DOC → PDF", "保留完整排版、字体样式、表格与图片")
+                    HorizontalDivider(color = Border)
+                    OfficeFormatRow("演示文稿", "PPTX / PPT → PDF", "按幻灯片页转换为 PDF 页面，保持版式")
+                    HorizontalDivider(color = Border)
+                    OfficeFormatRow("电子表格", "XLSX / XLS → PDF", "将表格报表与工作表结构转为文档")
+                }
+            }
+        }
+
+        item { SectionTitle("设计与特性") }
+
+        item {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceSoft),
+                border = BorderStroke(1.dp, Border),
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    FeatureDescRow("🔒 绝对隐私安全", "区别于云端转换，文件完全在设备本地沙箱中解析渲染，不申请联网权限。")
+                    HorizontalDivider(color = Border)
+                    FeatureDescRow("⚡ 原生高保真", "采用桌面级 LibreOffice 渲染核心，支持复杂表格、排版及矢量图形高保真输出。")
+                }
+            }
+        }
+
+        item { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { PrivacyHint() } }
+    }
+}
+
+@Composable
+private fun OfficeFormatRow(title: String, subtitle: String, desc: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(title, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+            Text(subtitle, color = Ink, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+        }
+        Text(desc, color = Muted, fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun FeatureDescRow(title: String, desc: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(title, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+        Text(desc, color = Muted, fontSize = 12.sp, lineHeight = 16.sp)
     }
 }

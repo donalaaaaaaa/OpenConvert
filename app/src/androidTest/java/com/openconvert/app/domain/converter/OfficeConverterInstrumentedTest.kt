@@ -30,8 +30,7 @@ class OfficeConverterInstrumentedTest {
     @Test
     fun bundledEngineConvertsAllOfficeFormats() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        // 内置库（APK jniLibs）模式下引擎应可用
-        assertTrue("内置库引擎应可用", OfficeEngine.isAvailable(context))
+        assertTrue("内置 LibreOfficeKit 引擎应可用", OfficeEngine.isAvailable(context))
         convertAndVerify("office-test-doc.docx", FileFormat.DOCX)
         convertAndVerify("office-test-slide.pptx", FileFormat.PPTX)
         convertAndVerify("office-test-sheet.xlsx", FileFormat.XLSX)

@@ -47,6 +47,12 @@
 -keep class org.apache.commons.compress.** { *; }
 -dontwarn org.apache.commons.compress.**
 
+# ---- LibreOfficeKit ----
+-keep class org.libreoffice.kit.** { *; }
+-keep class com.openconvert.app.domain.converter.OfficeEngine { *; }
+-keep class com.openconvert.app.domain.converter.OfficeConverter { *; }
+-dontwarn org.libreoffice.kit.**
+
 # ---- Model classes kept for Room mapping + payload codec ----
 -keep class com.openconvert.app.domain.model.** { *; }
 -keep class com.openconvert.app.data.local.** { *; }

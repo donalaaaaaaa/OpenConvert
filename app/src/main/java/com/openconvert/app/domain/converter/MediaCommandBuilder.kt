@@ -82,6 +82,8 @@ internal object MediaCommandBuilder {
             FileFormat.WAV -> arguments += listOf("-vn", "-c:a", "pcm_s16le")
             FileFormat.FLAC -> arguments += listOf("-vn", "-c:a", "flac")
             FileFormat.M4A -> arguments += listOf("-vn", "-c:a", "aac", "-b:a", audioBitrate(quality))
+            FileFormat.OGG -> arguments += listOf("-vn", "-c:a", "libvorbis", "-b:a", audioBitrate(quality))
+            FileFormat.OPUS -> arguments += listOf("-vn", "-c:a", "libopus", "-b:a", audioBitrate(quality))
             else -> error("目标格式不是受支持的音频格式")
         }
     }

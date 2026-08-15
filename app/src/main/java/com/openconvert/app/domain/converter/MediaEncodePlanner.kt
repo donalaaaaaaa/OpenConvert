@@ -83,6 +83,8 @@ object MediaEncodePlanner {
             FileFormat.MP3 -> source == "mp3"
             FileFormat.FLAC -> source == "flac"
             FileFormat.WAV -> source.startsWith("pcm")
+            FileFormat.OGG -> source == "vorbis" || source == "opus"
+            FileFormat.OPUS -> source == "opus"
             else -> false
         }
     }
@@ -132,11 +134,5 @@ object MediaEncodePlanner {
         return "${kbps}k"
     }
 
-    private fun FileFormat.categoryIsAudio(): Boolean = this in setOf(
-        FileFormat.MP3,
-        FileFormat.AAC,
-        FileFormat.WAV,
-        FileFormat.FLAC,
-        FileFormat.M4A,
-    )
+    private fun FileFormat.categoryIsAudio(): Boolean = this.category == com.openconvert.app.domain.model.FileCategory.AUDIO
 }

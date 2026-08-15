@@ -94,6 +94,36 @@ data class PdfRotatePagesDraft(
     val pageRanges: String = "", // 空 = 全部页面
 )
 
+data class PdfCompressDraft(
+    val document: SelectedDocument,
+    val preset: com.openconvert.app.domain.converter.PdfCompressPreset = com.openconvert.app.domain.converter.PdfCompressPreset.BALANCED,
+)
+
+data class PdfSecurityDraft(
+    val document: SelectedDocument,
+    val isEncrypt: Boolean = true,
+    val password: String = "",
+)
+
+data class PdfCropDraft(
+    val document: SelectedDocument,
+    val pageCount: Int,
+    val leftPt: Float = 20f,
+    val topPt: Float = 20f,
+    val rightPt: Float = 20f,
+    val bottomPt: Float = 20f,
+)
+
+data class PdfMetadataDraft(
+    val document: SelectedDocument,
+    val metadata: com.openconvert.app.domain.pdf.PdfMetadataInfo = com.openconvert.app.domain.pdf.PdfMetadataInfo(),
+)
+
+data class PdfPageManagerDraft(
+    val document: SelectedDocument,
+    val pages: List<com.openconvert.app.domain.pdf.PdfPageItem> = emptyList(),
+)
+
 data class ArchiveCompressDraft(
     val documents: List<SelectedDocument>,
     val targetFormat: FileFormat,
@@ -185,6 +215,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _pdfRotateDraft = MutableStateFlow<PdfRotatePagesDraft?>(null)
     val pdfRotateDraft: StateFlow<PdfRotatePagesDraft?> = _pdfRotateDraft.asStateFlow()
 
+    private val _pdfCompressDraft = MutableStateFlow<PdfCompressDraft?>(null)
+    val pdfCompressDraft: StateFlow<PdfCompressDraft?> = _pdfCompressDraft.asStateFlow()
+
+    private val _pdfSecurityDraft = MutableStateFlow<PdfSecurityDraft?>(null)
+    val pdfSecurityDraft: StateFlow<PdfSecurityDraft?> = _pdfSecurityDraft.asStateFlow()
+
+    private val _pdfCropDraft = MutableStateFlow<PdfCropDraft?>(null)
+    val pdfCropDraft: StateFlow<PdfCropDraft?> = _pdfCropDraft.asStateFlow()
+
+    private val _pdfMetadataDraft = MutableStateFlow<PdfMetadataDraft?>(null)
+    val pdfMetadataDraft: StateFlow<PdfMetadataDraft?> = _pdfMetadataDraft.asStateFlow()
+
+    private val _pdfPageManagerDraft = MutableStateFlow<PdfPageManagerDraft?>(null)
+    val pdfPageManagerDraft: StateFlow<PdfPageManagerDraft?> = _pdfPageManagerDraft.asStateFlow()
+
     private val _archiveCompressDraft = MutableStateFlow<ArchiveCompressDraft?>(null)
     val archiveCompressDraft: StateFlow<ArchiveCompressDraft?> = _archiveCompressDraft.asStateFlow()
 
@@ -205,6 +250,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
+
+    val deviceProfile = com.openconvert.app.domain.device.DeviceCapabilities.getHardwareProfile()
+
+    private val _cacheStats = MutableStateFlow<com.openconvert.app.domain.cache.CacheStats?>(null)
+    val cacheStats: StateFlow<com.openconvert.app.domain.cache.CacheStats?> = _cacheStats.asStateFlow()
 
     val history = app.historyRepository.history.stateIn(
         scope = viewModelScope,
@@ -636,6 +686,249 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 outputName = "旋转 ${current.degrees}° 的 PDF",
             ),
         )
+    }
+
+    // PDF 2.0: 压缩
+    fun onPdfCompressPicked(uri: Uri): Boolean {
+        val document = readPdfDocument(uri) ?: return false
+        _pdfCompressDraft.value = PdfCompressDraft(document)
+        _conversionState.value = ConversionUiState.Configuring
+        return true
+    }
+
+    fun selectPdfCompressPreset(preset: com.openconvert.app.domain.converter.PdfCompressPreset) {
+        _pdfCompressDraft.value = _pdfCompressDraft.value?.copy(preset = preset)
+    }
+
+    fun startPdfCompress(outputUri: Uri) {
+        val current = _pdfCompressDraft.value ?: return
+        persistDocumentPermission(outputUri)
+        submit(
+            ConversionTask(
+                id = UUID.randomUUID().toString(),
+                sourceUri = current.document.uri.toString(),
+                sourceName = current.document.name,
+                sourceFormat = FileFormat.PDF,
+                targetFormat = FileFormat.PDF,
+                outputUri = outputUri.toString(),
+                fileSize = current.document.sizeBytes,
+                progress = 1,
+                status = ConversionStatus.PENDING,
+                kind = ConversionKind.PDF_COMPRESS,
+                payload = ConversionPayload(
+                    sourceUris = listOf(current.document.uri.toString()),
+                    compressDpi = current.preset.maxDpi,
+                    compressQuality = current.preset.quality,
+                ),
+                outputName = "压缩后的 PDF",
+            ),
+        )
+    }
+
+    // PDF 2.0: 安全 (加密/解密)
+    fun onPdfSecurityPicked(uri: Uri, isEncrypt: Boolean): Boolean {
+        val document = readPdfDocument(uri) ?: return false
+        _pdfSecurityDraft.value = PdfSecurityDraft(document, isEncrypt = isEncrypt)
+        _conversionState.value = ConversionUiState.Configuring
+        return true
+    }
+
+    fun setPdfSecurityPassword(password: String) {
+        _pdfSecurityDraft.value = _pdfSecurityDraft.value?.copy(password = password)
+    }
+
+    fun startPdfSecurity(outputUri: Uri) {
+        val current = _pdfSecurityDraft.value ?: return
+        if (current.password.isBlank()) {
+            _message.value = "请输入密码"
+            return
+        }
+        persistDocumentPermission(outputUri)
+        submit(
+            ConversionTask(
+                id = UUID.randomUUID().toString(),
+                sourceUri = current.document.uri.toString(),
+                sourceName = current.document.name,
+                sourceFormat = FileFormat.PDF,
+                targetFormat = FileFormat.PDF,
+                outputUri = outputUri.toString(),
+                fileSize = current.document.sizeBytes,
+                progress = 1,
+                status = ConversionStatus.PENDING,
+                kind = ConversionKind.PDF_SECURITY,
+                payload = ConversionPayload(
+                    sourceUris = listOf(current.document.uri.toString()),
+                    password = current.password,
+                    isEncrypt = current.isEncrypt,
+                ),
+                outputName = if (current.isEncrypt) "加密保护的 PDF" else "解密后的 PDF",
+            ),
+        )
+    }
+
+    // PDF 2.0: 页面裁剪
+    fun onPdfCropPicked(uri: Uri): Boolean {
+        val document = readPdfDocument(uri) ?: return false
+        val pageCount = readPdfPageCount(uri) ?: return false
+        _pdfCropDraft.value = PdfCropDraft(document, pageCount)
+        _conversionState.value = ConversionUiState.Configuring
+        return true
+    }
+
+    fun setPdfCropMargins(left: Float, top: Float, right: Float, bottom: Float) {
+        _pdfCropDraft.value = _pdfCropDraft.value?.copy(
+            leftPt = left,
+            topPt = top,
+            rightPt = right,
+            bottomPt = bottom,
+        )
+    }
+
+    fun startPdfCrop(outputUri: Uri) {
+        val current = _pdfCropDraft.value ?: return
+        persistDocumentPermission(outputUri)
+        submit(
+            ConversionTask(
+                id = UUID.randomUUID().toString(),
+                sourceUri = current.document.uri.toString(),
+                sourceName = current.document.name,
+                sourceFormat = FileFormat.PDF,
+                targetFormat = FileFormat.PDF,
+                outputUri = outputUri.toString(),
+                fileSize = current.document.sizeBytes,
+                progress = 1,
+                status = ConversionStatus.PENDING,
+                kind = ConversionKind.PDF_CROP,
+                payload = ConversionPayload(
+                    sourceUris = listOf(current.document.uri.toString()),
+                    cropMarginsLeft = current.leftPt,
+                    cropMarginsTop = current.topPt,
+                    cropMarginsRight = current.rightPt,
+                    cropMarginsBottom = current.bottomPt,
+                ),
+                outputName = "裁剪边距后的 PDF",
+            ),
+        )
+    }
+
+    // PDF 2.0: 元数据
+    fun onPdfMetadataPicked(uri: Uri): Boolean {
+        val document = readPdfDocument(uri) ?: return false
+        viewModelScope.launch {
+            val meta = runCatching {
+                com.openconvert.app.domain.pdf.PdfMetadataManager(app).readMetadata(uri)
+            }.getOrElse { com.openconvert.app.domain.pdf.PdfMetadataInfo() }
+            _pdfMetadataDraft.value = PdfMetadataDraft(document, meta)
+            _conversionState.value = ConversionUiState.Configuring
+        }
+        return true
+    }
+
+    fun startPdfMetadata(outputUri: Uri, title: String, author: String, subject: String, keywords: String) {
+        val current = _pdfMetadataDraft.value ?: return
+        persistDocumentPermission(outputUri)
+        submit(
+            ConversionTask(
+                id = UUID.randomUUID().toString(),
+                sourceUri = current.document.uri.toString(),
+                sourceName = current.document.name,
+                sourceFormat = FileFormat.PDF,
+                targetFormat = FileFormat.PDF,
+                outputUri = outputUri.toString(),
+                fileSize = current.document.sizeBytes,
+                progress = 1,
+                status = ConversionStatus.PENDING,
+                kind = ConversionKind.PDF_METADATA,
+                payload = ConversionPayload(
+                    sourceUris = listOf(current.document.uri.toString()),
+                    metadataTitle = title,
+                    metadataAuthor = author,
+                    metadataSubject = subject,
+                    metadataKeywords = keywords,
+                ),
+                outputName = "更新元数据后的 PDF",
+            ),
+        )
+    }
+
+    // PDF 2.0: 页面管理器
+    fun onPdfPageManagerPicked(uri: Uri): Boolean {
+        val document = readPdfDocument(uri) ?: return false
+        viewModelScope.launch {
+            val pages = runCatching {
+                com.openconvert.app.domain.pdf.PdfPageManager(app).parsePages(uri)
+            }.getOrElse { emptyList() }
+            if (pages.isEmpty()) {
+                _message.value = "无法解析 PDF 页面"
+                return@launch
+            }
+            _pdfPageManagerDraft.value = PdfPageManagerDraft(document, pages)
+            _conversionState.value = ConversionUiState.Configuring
+        }
+        return true
+    }
+
+    fun reorderPdfPages(fromIndex: Int, toIndex: Int) {
+        val current = _pdfPageManagerDraft.value ?: return
+        val reordered = com.openconvert.app.domain.pdf.PdfPageManager(app).reorder(current.pages, fromIndex, toIndex)
+        _pdfPageManagerDraft.value = current.copy(pages = reordered)
+    }
+
+    fun rotatePdfPages(targetIds: Set<String>, delta: Int) {
+        val current = _pdfPageManagerDraft.value ?: return
+        val rotated = com.openconvert.app.domain.pdf.PdfPageManager(app).rotate(current.pages, targetIds, delta)
+        _pdfPageManagerDraft.value = current.copy(pages = rotated)
+    }
+
+    fun deletePdfPages(targetIds: Set<String>) {
+        val current = _pdfPageManagerDraft.value ?: return
+        val deleted = runCatching {
+            com.openconvert.app.domain.pdf.PdfPageManager(app).delete(current.pages, targetIds)
+        }.getOrElse {
+            _message.value = it.message ?: "删除失败"
+            return
+        }
+        _pdfPageManagerDraft.value = current.copy(pages = deleted)
+    }
+
+    fun startPdfPageManagerExport(outputUri: Uri) {
+        val current = _pdfPageManagerDraft.value ?: return
+        persistDocumentPermission(outputUri)
+        submit(
+            ConversionTask(
+                id = UUID.randomUUID().toString(),
+                sourceUri = current.document.uri.toString(),
+                sourceName = current.document.name,
+                sourceFormat = FileFormat.PDF,
+                targetFormat = FileFormat.PDF,
+                outputUri = outputUri.toString(),
+                fileSize = current.document.sizeBytes,
+                progress = 1,
+                status = ConversionStatus.PENDING,
+                kind = ConversionKind.PDF_PAGE_MANAGER,
+                payload = ConversionPayload(
+                    sourceUris = listOf(current.document.uri.toString()),
+                    pages = current.pages.map { it.originalPageIndex },
+                    rotateDegrees = current.pages.firstOrNull()?.rotationDegrees ?: 0,
+                ),
+                outputName = "重新排版的 PDF",
+            ),
+        )
+    }
+
+    // 缓存管理
+    fun refreshCacheStats() {
+        viewModelScope.launch {
+            _cacheStats.value = app.cacheManager.getCacheStats()
+        }
+    }
+
+    fun clearCache() {
+        viewModelScope.launch {
+            app.cacheManager.clearCache()
+            _cacheStats.value = app.cacheManager.getCacheStats()
+            _message.value = "缓存已清理"
+        }
     }
 
     fun onFilesToCompressPicked(uris: List<Uri>): Boolean {

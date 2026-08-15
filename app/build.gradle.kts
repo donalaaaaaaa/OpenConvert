@@ -14,7 +14,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 100
-        versionName = "0.1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -29,18 +29,7 @@ android {
         }
     }
 
-    // 双 Flavor：basic（轻量，Office 需后续下载）/ office（内置 LibreOfficeKit）
-    flavorDimensions += "edition"
-    productFlavors {
-        create("basic") {
-            dimension = "edition"
-            versionNameSuffix = ""
-        }
-        create("office") {
-            dimension = "edition"
-            versionNameSuffix = "-office"
-        }
-    }
+
 
     buildTypes {
         debug {

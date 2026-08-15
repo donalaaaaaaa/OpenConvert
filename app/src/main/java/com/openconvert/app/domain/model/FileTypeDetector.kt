@@ -23,25 +23,33 @@ object FileTypeDetector {
             "image/jpeg" -> FileFormat.JPG
             "image/png" -> FileFormat.PNG
             "image/webp" -> FileFormat.WEBP
+            "image/avif" -> FileFormat.AVIF
+            "image/heic", "image/heif" -> FileFormat.HEIC
+            "image/gif" -> FileFormat.GIF
+            "image/bmp", "image/x-ms-bmp" -> FileFormat.BMP
+            "image/tiff" -> FileFormat.TIFF
             "application/pdf" -> FileFormat.PDF
             "audio/mpeg" -> FileFormat.MP3
             "audio/aac", "audio/aacp" -> FileFormat.AAC
             "audio/wav", "audio/x-wav", "audio/wave" -> FileFormat.WAV
             "audio/flac", "audio/x-flac" -> FileFormat.FLAC
             "audio/mp4", "audio/x-m4a" -> FileFormat.M4A
+            "audio/ogg", "application/ogg" -> FileFormat.OGG
+            "audio/opus" -> FileFormat.OPUS
             "video/mp4" -> FileFormat.MP4
             "video/quicktime" -> FileFormat.MOV
             "video/x-matroska", "video/webm" -> FileFormat.WEBM
+            "video/x-msvideo", "video/avi" -> FileFormat.AVI
             "application/zip", "application/x-zip-compressed" -> FileFormat.ZIP
             "application/x-tar" -> FileFormat.TAR
             "application/gzip", "application/x-gzip" -> FileFormat.GZIP
             "application/x-bzip2" -> FileFormat.BZIP2
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/msword" -> FileFormat.DOCX
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            "application/vnd.ms-powerpoint" -> FileFormat.PPTX
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "application/vnd.ms-excel" -> FileFormat.XLSX
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document" -> FileFormat.DOCX
+            "application/msword" -> FileFormat.DOC
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation" -> FileFormat.PPTX
+            "application/vnd.ms-powerpoint" -> FileFormat.PPT
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" -> FileFormat.XLSX
+            "application/vnd.ms-excel" -> FileFormat.XLS
             else -> null
         }
     }
@@ -79,6 +87,22 @@ object FileTypeDetector {
             return FileFormat.WEBP
         }
 
+        if (n >= 6 && h[0] == 'G'.code.toByte() && h[1] == 'I'.code.toByte() && h[2] == 'F'.code.toByte() &&
+            h[3] == '8'.code.toByte() && (h[4] == '7'.code.toByte() || h[4] == '9'.code.toByte()) && h[5] == 'a'.code.toByte()
+        ) {
+            return FileFormat.GIF
+        }
+
+        if (n >= 2 && h[0] == 'B'.code.toByte() && h[1] == 'M'.code.toByte()) {
+            return FileFormat.BMP
+        }
+
+        if (n >= 4 && ((h[0] == 0x49.toByte() && h[1] == 0x49.toByte() && h[2] == 0x2A.toByte() && h[3] == 0x00.toByte()) ||
+                (h[0] == 0x4D.toByte() && h[1] == 0x4D.toByte() && h[0] == 0x00.toByte() && h[3] == 0x2A.toByte()))
+        ) {
+            return FileFormat.TIFF
+        }
+
         if (n >= 4 && h[0] == '%'.code.toByte() && h[1] == 'P'.code.toByte() &&
             h[2] == 'D'.code.toByte() && h[3] == 'F'.code.toByte()
         ) {
@@ -97,6 +121,12 @@ object FileTypeDetector {
             return FileFormat.FLAC
         }
 
+        if (n >= 4 && h[0] == 'O'.code.toByte() && h[1] == 'g'.code.toByte() &&
+            h[2] == 'g'.code.toByte() && h[3] == 'S'.code.toByte()
+        ) {
+            return FileFormat.OGG
+        }
+
         // RIFF/WAVE: 52 49 46 46 xx xx xx xx 57 41 56 45
         if (n >= 12 && h[0] == 'R'.code.toByte() && h[1] == 'I'.code.toByte() &&
             h[2] == 'F'.code.toByte() && h[3] == 'F'.code.toByte() &&
@@ -104,6 +134,15 @@ object FileTypeDetector {
             h[10] == 'V'.code.toByte() && h[11] == 'E'.code.toByte()
         ) {
             return FileFormat.WAV
+        }
+
+        // RIFF/AVI: 52 49 46 46 xx xx xx xx 41 56 49 20
+        if (n >= 12 && h[0] == 'R'.code.toByte() && h[1] == 'I'.code.toByte() &&
+            h[2] == 'F'.code.toByte() && h[3] == 'F'.code.toByte() &&
+            h[8] == 'A'.code.toByte() && h[9] == 'V'.code.toByte() &&
+            h[10] == 'I'.code.toByte() && h[11] == ' '.code.toByte()
+        ) {
+            return FileFormat.AVI
         }
 
         // ftyp box: 00 00 00 xx 66 74 79 70

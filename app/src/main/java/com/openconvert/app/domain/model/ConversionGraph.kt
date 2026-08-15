@@ -8,65 +8,50 @@ object ConversionGraph {
 
     private val edges: Map<FileFormat, List<FileFormat>> = buildMap {
         // 图片（libvips / BitmapFactory）
+        val imageOutputs = listOf(FileFormat.JPG, FileFormat.PNG, FileFormat.WEBP, FileFormat.PDF)
         put(FileFormat.JPG, listOf(FileFormat.PNG, FileFormat.WEBP, FileFormat.PDF))
         put(FileFormat.PNG, listOf(FileFormat.JPG, FileFormat.WEBP, FileFormat.PDF))
-        put(FileFormat.WEBP, listOf(FileFormat.JPG, FileFormat.PNG))
+        put(FileFormat.WEBP, listOf(FileFormat.JPG, FileFormat.PNG, FileFormat.PDF))
+        put(FileFormat.AVIF, listOf(FileFormat.JPG, FileFormat.PNG, FileFormat.WEBP, FileFormat.PDF))
+        put(FileFormat.HEIC, listOf(FileFormat.JPG, FileFormat.PNG, FileFormat.WEBP, FileFormat.PDF))
+        put(FileFormat.GIF, listOf(FileFormat.JPG, FileFormat.PNG, FileFormat.WEBP, FileFormat.PDF))
+        put(FileFormat.BMP, listOf(FileFormat.JPG, FileFormat.PNG, FileFormat.WEBP, FileFormat.PDF))
+        put(FileFormat.TIFF, listOf(FileFormat.JPG, FileFormat.PNG, FileFormat.WEBP, FileFormat.PDF))
 
         // PDF（PdfBox / PdfRenderer）
-        put(FileFormat.PDF, listOf(FileFormat.JPG, FileFormat.PNG))
+        put(FileFormat.PDF, listOf(FileFormat.JPG, FileFormat.PNG, FileFormat.WEBP))
 
         // 音频（FFmpeg / MediaExtractor 直拷）
-        put(FileFormat.MP3, listOf(FileFormat.AAC, FileFormat.WAV, FileFormat.FLAC, FileFormat.M4A))
-        put(FileFormat.AAC, listOf(FileFormat.MP3, FileFormat.WAV, FileFormat.FLAC, FileFormat.M4A))
-        put(FileFormat.WAV, listOf(FileFormat.MP3, FileFormat.AAC, FileFormat.FLAC, FileFormat.M4A))
-        put(FileFormat.FLAC, listOf(FileFormat.MP3, FileFormat.AAC, FileFormat.WAV, FileFormat.M4A))
-        put(FileFormat.M4A, listOf(FileFormat.MP3, FileFormat.AAC, FileFormat.WAV, FileFormat.FLAC))
+        val audioFormats = listOf(
+            FileFormat.MP3,
+            FileFormat.AAC,
+            FileFormat.WAV,
+            FileFormat.FLAC,
+            FileFormat.M4A,
+            FileFormat.OGG,
+            FileFormat.OPUS,
+        )
+        audioFormats.forEach { inputAudio ->
+            put(inputAudio, audioFormats.filter { it != inputAudio })
+        }
 
         // 视频（Media3 / LiTr / FFmpeg）
-        put(
+        val videoAudioOutputs = listOf(
             FileFormat.MP4,
-            listOf(
-                FileFormat.WEBM,
-                FileFormat.MP3,
-                FileFormat.AAC,
-                FileFormat.WAV,
-                FileFormat.FLAC,
-                FileFormat.M4A,
-            ),
-        )
-        put(
-            FileFormat.MOV,
-            listOf(
-                FileFormat.MP4,
-                FileFormat.MP3,
-                FileFormat.AAC,
-                FileFormat.WAV,
-                FileFormat.FLAC,
-                FileFormat.M4A,
-            ),
-        )
-        put(
-            FileFormat.MKV,
-            listOf(
-                FileFormat.MP4,
-                FileFormat.MP3,
-                FileFormat.AAC,
-                FileFormat.WAV,
-                FileFormat.FLAC,
-                FileFormat.M4A,
-            ),
-        )
-        put(
             FileFormat.WEBM,
-            listOf(
-                FileFormat.MP4,
-                FileFormat.MP3,
-                FileFormat.AAC,
-                FileFormat.WAV,
-                FileFormat.FLAC,
-                FileFormat.M4A,
-            ),
+            FileFormat.MP3,
+            FileFormat.AAC,
+            FileFormat.WAV,
+            FileFormat.FLAC,
+            FileFormat.M4A,
+            FileFormat.OGG,
+            FileFormat.OPUS,
         )
+        put(FileFormat.MP4, listOf(FileFormat.WEBM, FileFormat.MP3, FileFormat.AAC, FileFormat.WAV, FileFormat.FLAC, FileFormat.M4A, FileFormat.OGG, FileFormat.OPUS))
+        put(FileFormat.MOV, videoAudioOutputs)
+        put(FileFormat.MKV, videoAudioOutputs)
+        put(FileFormat.WEBM, listOf(FileFormat.MP4, FileFormat.MP3, FileFormat.AAC, FileFormat.WAV, FileFormat.FLAC, FileFormat.M4A, FileFormat.OGG, FileFormat.OPUS))
+        put(FileFormat.AVI, videoAudioOutputs)
 
         // 压缩包（Commons Compress）
         put(FileFormat.ZIP, listOf(FileFormat.TAR, FileFormat.TAR_GZ))
@@ -75,10 +60,13 @@ object ConversionGraph {
         put(FileFormat.GZIP, listOf(FileFormat.ZIP, FileFormat.TAR))
         put(FileFormat.BZIP2, listOf(FileFormat.ZIP, FileFormat.TAR, FileFormat.GZIP))
 
-        // Office（LibreOfficeKit，可选下载包）
+        // Office（LibreOfficeKit）
         put(FileFormat.DOCX, listOf(FileFormat.PDF))
+        put(FileFormat.DOC, listOf(FileFormat.PDF))
         put(FileFormat.PPTX, listOf(FileFormat.PDF))
+        put(FileFormat.PPT, listOf(FileFormat.PDF))
         put(FileFormat.XLSX, listOf(FileFormat.PDF))
+        put(FileFormat.XLS, listOf(FileFormat.PDF))
     }
 
     /** 输入格式支持的所有输出格式（空 = 不支持转换）。 */
