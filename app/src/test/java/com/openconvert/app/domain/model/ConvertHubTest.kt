@@ -119,8 +119,49 @@ class ConversionGraphTest {
             listOf(FileFormat.JPG, FileFormat.PNG),
         )
         assertTrue(common.contains(FileFormat.WEBP))
-        assertTrue(common.contains(FileFormat.PDF)) // JPG→PDF 与 PNG→PDF 都支持
-        assertFalse(common.contains(FileFormat.JPG)) // 自身不算
+        // PDF 不在转换边里（图片→PDF 走 IMAGES_TO_PDF 工具流），所以不出现在共同目标里。
+        assertFalse(common.contains(FileFormat.PDF))
+        assertFalse(common.contains(FileFormat.JPG)) // JPG 是输入之一，自身不算
+    }
+
+    @Test
+    fun everyConvertEdgeHasARegisteredEngine() {
+        // 能力图与引擎能力必须一致：Graph 声明的每条转换边都要有引擎能接。
+        // 这里用各 Converter 的 supports() 判定规则复刻一遍（不构造 Android 依赖）。
+        FileFormat.entries.forEach { input ->
+            ConversionGraph.targetsFor(input).forEach { target ->
+                val covered = when {
+                    // ImageConverter: IMAGE → IMAGE
+                    input.category == FileCategory.IMAGE && target.category == FileCategory.IMAGE -> true
+                    // MediaConverter: AUDIO/VIDEO 输入
+                    input.category == FileCategory.AUDIO || input.category == FileCategory.VIDEO -> true
+                    // OfficeConverter: OFFICE → PDF
+                    input.category == FileCategory.OFFICE && target == FileFormat.PDF -> true
+                    // ArchiveConverter: 归档互转
+                    input.category == FileCategory.ARCHIVE -> true
+                    else -> false
+                }
+                assertTrue("$input → $target 没有引擎可处理", covered)
+            }
+        }
+    }
+
+    @Test
+    fun pdfHasToolCapabilitiesButNoConvertEdges() {
+        // PDF 的所有能力都需要页面参数或目录输出，因此只有工具边。
+        assertTrue(ConversionGraph.targetsFor(FileFormat.PDF).isEmpty())
+        val tools = ConversionGraph.toolsFor(FileFormat.PDF)
+        assertTrue(tools.contains(ConversionKind.PDF_TO_IMAGES))
+        assertTrue(tools.contains(ConversionKind.PDF_COMPRESS))
+        assertTrue(tools.contains(ConversionKind.PDF_PAGE_MANAGER))
+        assertTrue(ConversionGraph.hasAnyCapability(FileFormat.PDF))
+    }
+
+    @Test
+    fun unknownFormatHasNoCapabilityAtAll() {
+        assertTrue(ConversionGraph.targetsFor(FileFormat.UNKNOWN).isEmpty())
+        assertTrue(ConversionGraph.toolsFor(FileFormat.UNKNOWN).isEmpty())
+        assertFalse(ConversionGraph.hasAnyCapability(FileFormat.UNKNOWN))
     }
 
     @Test

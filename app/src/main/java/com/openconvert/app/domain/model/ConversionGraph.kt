@@ -1,27 +1,45 @@
 package com.openconvert.app.domain.model
 
 /**
- * 转换能力图（计划书 §三十二）：输入格式 → 支持的输出格式。
- * 禁止 UI 出现不支持的组合；也是 ConverterRegistry 的能力声明来源。
+ * 转换能力图（计划书 §三十二）：能力声明的唯一来源。
+ *
+ * 分两类边，语义不同，不可混用：
+ *
+ * 1. [convertEdges] —— **格式转换边**。输入格式 → 输出格式，由 `ConverterRegistry`
+ *    里注册的引擎（ImageConverter / MediaConverter / OfficeConverter / ArchiveConverter）
+ *    直接执行，走 `ConversionKind.SINGLE` 流程：一个输入文件 → 一个输出文件。
+ *    [targetsFor] / [canConvert] 只看这一类，`canConvertLocallyTo` 也只看这一类。
+ *
+ * 2. [toolEdges] —— **工具边**。需要多文件输入、目录输出或页面参数，因此有专属
+ *    `ConversionKind`（如图片合成 PDF、PDF 导出图片序列）。这些能力不能塞进
+ *    SINGLE 流程，否则 UI 会给出一个点了没反应的目标格式。
+ *
+ * 历史坑：早期把 `JPG → PDF`、`PDF → JPG` 也放进转换边，于是 UI 从
+ * `targetsFor` 拿到 PDF 目标并显示出来，但 registry 里没有对应引擎，按钮永远
+ * 是灰的「该转换引擎尚未接入」。现在两类边分开，UI 各取所需。
  */
 object ConversionGraph {
 
-    private val edges: Map<FileFormat, List<FileFormat>> = buildMap {
-        // 图片（libvips / BitmapFactory）
-        val imageOutputs = listOf(FileFormat.JPG, FileFormat.PNG, FileFormat.WEBP, FileFormat.PDF)
-        put(FileFormat.JPG, listOf(FileFormat.PNG, FileFormat.WEBP, FileFormat.PDF))
-        put(FileFormat.PNG, listOf(FileFormat.JPG, FileFormat.WEBP, FileFormat.PDF))
-        put(FileFormat.WEBP, listOf(FileFormat.JPG, FileFormat.PNG, FileFormat.PDF))
-        put(FileFormat.AVIF, listOf(FileFormat.JPG, FileFormat.PNG, FileFormat.WEBP, FileFormat.PDF))
-        put(FileFormat.HEIC, listOf(FileFormat.JPG, FileFormat.PNG, FileFormat.WEBP, FileFormat.PDF))
-        put(FileFormat.GIF, listOf(FileFormat.JPG, FileFormat.PNG, FileFormat.WEBP, FileFormat.PDF))
-        put(FileFormat.BMP, listOf(FileFormat.JPG, FileFormat.PNG, FileFormat.WEBP, FileFormat.PDF))
-        put(FileFormat.TIFF, listOf(FileFormat.JPG, FileFormat.PNG, FileFormat.WEBP, FileFormat.PDF))
+    /** 一个输入 → 一个输出，registry 有引擎直接执行。 */
+    private val convertEdges: Map<FileFormat, List<FileFormat>> = buildMap {
+        // 图片（libvips 主引擎 / BitmapFactory 兜底）
+        // 输出只有 JPG/PNG/WEBP：ImageConverter.writeBitmap 只能编码这三种。
+        // AVIF/HEIC/GIF/BMP/TIFF 是只读输入（系统解码器支持解，不支持编）。
+        val imageOutputs = listOf(FileFormat.JPG, FileFormat.PNG, FileFormat.WEBP)
+        listOf(
+            FileFormat.JPG,
+            FileFormat.PNG,
+            FileFormat.WEBP,
+            FileFormat.AVIF,
+            FileFormat.HEIC,
+            FileFormat.GIF,
+            FileFormat.BMP,
+            FileFormat.TIFF,
+        ).forEach { input ->
+            put(input, imageOutputs.filter { it != input })
+        }
 
-        // PDF（PdfBox / PdfRenderer）
-        put(FileFormat.PDF, listOf(FileFormat.JPG, FileFormat.PNG, FileFormat.WEBP))
-
-        // 音频（FFmpeg / MediaExtractor 直拷）
+        // 音频（FFmpeg 重编码 / MediaExtractor 同编码直拷）
         val audioFormats = listOf(
             FileFormat.MP3,
             FileFormat.AAC,
@@ -35,22 +53,16 @@ object ConversionGraph {
             put(inputAudio, audioFormats.filter { it != inputAudio })
         }
 
-        // 视频（Media3 / LiTr / FFmpeg）
+        // 视频（Media3/MediaCodec 主引擎、LiTr VP8、FFmpeg 兜底）
+        // 视频 → 音频是「提取音轨」，同样一进一出，属于转换边。
         val videoAudioOutputs = listOf(
             FileFormat.MP4,
             FileFormat.WEBM,
-            FileFormat.MP3,
-            FileFormat.AAC,
-            FileFormat.WAV,
-            FileFormat.FLAC,
-            FileFormat.M4A,
-            FileFormat.OGG,
-            FileFormat.OPUS,
-        )
-        put(FileFormat.MP4, listOf(FileFormat.WEBM, FileFormat.MP3, FileFormat.AAC, FileFormat.WAV, FileFormat.FLAC, FileFormat.M4A, FileFormat.OGG, FileFormat.OPUS))
+        ) + audioFormats
+        put(FileFormat.MP4, videoAudioOutputs.filter { it != FileFormat.MP4 })
         put(FileFormat.MOV, videoAudioOutputs)
         put(FileFormat.MKV, videoAudioOutputs)
-        put(FileFormat.WEBM, listOf(FileFormat.MP4, FileFormat.MP3, FileFormat.AAC, FileFormat.WAV, FileFormat.FLAC, FileFormat.M4A, FileFormat.OGG, FileFormat.OPUS))
+        put(FileFormat.WEBM, videoAudioOutputs.filter { it != FileFormat.WEBM })
         put(FileFormat.AVI, videoAudioOutputs)
 
         // 压缩包（Commons Compress）
@@ -61,20 +73,76 @@ object ConversionGraph {
         put(FileFormat.BZIP2, listOf(FileFormat.ZIP, FileFormat.TAR, FileFormat.GZIP))
 
         // Office（LibreOfficeKit）
-        put(FileFormat.DOCX, listOf(FileFormat.PDF))
-        put(FileFormat.DOC, listOf(FileFormat.PDF))
-        put(FileFormat.PPTX, listOf(FileFormat.PDF))
-        put(FileFormat.PPT, listOf(FileFormat.PDF))
-        put(FileFormat.XLSX, listOf(FileFormat.PDF))
-        put(FileFormat.XLS, listOf(FileFormat.PDF))
+        listOf(
+            FileFormat.DOCX,
+            FileFormat.DOC,
+            FileFormat.PPTX,
+            FileFormat.PPT,
+            FileFormat.XLSX,
+            FileFormat.XLS,
+        ).forEach { put(it, listOf(FileFormat.PDF)) }
     }
 
-    /** 输入格式支持的所有输出格式（空 = 不支持转换）。 */
-    fun targetsFor(input: FileFormat): List<FileFormat> = edges[input] ?: emptyList()
+    /**
+     * 需要专属 ConversionKind 的工具能力（多输入 / 目录输出 / 页面参数）。
+     * 首页 UI 2.0 的「这个文件能做什么」面板由此驱动。
+     */
+    private val toolEdges: Map<FileFormat, List<ConversionKind>> = buildMap {
+        val imageTools = listOf(ConversionKind.IMAGES_TO_PDF)
+        listOf(
+            FileFormat.JPG,
+            FileFormat.PNG,
+            FileFormat.WEBP,
+            FileFormat.AVIF,
+            FileFormat.HEIC,
+            FileFormat.GIF,
+            FileFormat.BMP,
+            FileFormat.TIFF,
+        ).forEach { put(it, imageTools) }
 
-    /** 该输入→输出组合是否被支持。 */
+        put(
+            FileFormat.PDF,
+            listOf(
+                ConversionKind.PDF_TO_IMAGES,
+                ConversionKind.PDF_MERGE,
+                ConversionKind.PDF_SPLIT,
+                ConversionKind.PDF_DELETE_PAGES,
+                ConversionKind.PDF_ROTATE_PAGES,
+                ConversionKind.PDF_COMPRESS,
+                ConversionKind.PDF_PAGE_MANAGER,
+                ConversionKind.PDF_SECURITY,
+                ConversionKind.PDF_CROP,
+                ConversionKind.PDF_METADATA,
+            ),
+        )
+
+        listOf(FileFormat.ZIP, FileFormat.TAR_GZ, FileFormat.BZIP2)
+            .forEach { put(it, listOf(ConversionKind.ARCHIVE_EXTRACT)) }
+    }
+
+    /**
+     * 输入格式支持的所有输出格式（一进一出，registry 有引擎）。
+     * 空 = 该格式没有直接的格式转换能力（可能仍有工具能力，见 [toolsFor]）。
+     */
+    fun targetsFor(input: FileFormat): List<FileFormat> = convertEdges[input] ?: emptyList()
+
+    /** 该输入→输出组合是否被 registry 引擎支持。 */
     fun canConvert(input: FileFormat, target: FileFormat): Boolean =
-        input != target && (edges[input]?.contains(target) == true)
+        input != target && (convertEdges[input]?.contains(target) == true)
+
+    /**
+     * 该格式可用的工具能力（需要专属 ConversionKind）。
+     * 任意格式都能作为压缩包的输入，因此 ARCHIVE_COMPRESS 对所有已知格式可用。
+     */
+    fun toolsFor(input: FileFormat): List<ConversionKind> {
+        if (input == FileFormat.UNKNOWN) return emptyList()
+        val specific = toolEdges[input] ?: emptyList()
+        return specific + ConversionKind.ARCHIVE_COMPRESS
+    }
+
+    /** 该格式是否有任何可执行能力（转换或工具）。 */
+    fun hasAnyCapability(input: FileFormat): Boolean =
+        targetsFor(input).isNotEmpty() || toolsFor(input).isNotEmpty()
 
     /**
      * 多个输入文件的共同输出格式（批量转换用）。

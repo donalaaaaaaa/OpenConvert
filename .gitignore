@@ -20,6 +20,14 @@ Thumbs.db
 *.jks
 signing.properties
 
+# Build inputs that can be re-fetched from upstream (do not commit tarballs)
+native/dist/
+native/out/
+
+# Release artifacts (attach to GitHub Releases, not the repo)
+*.apk
+*.aab
+
 # Hermes working files
 .hermes/
 

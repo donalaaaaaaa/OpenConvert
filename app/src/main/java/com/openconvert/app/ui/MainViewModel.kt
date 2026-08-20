@@ -289,7 +289,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         val firstTarget = document.format.availableTargets().firstOrNull()
         if (firstTarget == null) {
-            _message.value = "暂不支持 ${document.format.displayName} 转换"
+            // 有工具能力但没有一进一出的转换边（典型：PDF）——引导到对应工具页，
+            // 而不是笼统地说「不支持」。
+            _message.value = if (com.openconvert.app.domain.model.ConversionGraph.toolsFor(document.format).size > 1) {
+                "${document.format.displayName} 请在工具页处理"
+            } else {
+                "暂不支持 ${document.format.displayName} 转换"
+            }
             return false
         }
 

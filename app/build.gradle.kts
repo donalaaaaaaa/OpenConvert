@@ -1,9 +1,40 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
 }
+
+/**
+ * Release 签名凭据来源（优先级从高到低）：
+ *   1. `signing.properties`（仓库根目录，已在 .gitignore 中）
+ *   2. 环境变量 OPENCONVERT_STORE_PASSWORD / _KEY_ALIAS / _KEY_PASSWORD（CI 用）
+ *
+ * 两者都不存在时 release 构建**不配置签名**（产出 unsigned APK）而非用硬编码
+ * 口令——凭据绝不进版本库。见 signing.properties.example。
+ */
+val signingProps = Properties()
+val signingPropsFile = rootProject.file("signing.properties")
+if (signingPropsFile.exists()) {
+    signingPropsFile.inputStream().use { stream -> signingProps.load(stream) }
+}
+
+fun signingValue(key: String, env: String): String? =
+    signingProps.getProperty(key)?.takeIf { value -> value.isNotBlank() }
+        ?: System.getenv(env)?.takeIf { value -> value.isNotBlank() }
+
+val releaseStorePassword = signingValue("storePassword", "OPENCONVERT_STORE_PASSWORD")
+val releaseKeyAlias = signingValue("keyAlias", "OPENCONVERT_KEY_ALIAS")
+val releaseKeyPassword = signingValue("keyPassword", "OPENCONVERT_KEY_PASSWORD")
+val releaseKeystore = rootProject.file(
+    signingProps.getProperty("storeFile") ?: "app/openconvert-release.jks",
+)
+val hasReleaseSigning = releaseKeystore.exists() &&
+    releaseStorePassword != null &&
+    releaseKeyAlias != null &&
+    releaseKeyPassword != null
 
 android {
     namespace = "com.openconvert.app"
@@ -21,15 +52,15 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            storeFile = rootProject.file("app/openconvert-release.jks")
-            storePassword = "openconvert123"
-            keyAlias = "openconvert"
-            keyPassword = "openconvert123"
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = releaseKeystore
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
         }
     }
-
-
 
     buildTypes {
         debug {
@@ -39,7 +70,15 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                logger.warn(
+                    "OpenConvert: no signing credentials found " +
+                        "(signing.properties / OPENCONVERT_* env) — release APK will be UNSIGNED.",
+                )
+                null
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

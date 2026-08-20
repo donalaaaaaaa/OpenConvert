@@ -6,6 +6,13 @@ import com.openconvert.app.domain.model.ConversionKind
 import com.openconvert.app.domain.model.ConversionResult
 import com.openconvert.app.domain.model.ConversionTask
 import com.openconvert.app.domain.model.suggestedOutputName
+import com.openconvert.app.domain.planner.ConversionPlanner
+import com.openconvert.app.domain.planner.DeviceHardwareFacts
+import com.openconvert.app.domain.planner.PlanRejection
+import com.openconvert.app.domain.planner.PlanRejectionMessages
+import com.openconvert.app.domain.planner.PlanRequest
+import com.openconvert.app.domain.planner.PlanResult
+import com.openconvert.app.domain.planner.RuntimeFacts
 import com.openconvert.app.domain.work.StorageGuard
 
 sealed interface ExecutionResult {
@@ -34,12 +41,49 @@ class ConversionExecutor(private val context: Context) {
         task: ConversionTask,
         onProgress: suspend (Int) -> Unit,
     ): ExecutionResult {
-        val required = StorageGuard.requiredScratchBytes(
-            inputBytes = task.fileSize,
-            copiesInput = task.kind == ConversionKind.SINGLE,
-        )
-        if (!StorageGuard.hasEnoughSpace(context.cacheDir.usableSpace, required)) {
-            return ExecutionResult.Failure(StorageGuard.INSUFFICIENT_SPACE)
+        // SINGLE 流程走 Planner：能力校验 + 空间预检 + 引擎/并发决策一次完成，
+        // 拒绝时返回带具体数字的原因（计划书 §5、§7.3）。
+        // 工具类 kind（PDF/归档/多文件）的输入形态不同，仍用 StorageGuard 直接预检。
+        if (task.kind == ConversionKind.SINGLE) {
+            val planResult = ConversionPlanner.plan(
+                PlanRequest(
+                    input = task.sourceFormat,
+                    target = task.targetFormat,
+                    inputBytes = task.fileSize,
+                    quality = task.quality,
+                    resolution = task.resolution,
+                    hardware = DeviceHardwareFacts(),
+                    runtime = RuntimeFacts(usableScratchBytes = context.cacheDir.usableSpace),
+                    copiesInputToCache = true,
+                ),
+            )
+            when (planResult) {
+                is PlanResult.Rejected -> return ExecutionResult.Failure(
+                    PlanRejectionMessages.describe(planResult.rejection),
+                )
+                is PlanResult.Ready -> android.util.Log.i(
+                    "OpenConvert",
+                    "planner task=${task.id} engine=${planResult.plan.primaryEngine} " +
+                        "fallback=${planResult.plan.fallbackEngine} mode=${planResult.plan.encodeMode} " +
+                        "streamCopy=${planResult.plan.isStreamCopy} slot=${planResult.plan.concurrency} " +
+                        "reason=${planResult.plan.reason}",
+                )
+            }
+        } else {
+            val required = StorageGuard.requiredScratchBytes(
+                inputBytes = task.fileSize,
+                copiesInput = false,
+            )
+            if (!StorageGuard.hasEnoughSpace(context.cacheDir.usableSpace, required)) {
+                return ExecutionResult.Failure(
+                    PlanRejectionMessages.describe(
+                        PlanRejection.InsufficientSpace(
+                            requiredBytes = required,
+                            availableBytes = context.cacheDir.usableSpace,
+                        ),
+                    ),
+                )
+            }
         }
 
         return when (task.kind) {

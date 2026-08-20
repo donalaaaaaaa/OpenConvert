@@ -72,15 +72,17 @@ enum class FileFormat(
     }
 }
 
+/**
+ * 该格式能否由本机引擎直接转换为 [target]（一进一出的 SINGLE 流程）。
+ *
+ * 唯一依据是 [ConversionGraph] 的转换边——UI 的可用性判断与 `ConverterRegistry`
+ * 的实际引擎索引因此永远一致。历史上这里为 IMAGE / AUDIO 走过
+ * `category == 同类 && this != target` 的旧规则，导致 UI 放出
+ * JPG→AVIF / JPG→HEIC 等 registry 里没有引擎的组合。
+ */
 fun FileFormat.canConvertLocallyTo(target: FileFormat): Boolean =
-    when (category) {
-        FileCategory.IMAGE -> target.category == FileCategory.IMAGE && this != target
-        FileCategory.AUDIO -> target.category == FileCategory.AUDIO && this != target
-        FileCategory.VIDEO -> target in availableTargets()
-        FileCategory.ARCHIVE -> target in availableTargets()
-        FileCategory.OFFICE -> target in availableTargets()
-        else -> false
-    }
+    ConversionGraph.canConvert(this, target)
+
 
 fun suggestedOutputName(sourceName: String, target: FileFormat): String {
     val baseName = sourceName.substringBeforeLast('.', missingDelimiterValue = sourceName)
