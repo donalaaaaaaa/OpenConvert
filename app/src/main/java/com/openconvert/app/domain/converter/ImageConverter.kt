@@ -73,6 +73,7 @@ class ImageConverter(
 
             reportProgress(48)
             bitmap = scaleBitmap(bitmap, bounds.first, bounds.second, task.resolution.scalePercent)
+            bitmap = applyPresetSize(bitmap, task)
             bitmap = applyAdvancedEdits(bitmap, task)
             bitmap = flattenForJpegIfNeeded(bitmap, task.targetFormat)
 
@@ -107,6 +108,28 @@ class ImageConverter(
         VipsNative.isAvailable &&
             source in setOf(FileFormat.JPG, FileFormat.PNG, FileFormat.WEBP) &&
             target in setOf(FileFormat.JPG, FileFormat.PNG, FileFormat.WEBP)
+
+    /**
+     * 预设尺寸约束 → 目标像素（计划书 §8.1）。
+     * 固定尺寸 > 最长边；只缩小不放大。返回 null 表示交给百分比缩放。
+     */
+    private fun presetTargetSize(
+        task: ConversionTask,
+        baseWidth: Int,
+        baseHeight: Int,
+    ): Pair<Int, Int>? {
+        val fw = task.payload.fixedWidthPx
+        val fh = task.payload.fixedHeightPx
+        if (fw != null && fh != null && fw > 0 && fh > 0) return fw to fh
+
+        val limit = task.payload.longestEdgePx ?: return null
+        if (limit <= 0) return null
+        val longest = maxOf(baseWidth, baseHeight)
+        if (longest <= limit) return null // 已经够小，不放大
+        val scale = limit.toDouble() / longest
+        return (baseWidth * scale).toInt().coerceAtLeast(1) to
+            (baseHeight * scale).toInt().coerceAtLeast(1)
+    }
 
     private fun vipsExtension(target: FileFormat): String = when (target) {
         FileFormat.JPG -> "jpg"
@@ -145,8 +168,12 @@ class ImageConverter(
         val rotated = task.payload.rotateDegrees % 180 != 0
         val baseWidth = if (rotated) oh else ow
         val baseHeight = if (rotated) ow else oh
-        var targetWidth = (baseWidth * task.resolution.scalePercent / 100f).toInt().coerceAtLeast(1)
-        var targetHeight = (baseHeight * task.resolution.scalePercent / 100f).toInt().coerceAtLeast(1)
+        // 预设的尺寸约束（§8.1「最长边 1920」「1024×1024」）优先于百分比缩放。
+        val presetSize = presetTargetSize(task, baseWidth, baseHeight)
+        var targetWidth = presetSize?.first
+            ?: (baseWidth * task.resolution.scalePercent / 100f).toInt().coerceAtLeast(1)
+        var targetHeight = presetSize?.second
+            ?: (baseHeight * task.resolution.scalePercent / 100f).toInt().coerceAtLeast(1)
 
         // 裁剪比例：cover-crop 模式（mode=1）按目标比例居中裁剪。
         val aspect = ImageEditMath.parseAspectRatio(task.payload.cropAspect)
@@ -266,6 +293,19 @@ class ImageConverter(
 
         if (source.width == targetWidth && source.height == targetHeight) return source
         val scaled = Bitmap.createScaledBitmap(source, targetWidth, targetHeight, true)
+        if (scaled !== source) source.recycle()
+        return scaled
+    }
+
+    /**
+     * 预设尺寸约束在 Bitmap 兜底路径上同样生效（§8.1）。
+     * libvips 不可用或 stripMetadata 强制走位图时会经过这里。
+     */
+    private fun applyPresetSize(source: Bitmap, task: ConversionTask): Bitmap {
+        val target = presetTargetSize(task, source.width, source.height) ?: return source
+        val (tw, th) = target
+        if (source.width == tw && source.height == th) return source
+        val scaled = Bitmap.createScaledBitmap(source, tw, th, true)
         if (scaled !== source) source.recycle()
         return scaled
     }

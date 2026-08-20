@@ -49,4 +49,9 @@ data class ConversionPayload(
     val metadataAuthor: String = "",
     val metadataSubject: String = "",
     val metadataKeywords: String = "",
+    /** 预设（计划书 §八）：应用的预设 id 与尺寸约束。 */
+    val presetId: String? = null,
+    val longestEdgePx: Int? = null,
+    val fixedWidthPx: Int? = null,
+    val fixedHeightPx: Int? = null,
 )

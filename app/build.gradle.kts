@@ -112,6 +112,10 @@ android {
             useLegacyPackaging = true
         }
     }
+
+    // Room MigrationTestHelper 从 androidTest assets 读导出的 schema JSON。
+    // 不加这一行会报 "Cannot find the schema file in the assets folder"。
+    sourceSets["androidTest"].assets.srcDir("$projectDir/schemas")
 }
 
 kotlin {

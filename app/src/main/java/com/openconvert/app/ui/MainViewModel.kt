@@ -47,6 +47,12 @@ data class ConversionDraft(
     val cropAspect: String = "free",
     val flip: Int = 0,
     val stripMetadata: Boolean = false,
+    /** 已应用的预设 id；null = 手动设置（计划书 §八）。 */
+    val presetId: String? = null,
+    /** 预设的尺寸约束，转换时由 PresetSizing 换算成目标像素。 */
+    val longestEdgePx: Int? = null,
+    val fixedWidthPx: Int? = null,
+    val fixedHeightPx: Int? = null,
 ) {
     val suggestedOutputName: String
         get() = suggestedOutputName(document.name, targetFormat)
@@ -295,6 +301,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val taskGroups: StateFlow<List<com.openconvert.app.domain.task.TaskGroup>> =
         _taskGroups.asStateFlow()
 
+    /** 预设列表（计划书 §八）。内置 + 用户自定义，均来自 Room。 */
+    val presets = app.presetStore.presets.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList(),
+    )
+
+    /** 当前转换草稿已应用的预设 id；null = 手动设置。 */
+    private val _appliedPresetId = MutableStateFlow<String?>(null)
+    val appliedPresetId: StateFlow<String?> = _appliedPresetId.asStateFlow()
+
     init {
         viewModelScope.launch {
             app.historyRepository.findActive().firstOrNull()?.let(::trackTask)
@@ -442,6 +459,98 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun selectStripMetadata(strip: Boolean) {
         _draft.value = _draft.value?.copy(stripMetadata = strip)
+        _appliedPresetId.value = null
+    }
+
+    /**
+     * 应用预设到当前草稿（计划书 §八）。
+     *
+     * 预设携带的尺寸约束（最长边 / 固定尺寸）在转换时由 PresetSizing 换算，
+     * 这里只写入草稿能表达的部分：目标格式、质量、百分比分辨率、裁剪、去元数据。
+     * 目标格式不被引擎支持时拒绝应用，避免草稿进入不可执行状态。
+     */
+    fun applyPreset(preset: com.openconvert.app.domain.preset.Preset): Boolean {
+        val current = _draft.value ?: return false
+        if (!ConversionGraph.canConvert(current.document.format, preset.targetFormat)) {
+            _message.value =
+                "「${preset.name}」的目标格式 ${preset.targetFormat.displayName} 不适用于 ${current.document.format.displayName}"
+            return false
+        }
+        _draft.value = current.copy(
+            targetFormat = preset.targetFormat,
+            quality = preset.quality,
+            resolution = preset.resolution,
+            cropAspect = preset.cropAspect,
+            stripMetadata = preset.stripMetadata,
+            presetId = preset.id,
+            longestEdgePx = preset.longestEdgePx,
+            fixedWidthPx = preset.fixedWidthPx,
+            fixedHeightPx = preset.fixedHeightPx,
+        )
+        _appliedPresetId.value = preset.id
+        return true
+    }
+
+    /** 当前文件类别可用的预设。 */
+    fun presetsForCurrentDraft(): List<com.openconvert.app.domain.preset.Preset> {
+        val document = _draft.value?.document ?: return emptyList()
+        return presets.value.filter { preset ->
+            preset.category == document.format.category &&
+                ConversionGraph.canConvert(document.format, preset.targetFormat)
+        }
+    }
+
+    /** 保存当前草稿为自定义预设。 */
+    fun saveDraftAsPreset(name: String) {
+        val draft = _draft.value ?: return
+        if (name.isBlank()) {
+            _message.value = "请输入预设名称"
+            return
+        }
+        viewModelScope.launch {
+            val saved = app.presetStore.saveCustom(
+                com.openconvert.app.domain.preset.Preset(
+                    id = "",
+                    category = draft.document.format.category,
+                    name = name.trim(),
+                    description = buildString {
+                        append(draft.targetFormat.displayName)
+                        append(" · ")
+                        append(draft.quality.label)
+                        if (draft.stripMetadata) append(" · 去元数据")
+                    },
+                    targetFormat = draft.targetFormat,
+                    quality = draft.quality,
+                    resolution = draft.resolution,
+                    stripMetadata = draft.stripMetadata,
+                    longestEdgePx = draft.longestEdgePx,
+                    fixedWidthPx = draft.fixedWidthPx,
+                    fixedHeightPx = draft.fixedHeightPx,
+                    cropAspect = draft.cropAspect,
+                    isBuiltIn = false,
+                ),
+            )
+            _appliedPresetId.value = saved.id
+            _message.value = "已保存预设「${saved.name}」"
+        }
+    }
+
+    fun deletePreset(preset: com.openconvert.app.domain.preset.Preset) {
+        viewModelScope.launch {
+            val deleted = app.presetStore.deleteCustom(preset.id)
+            _message.value = if (deleted) {
+                "已删除预设「${preset.name}」"
+            } else {
+                "内置预设不可删除"
+            }
+        }
+    }
+
+    fun setDefaultPreset(preset: com.openconvert.app.domain.preset.Preset) {
+        viewModelScope.launch {
+            app.presetStore.setDefault(preset)
+            _message.value = "「${preset.name}」已设为默认"
+        }
     }
 
     fun onImagesPicked(uris: List<Uri>): Boolean {
@@ -585,6 +694,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     cropAspect = current.cropAspect,
                     flip = current.flip,
                     stripMetadata = current.stripMetadata,
+                    // 预设的尺寸约束（§8.1）随任务下传，引擎侧由 PresetSizing 换算。
+                    presetId = current.presetId,
+                    longestEdgePx = current.longestEdgePx,
+                    fixedWidthPx = current.fixedWidthPx,
+                    fixedHeightPx = current.fixedHeightPx,
                 ),
                 outputName = current.suggestedOutputName,
             ),

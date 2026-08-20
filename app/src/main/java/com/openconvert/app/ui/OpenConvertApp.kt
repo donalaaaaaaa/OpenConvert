@@ -354,9 +354,24 @@ fun OpenConvertApp(viewModel: MainViewModel = viewModel()) {
             composable(CONVERT) {
                 val draft by viewModel.draft.collectAsStateWithLifecycle()
                 val conversionState by viewModel.conversionState.collectAsStateWithLifecycle()
+                val appliedPresetId by viewModel.appliedPresetId.collectAsStateWithLifecycle()
+                // presets 需订阅才会在 Room 播种后刷新；presetsForCurrentDraft 读的是同一个 StateFlow。
+                val allPresets by viewModel.presets.collectAsStateWithLifecycle()
                 when (val state = conversionState) {
                     ConversionUiState.Configuring -> ConversionScreen(
                         draft = draft,
+                        presets = draft?.let { d ->
+                            allPresets.filter { preset ->
+                                preset.category == d.document.format.category &&
+                                    com.openconvert.app.domain.model.ConversionGraph.canConvert(
+                                        d.document.format,
+                                        preset.targetFormat,
+                                    )
+                            }
+                        } ?: emptyList(),
+                        appliedPresetId = appliedPresetId,
+                        onApplyPreset = { viewModel.applyPreset(it) },
+                        onSavePreset = viewModel::saveDraftAsPreset,
                         onBack = navController::popBackStack,
                         onTarget = viewModel::selectTarget,
                         onQuality = viewModel::selectQuality,
@@ -2118,6 +2133,10 @@ private fun ImagesToPdfScreen(
 @Composable
 private fun ConversionScreen(
     draft: ConversionDraft?,
+    presets: List<com.openconvert.app.domain.preset.Preset> = emptyList(),
+    appliedPresetId: String? = null,
+    onApplyPreset: (com.openconvert.app.domain.preset.Preset) -> Unit = {},
+    onSavePreset: (String) -> Unit = {},
     onBack: () -> Unit,
     onTarget: (FileFormat) -> Unit,
     onQuality: (QualityPreset) -> Unit,
@@ -2136,6 +2155,8 @@ private fun ConversionScreen(
     }
 
     var targetMenuOpen by remember { mutableStateOf(false) }
+    var showSavePresetDialog by remember { mutableStateOf(false) }
+    var presetNameInput by remember { mutableStateOf("") }
     val targets = draft.document.format.availableTargets()
     val createDocument = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument(draft.targetFormat.mimeType),
@@ -2161,6 +2182,16 @@ private fun ConversionScreen(
                 name = draft.document.name,
                 details = "${draft.document.format.displayName} · ${formatFileSize(draft.document.sizeBytes)}",
             )
+        }
+        if (presets.isNotEmpty()) {
+            item {
+                PresetStrip(
+                    presets = presets,
+                    appliedPresetId = appliedPresetId,
+                    onApply = onApplyPreset,
+                    onSaveCurrent = { showSavePresetDialog = true },
+                )
+            }
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -2378,6 +2409,43 @@ private fun ConversionScreen(
                 Text("文件不会离开您的设备", color = Muted, fontSize = 13.sp)
             }
         }
+    }
+
+    // 存为预设（计划书 §八）：把当前配置连同尺寸约束一起保存。
+    if (showSavePresetDialog) {
+        AlertDialog(
+            onDismissRequest = { showSavePresetDialog = false },
+            title = { Text("存为预设") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "将保存：${draft.targetFormat.displayName} · ${draft.quality.label}" +
+                            if (draft.stripMetadata) " · 去元数据" else "",
+                        color = Muted,
+                        fontSize = 13.sp,
+                    )
+                    OutlinedTextField(
+                        value = presetNameInput,
+                        onValueChange = { presetNameInput = it },
+                        singleLine = true,
+                        placeholder = { Text("预设名称") },
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onSavePreset(presetNameInput)
+                        presetNameInput = ""
+                        showSavePresetDialog = false
+                    },
+                    enabled = presetNameInput.isNotBlank(),
+                ) { Text("保存") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSavePresetDialog = false }) { Text("取消") }
+            },
+        )
     }
 }
 

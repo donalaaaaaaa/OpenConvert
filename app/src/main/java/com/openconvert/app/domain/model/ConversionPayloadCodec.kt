@@ -17,6 +17,12 @@ object ConversionPayloadCodec {
         json.put("cropAspect", payload.cropAspect)
         json.put("flip", payload.flip)
         json.put("stripMetadata", payload.stripMetadata)
+        // 预设尺寸约束（§8.1）必须过 Room：Worker 在另一个进程周期里执行，
+        // 丢了这几个字段「最长边 1920」就会静默失效。
+        json.put("presetId", payload.presetId ?: JSONObject.NULL)
+        json.put("longestEdgePx", payload.longestEdgePx ?: JSONObject.NULL)
+        json.put("fixedWidthPx", payload.fixedWidthPx ?: JSONObject.NULL)
+        json.put("fixedHeightPx", payload.fixedHeightPx ?: JSONObject.NULL)
         return json.toString()
     }
 
@@ -35,6 +41,10 @@ object ConversionPayloadCodec {
             cropAspect = json.optString("cropAspect", "free"),
             flip = json.optInt("flip"),
             stripMetadata = json.optBoolean("stripMetadata"),
+            presetId = json.optionalString("presetId"),
+            longestEdgePx = json.optionalInt("longestEdgePx"),
+            fixedWidthPx = json.optionalInt("fixedWidthPx"),
+            fixedHeightPx = json.optionalInt("fixedHeightPx"),
         )
     }
 
@@ -57,5 +67,10 @@ object ConversionPayloadCodec {
     private fun JSONObject.optionalString(key: String): String? {
         if (!has(key) || isNull(key)) return null
         return optString(key).takeIf { it.isNotEmpty() }
+    }
+
+    private fun JSONObject.optionalInt(key: String): Int? {
+        if (!has(key) || isNull(key)) return null
+        return optInt(key).takeIf { it > 0 }
     }
 }

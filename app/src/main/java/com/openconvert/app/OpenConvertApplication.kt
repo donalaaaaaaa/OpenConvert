@@ -22,6 +22,9 @@ class OpenConvertApplication : Application() {
         ConversionHistoryRepository(database.conversionDao(), database.batchJobDao())
     }
     val userPreferences by lazy { UserPreferences(this) }
+    val presetStore by lazy {
+        com.openconvert.app.data.repository.PresetStore(database.presetDao())
+    }
     val conversionScheduler by lazy { ConversionScheduler(this) }
     val batchScheduler by lazy { BatchScheduler(this) }
     val cacheManager by lazy { com.openconvert.app.domain.cache.CacheManager(this) }
@@ -32,6 +35,9 @@ class OpenConvertApplication : Application() {
         ConversionNotifier.ensureChannel(this)
         conversionScheduler.cancelLegacyQueue()
         applicationScope.launch {
+            // 首次启动播种内置预设（计划书 §八）。空库才写，不覆盖用户调整。
+            runCatching { presetStore.seedIfEmpty() }
+
             val active = historyRepository.findActive()
             // 暂停中的批量任务不参与孤儿恢复（它们的 work 被主动取消，等待恢复）。
             val pausedBatchIds = database.batchJobDao()
