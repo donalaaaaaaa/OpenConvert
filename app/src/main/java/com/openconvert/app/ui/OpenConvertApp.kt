@@ -42,6 +42,7 @@ import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.ErrorOutline
@@ -126,6 +127,7 @@ import java.util.Locale
 
 private const val HOME = "home"
 private const val HISTORY = "history"
+private const val TASKS = "tasks"
 private const val SETTINGS = "settings"
 private const val CONVERT = "convert"
 private const val PRIVACY = "privacy"
@@ -156,6 +158,7 @@ private data class MainDestination(
 
 private val mainDestinations = listOf(
     MainDestination(HOME, "首页", Icons.Outlined.Home),
+    MainDestination(TASKS, "任务", Icons.Outlined.Sync),
     MainDestination(HISTORY, "历史", Icons.Outlined.History),
     MainDestination(SETTINGS, "设置", Icons.Outlined.Settings),
 )
@@ -250,6 +253,7 @@ fun OpenConvertApp(viewModel: MainViewModel = viewModel()) {
             }
         },
     ) { innerPadding ->
+        val context = LocalContext.current
         val pickedFile by viewModel.pickedFile.collectAsStateWithLifecycle()
         val pickedCapabilities by viewModel.pickedCapabilities.collectAsStateWithLifecycle()
 
@@ -300,6 +304,19 @@ fun OpenConvertApp(viewModel: MainViewModel = viewModel()) {
                         if (viewModel.reuseConversion(task)) navController.navigate(CONVERT)
                     },
                     onDelete = { viewModel.deleteHistory(listOf(it.id)) },
+                )
+            }
+            composable(TASKS) {
+                val groups by viewModel.taskGroups.collectAsStateWithLifecycle()
+                val cards by viewModel.taskCards.collectAsStateWithLifecycle()
+                TaskCenterScreen(
+                    groups = groups,
+                    cards = cards,
+                    onCancel = viewModel::cancelTask,
+                    onRetry = { card ->
+                        if (viewModel.reuseConversion(card.task)) navController.navigate(CONVERT)
+                    },
+                    onOpen = { card -> HistoryOutputs.startOpen(context, card.task) },
                 )
             }
             composable(HISTORY) {

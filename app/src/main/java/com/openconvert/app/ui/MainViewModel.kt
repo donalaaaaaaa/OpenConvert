@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -278,10 +279,58 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val imageQualityPreference = app.userPreferences.imageQuality
     val videoQualityPreference = app.userPreferences.videoQuality
 
+    /**
+     * 任务中心 2.0（计划书 §七）。速度追踪**不持久化**：瞬时信息存 Room
+     * 需要一次迁移，而重启后看到几秒前的速率没有价值。
+     */
+    private val throughputTracker = com.openconvert.app.domain.task.ThroughputTracker()
+
+    private val _taskCards =
+        MutableStateFlow<Map<String, com.openconvert.app.domain.task.TaskCardModel>>(emptyMap())
+    val taskCards: StateFlow<Map<String, com.openconvert.app.domain.task.TaskCardModel>> =
+        _taskCards.asStateFlow()
+
+    private val _taskGroups =
+        MutableStateFlow<List<com.openconvert.app.domain.task.TaskGroup>>(emptyList())
+    val taskGroups: StateFlow<List<com.openconvert.app.domain.task.TaskGroup>> =
+        _taskGroups.asStateFlow()
+
     init {
         viewModelScope.launch {
             app.historyRepository.findActive().firstOrNull()?.let(::trackTask)
         }
+        // 任务中心：history 变化即重算分组与卡片（含速度采样）。
+        viewModelScope.launch {
+            app.historyRepository.history.collect { tasks ->
+                refreshTaskCenter(tasks)
+            }
+        }
+    }
+
+    /**
+     * 重算任务中心状态。暂停判定需要批量任务状态——批量暂停时子任务保持
+     * PENDING 以便恢复，只看任务本身会误报「等待中」。
+     */
+    private suspend fun refreshTaskCenter(tasks: List<ConversionTask>) {
+        val pausedBatchIds = runCatching {
+            app.database.batchJobDao().observeAll().first()
+                .filter { it.status == BatchJobStatus.PAUSED.name }
+                .map { it.id }
+                .toSet()
+        }.getOrDefault(emptySet())
+
+        val estimates = throughputTracker.updateAll(tasks)
+        _taskCards.value = tasks.associate { task ->
+            task.id to com.openconvert.app.domain.task.TaskCardFactory.create(
+                task = task,
+                estimate = estimates[task.id]
+                    ?: com.openconvert.app.domain.task.ThroughputEstimate.UNKNOWN,
+            )
+        }
+        _taskGroups.value = com.openconvert.app.domain.task.TaskCenterGrouping.group(
+            tasks = tasks,
+            pausedBatchIds = pausedBatchIds,
+        )
     }
 
     /**
@@ -1271,6 +1320,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun cancelConversion() {
+        val taskId = trackedTaskId ?: return
+        cancelTask(taskId)
+    }
+
+    /**
+     * 从任务中心取消任意任务（不限于当前追踪的那个）。
+     * Room 收尾由 ConversionScheduler.cancel 统一处理（幂等），
+     * 这里不重复写状态——历史上取消逻辑散在三处导致过僵尸任务。
+     */
+    fun cancelTask(taskId: String) {
+        app.conversionScheduler.cancel(taskId)
+    }
+
+    private fun legacyCancelConversion() {
         val taskId = trackedTaskId ?: return
         app.conversionScheduler.cancel(taskId)
         viewModelScope.launch {
