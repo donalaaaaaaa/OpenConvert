@@ -15,6 +15,7 @@ import com.openconvert.app.domain.model.BatchJob
 import com.openconvert.app.domain.model.BatchJobStatus
 import com.openconvert.app.domain.model.BatchSettings
 import com.openconvert.app.domain.model.BatchSettingsCodec
+import com.openconvert.app.domain.model.ConversionGraph
 import com.openconvert.app.domain.model.ConversionKind
 import com.openconvert.app.domain.model.ConversionPayload
 import com.openconvert.app.domain.model.ConversionStatus
@@ -251,6 +252,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
+    /**
+     * 首页 UI 2.0（计划书 §六）：用户选中的文件及其可执行能力。
+     * 文件驱动 —— 先选文件，再由 FileCapabilityResolver 告诉用户能做什么。
+     */
+    private val _pickedFile = MutableStateFlow<SelectedDocument?>(null)
+    val pickedFile: StateFlow<SelectedDocument?> = _pickedFile.asStateFlow()
+
+    private val _pickedCapabilities =
+        MutableStateFlow<com.openconvert.app.domain.capability.FileCapabilities?>(null)
+    val pickedCapabilities: StateFlow<com.openconvert.app.domain.capability.FileCapabilities?> =
+        _pickedCapabilities.asStateFlow()
+
     val deviceProfile = com.openconvert.app.domain.device.DeviceCapabilities.getHardwareProfile()
 
     private val _cacheStats = MutableStateFlow<com.openconvert.app.domain.cache.CacheStats?>(null)
@@ -269,6 +282,56 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             app.historyRepository.findActive().firstOrNull()?.let(::trackTask)
         }
+    }
+
+    /**
+     * 首页 UI 2.0 的文件驱动入口（计划书 §6.3）：只读取文件并解析能力，
+     * **不**预设目标格式、不跳转。由用户在能力面板里挑选要做什么。
+     *
+     * 与 [onDocumentPicked] 的区别：后者是「工具驱动」遗留路径，会立刻
+     * 选定第一个可用目标并进入转换配置页。
+     */
+    fun inspectFile(uri: Uri): Boolean {
+        runCatching {
+            resolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val document = runCatching { resolver.readSelectedDocument(uri) }
+            .getOrElse {
+                _message.value = "无法读取所选文件"
+                return false
+            }
+
+        val capabilities = com.openconvert.app.domain.capability.FileCapabilityResolver
+            .resolve(document.format)
+        if (!capabilities.hasAnything) {
+            _message.value = if (document.format == FileFormat.UNKNOWN) {
+                "暂不支持此文件格式"
+            } else {
+                "暂不支持 ${document.format.displayName}"
+            }
+            return false
+        }
+
+        _pickedFile.value = document
+        _pickedCapabilities.value = capabilities
+        return true
+    }
+
+    /** 从能力面板里选定一个转换目标，进入转换配置页。 */
+    fun chooseConvertTarget(format: FileFormat): Boolean {
+        val document = _pickedFile.value ?: return false
+        if (!ConversionGraph.canConvert(document.format, format)) {
+            _message.value = "暂不支持 ${document.format.displayName} → ${format.displayName}"
+            return false
+        }
+        _draft.value = ConversionDraft(document, format, defaultQualityFor(document.format))
+        _conversionState.value = ConversionUiState.Configuring
+        return true
+    }
+
+    fun clearPickedFile() {
+        _pickedFile.value = null
+        _pickedCapabilities.value = null
     }
 
     fun onDocumentPicked(uri: Uri): Boolean {

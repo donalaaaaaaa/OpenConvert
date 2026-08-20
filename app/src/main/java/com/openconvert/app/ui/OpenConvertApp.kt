@@ -104,6 +104,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.openconvert.app.domain.model.ConversionStatus
+import com.openconvert.app.domain.model.ConversionKind
 import com.openconvert.app.domain.model.ConversionTask
 import com.openconvert.app.domain.converter.OfficeEngine
 import com.openconvert.app.domain.converter.OfficePackManager
@@ -158,6 +159,30 @@ private val mainDestinations = listOf(
     MainDestination(HISTORY, "历史", Icons.Outlined.History),
     MainDestination(SETTINGS, "设置", Icons.Outlined.Settings),
 )
+
+/**
+ * 首页 UI 2.0 能力面板里的工具 → 对应工具页路由（计划书 §6.3）。
+ *
+ * 这些工具页各自有自己的文件选择器（多文件输入 / 目录输出 / 页面参数），
+ * 因此这里只做导航，不把已选文件带过去——避免与工具页自身的选择流程冲突。
+ * 返回 null 表示该 kind 不是独立页面（SINGLE / BATCH 走别的入口）。
+ */
+private fun routeForTool(kind: ConversionKind): String? = when (kind) {
+    ConversionKind.IMAGES_TO_PDF -> IMAGES_TO_PDF
+    ConversionKind.PDF_TO_IMAGES -> PDF_TO_IMAGES
+    ConversionKind.PDF_MERGE -> PDF_MERGE
+    ConversionKind.PDF_SPLIT -> PDF_SPLIT
+    ConversionKind.PDF_DELETE_PAGES -> PDF_DELETE
+    ConversionKind.PDF_ROTATE_PAGES -> PDF_ROTATE
+    ConversionKind.PDF_COMPRESS -> PDF_COMPRESS
+    ConversionKind.PDF_SECURITY -> PDF_SECURITY
+    ConversionKind.PDF_CROP -> PDF_CROP
+    ConversionKind.PDF_METADATA -> PDF_METADATA
+    ConversionKind.PDF_PAGE_MANAGER -> PDF_PAGE_MANAGER
+    ConversionKind.ARCHIVE_COMPRESS -> ARCHIVE_COMPRESS_SCREEN
+    ConversionKind.ARCHIVE_EXTRACT -> ARCHIVE_EXTRACT_SCREEN
+    ConversionKind.SINGLE, ConversionKind.BATCH -> null
+}
 
 @Composable
 fun OpenConvertApp(viewModel: MainViewModel = viewModel()) {
@@ -225,6 +250,33 @@ fun OpenConvertApp(viewModel: MainViewModel = viewModel()) {
             }
         },
     ) { innerPadding ->
+        val pickedFile by viewModel.pickedFile.collectAsStateWithLifecycle()
+        val pickedCapabilities by viewModel.pickedCapabilities.collectAsStateWithLifecycle()
+
+        // 首页 UI 2.0 能力面板（§6.3）：选中文件后浮出，用户在此决定做什么。
+        pickedFile?.let { document ->
+            pickedCapabilities?.let { capabilities ->
+                FileCapabilitySheet(
+                    document = document,
+                    capabilities = capabilities,
+                    onConvertTo = { format ->
+                        if (viewModel.chooseConvertTarget(format)) {
+                            viewModel.clearPickedFile()
+                            navController.navigate(CONVERT)
+                        }
+                    },
+                    onTool = { action ->
+                        val route = routeForTool(action.kind)
+                        viewModel.clearPickedFile()
+                        if (route != null) {
+                            navController.navigate(route)
+                        }
+                    },
+                    onDismiss = viewModel::clearPickedFile,
+                )
+            }
+        }
+
         NavHost(
             navController = navController,
             startDestination = HOME,
@@ -235,7 +287,9 @@ fun OpenConvertApp(viewModel: MainViewModel = viewModel()) {
                 HomeScreen(
                     recentTasks = history.take(3),
                     onFilePicked = { uri ->
-                        if (viewModel.onDocumentPicked(uri)) navController.navigate(CONVERT)
+                        // 首页 UI 2.0：先解析能力，弹面板让用户选做什么（§6.3），
+                        // 不再直接跳进转换配置页。
+                        viewModel.inspectFile(uri)
                     },
                     onPdfTools = { navController.navigate(PDF_TOOLS) },
                     onBatch = { navController.navigate(BATCH) },
