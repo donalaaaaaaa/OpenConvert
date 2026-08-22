@@ -31,7 +31,7 @@ sealed interface ExecutionResult {
         val actualEngine: EngineType? = null,
     ) : ExecutionResult
 
-    data class Failure(val message: String) : ExecutionResult
+    data class Failure(val message: String, val errorCode: String? = null) : ExecutionResult
     data object Cancelled : ExecutionResult
 }
 
@@ -137,9 +137,10 @@ class ConversionExecutor(private val context: Context) {
             )
             when (planResult) {
                 is PlanResult.Rejected -> return finishSingle(
-                    ExecutionResult.Failure(
-                        PlanRejectionMessages.describe(planResult.rejection),
-                    ),
+                ExecutionResult.Failure(
+                    PlanRejectionMessages.describe(planResult.rejection),
+                    com.openconvert.app.domain.error.ConversionError.fromRejection(planResult.rejection).name,
+                ),
                 )
                 is PlanResult.Ready -> {
                     plannedConversion = planResult.plan
@@ -171,6 +172,7 @@ class ConversionExecutor(private val context: Context) {
                             availableBytes = context.cacheDir.usableSpace,
                         ),
                     ),
+                    com.openconvert.app.domain.error.ConversionError.Code.INSUFFICIENT_STORAGE.name,
                 )
             }
         }
@@ -491,7 +493,12 @@ class ConversionExecutor(private val context: Context) {
             outputName = fallbackName,
             actualEngine = result.actualEngine,
         )
-        is ConversionResult.Failure -> ExecutionResult.Failure(result.message)
+        is ConversionResult.Failure -> ExecutionResult.Failure(
+            result.message,
+            result.errorCode
+                ?: (result.cause as? com.openconvert.app.domain.error.ConversionException)?.code?.name
+                ?: com.openconvert.app.domain.error.ConversionError.fromMessage(result.message).name,
+        )
         ConversionResult.Cancelled -> ExecutionResult.Cancelled
     }
 

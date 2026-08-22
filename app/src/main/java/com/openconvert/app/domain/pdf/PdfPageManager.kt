@@ -116,7 +116,10 @@ class PdfPageManager(
     ): Long = withContext(Dispatchers.IO) {
         if (pageLayout.isEmpty()) throw IllegalArgumentException("没有可导出的页面")
 
-        val tempFile = File(context.cacheDir, "pdf_manager_${System.currentTimeMillis()}.pdf")
+        val tempFile = com.openconvert.app.domain.work.TempWorkspaceManager(context).file(
+            com.openconvert.app.domain.work.TempWorkspaceManager.NS_PDF,
+            "pdf_manager_${System.currentTimeMillis()}.pdf",
+        )
         try {
             onProgress(10)
             resolver.openInputStream(inputUri)?.use { input ->

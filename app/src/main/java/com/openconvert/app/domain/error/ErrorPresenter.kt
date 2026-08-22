@@ -103,6 +103,11 @@ object ErrorPresenter {
 
         is ConversionException.TaskCancelled -> ErrorPresentation(title = "任务已取消")
 
+        is ConversionException.Interrupted -> ErrorPresentation(
+            title = ConversionRecoveryMessage.ORPHAN,
+            suggestion = "重新开始该转换",
+        )
+
         is ConversionException.EngineFailure -> ErrorPresentation(
             title = "转换引擎执行失败",
             suggestion = "可尝试切换兼容模式后重试",
@@ -122,13 +127,12 @@ object ErrorPresenter {
         message: String?,
         sourceFormat: FileFormat? = null,
         targetFormat: FileFormat? = null,
+        code: ConversionError.Code? = null,
     ): ErrorPresentation {
         val text = message?.trim().orEmpty()
+        val resolved = code ?: ConversionError.fromMessage(text.takeIf { it.isNotEmpty() })
         if (text.isEmpty()) {
-            return ErrorPresentation(
-                title = FALLBACK_TITLE,
-                suggestion = "重新选择文件后重试",
-            )
+            return fromCode(resolved)
         }
         // 明显是占位/英文技术串时补一句人话。
         if (text.equals("Conversion failed", ignoreCase = true)) {
@@ -164,7 +168,58 @@ object ErrorPresenter {
                 title = text,
                 suggestion = "重新开始该转换",
             )
-            else -> ErrorPresentation(title = text)
+            else -> {
+                val coded = fromCode(resolved)
+                ErrorPresentation(title = text, suggestion = coded.suggestion.takeIf { resolved != ConversionError.Code.UNKNOWN })
+            }
         }
+    }
+
+    fun fromCode(code: ConversionError.Code): ErrorPresentation = when (code) {
+        ConversionError.Code.INSUFFICIENT_STORAGE -> ErrorPresentation(
+            title = "存储空间不足",
+            suggestion = "清理缓存或删除部分文件后重试",
+        )
+        ConversionError.Code.PERMISSION_DENIED -> ErrorPresentation(
+            title = "没有访问该文件的权限",
+            suggestion = "重新选择文件以重新授权",
+        )
+        ConversionError.Code.INVALID_FILE -> ErrorPresentation(
+            title = "文件无效或已损坏",
+            suggestion = "换一个文件重试",
+        )
+        ConversionError.Code.OUT_OF_MEMORY -> ErrorPresentation(
+            title = "文件分辨率过高，内存不足",
+            suggestion = "选择更小的输出尺寸后重试",
+        )
+        ConversionError.Code.INTERRUPTED -> ErrorPresentation(
+            title = ConversionRecoveryMessage.ORPHAN,
+            suggestion = "重新开始该转换",
+        )
+        ConversionError.Code.TASK_CANCELLED -> ErrorPresentation(title = "任务已取消")
+        ConversionError.Code.CODEC_UNAVAILABLE -> ErrorPresentation(
+            title = "当前设备不支持该媒体编码",
+            suggestion = "改用 MP4 / MP3 等通用格式",
+        )
+        ConversionError.Code.UNSUPPORTED_FORMAT -> ErrorPresentation(
+            title = "暂不支持该格式转换",
+            suggestion = "在工具页查看该格式可用的操作",
+        )
+        ConversionError.Code.PASSWORD_REQUIRED -> ErrorPresentation(
+            title = "该 PDF 受密码保护",
+            suggestion = "在 PDF 加密/解密工具中输入密码",
+        )
+        ConversionError.Code.WRONG_PASSWORD -> ErrorPresentation(
+            title = "密码错误",
+            suggestion = "确认密码后重试",
+        )
+        ConversionError.Code.ENGINE_FAILURE -> ErrorPresentation(
+            title = "转换引擎执行失败",
+            suggestion = "可尝试切换兼容模式后重试",
+        )
+        ConversionError.Code.UNKNOWN -> ErrorPresentation(
+            title = FALLBACK_TITLE,
+            suggestion = "重新选择文件后重试",
+        )
     }
 }

@@ -47,8 +47,11 @@ data class ConversionTask(
     val kind: ConversionKind = ConversionKind.SINGLE,
     val payload: ConversionPayload = ConversionPayload(),
     val errorMessage: String? = null,
+    val errorCode: String? = null,
     val outputName: String? = null,
     val actualEngine: EngineType? = null,
+    val bytesProcessed: Long = 0L,
+    val bytesTotal: Long = 0L,
 )
 
 sealed interface ConversionResult {
@@ -57,6 +60,10 @@ sealed interface ConversionResult {
         val outputSize: Long,
         val actualEngine: EngineType? = null,
     ) : ConversionResult
-    data class Failure(val message: String, val cause: Throwable? = null) : ConversionResult
+    data class Failure(
+        val message: String,
+        val cause: Throwable? = null,
+        val errorCode: String? = null,
+    ) : ConversionResult
     data object Cancelled : ConversionResult
 }

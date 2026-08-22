@@ -7,6 +7,7 @@ import com.openconvert.app.domain.model.ConversionResult
 import com.openconvert.app.domain.model.ConversionTask
 import com.openconvert.app.domain.model.FileCategory
 import com.openconvert.app.domain.model.FileFormat
+import com.openconvert.app.domain.work.TempWorkspaceManager
 import java.io.File
 import java.io.FileOutputStream
 import kotlinx.coroutines.CancellationException
@@ -57,7 +58,7 @@ class OfficeConverter(
             // ensureInitialized 内部：先 unpack → 再加载库 → 再 init（顺序与真机验证一致）
             OfficeEngine.ensureInitialized(context)
 
-            val workDir = File(context.cacheDir, "office-conversions/${task.id}")
+            val workDir = TempWorkspaceManager(context).directory(TempWorkspaceManager.NS_OFFICE, task.id)
             if (!workDir.mkdirs() && !workDir.isDirectory) {
                 throw java.io.IOException("无法创建 Office 转换临时目录")
             }

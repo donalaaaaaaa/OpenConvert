@@ -472,6 +472,13 @@ internal fun ConversionProgressScreen(task: ConversionTask, onCancel: () -> Unit
         )
         Spacer(Modifier.height(12.dp))
         Text("${task.progress}%", fontSize = 22.sp, fontWeight = FontWeight.Medium)
+        if (task.bytesTotal > 0L && task.bytesProcessed > 0L) {
+            Text(
+                "${com.openconvert.app.domain.task.TaskCardFactory.formatSize(task.bytesProcessed)} / ${com.openconvert.app.domain.task.TaskCardFactory.formatSize(task.bytesTotal)}",
+                color = Muted,
+                fontSize = 13.sp,
+            )
+        }
         Text("正在本地处理", color = Muted, fontSize = 13.sp)
         Spacer(Modifier.height(36.dp))
         TextButton(onClick = onCancel) { Text("取消转换", color = Ink) }

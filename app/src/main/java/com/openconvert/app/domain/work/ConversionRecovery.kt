@@ -1,10 +1,12 @@
 package com.openconvert.app.domain.work
 
+import com.openconvert.app.domain.error.ConversionError
+import com.openconvert.app.domain.error.ConversionRecoveryMessage
 import com.openconvert.app.domain.model.ConversionStatus
 import com.openconvert.app.domain.model.ConversionTask
 
 object ConversionRecovery {
-    const val ORPHAN_MESSAGE = "上次转换被系统中断，请重试"
+    const val ORPHAN_MESSAGE = ConversionRecoveryMessage.ORPHAN
 
     fun reconcile(
         activeTasks: List<ConversionTask>,
@@ -17,6 +19,7 @@ object ConversionRecovery {
             task.copy(
                 status = ConversionStatus.FAILED,
                 errorMessage = ORPHAN_MESSAGE,
+                errorCode = ConversionError.Code.INTERRUPTED.name,
                 completedAt = now,
             )
         }

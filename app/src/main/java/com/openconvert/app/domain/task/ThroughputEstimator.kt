@@ -34,6 +34,7 @@ data class ThroughputEstimate(
 data class ProgressSample(
     val progressPercent: Int,
     val atMillis: Long,
+    val bytesProcessed: Long = 0L,
 )
 
 object ThroughputEstimator {
@@ -54,10 +55,25 @@ object ThroughputEstimator {
         current: ProgressSample,
         inputBytes: Long,
     ): ThroughputEstimate {
-        val progressDelta = current.progressPercent - previous.progressPercent
         val elapsed = current.atMillis - previous.atMillis
+        if (elapsed < MIN_ELAPSED_MS) return ThroughputEstimate.UNKNOWN
 
-        if (progressDelta < MIN_PROGRESS_DELTA || elapsed < MIN_ELAPSED_MS) {
+        val byteDelta = current.bytesProcessed - previous.bytesProcessed
+        if (byteDelta > 0L && current.bytesProcessed > 0L) {
+            val bytesPerSecond = (byteDelta.toDouble() / elapsed.toDouble() * 1000.0).toLong().coerceAtLeast(0L)
+            val remainingBytes = (inputBytes - current.bytesProcessed).coerceAtLeast(0L)
+            val remainingMs = if (bytesPerSecond > 0L && remainingBytes > 0L) {
+                remainingBytes * 1000L / bytesPerSecond
+            } else if (remainingBytes == 0L) {
+                null
+            } else {
+                null
+            }
+            return ThroughputEstimate(bytesPerSecond, remainingMs)
+        }
+
+        val progressDelta = current.progressPercent - previous.progressPercent
+        if (progressDelta < MIN_PROGRESS_DELTA) {
             return ThroughputEstimate.UNKNOWN
         }
 

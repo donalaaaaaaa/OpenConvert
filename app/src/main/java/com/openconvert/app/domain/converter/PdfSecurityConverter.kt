@@ -3,6 +3,7 @@ package com.openconvert.app.domain.converter
 import android.content.Context
 import android.net.Uri
 import com.openconvert.app.domain.work.BoundedIo
+import com.openconvert.app.domain.work.TempWorkspaceManager
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.pdmodel.encryption.AccessPermission
 import com.tom_roush.pdfbox.pdmodel.encryption.StandardProtectionPolicy
@@ -35,7 +36,10 @@ class PdfSecurityConverter(
     ): Long = withContext(Dispatchers.IO) {
         if (userPassword.isBlank()) throw IllegalArgumentException("密码不能为空")
 
-        val tempFile = File(context.cacheDir, "pdf_encrypt_${System.currentTimeMillis()}.pdf")
+        val tempFile = TempWorkspaceManager(context).file(
+            TempWorkspaceManager.NS_PDF,
+            "pdf_encrypt_${System.currentTimeMillis()}.pdf",
+        )
         try {
             onProgress(15)
             resolver.openInputStream(inputUri)?.use { input ->
@@ -80,7 +84,10 @@ class PdfSecurityConverter(
         outputUri: Uri,
         password: String,
     ): Long = withContext(Dispatchers.IO) {
-        val tempFile = File(context.cacheDir, "pdf_decrypt_${System.currentTimeMillis()}.pdf")
+        val tempFile = TempWorkspaceManager(context).file(
+            TempWorkspaceManager.NS_PDF,
+            "pdf_decrypt_${System.currentTimeMillis()}.pdf",
+        )
         try {
             onProgress(15)
             resolver.openInputStream(inputUri)?.use { input ->

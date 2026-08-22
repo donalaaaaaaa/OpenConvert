@@ -30,4 +30,17 @@ class ConversionEntityTest {
         val future = task().toEntity().copy(actualEngine = "FUTURE_ENGINE")
         assertNull(future.toDomain().actualEngine)
     }
+
+    @Test
+    fun `error code survives entity round trip`() {
+        val stored = task().copy(
+            errorCode = "INSUFFICIENT_STORAGE",
+            bytesProcessed = 12L,
+            bytesTotal = 100L,
+        )
+        val back = stored.toEntity().toDomain()
+        assertEquals("INSUFFICIENT_STORAGE", back.errorCode)
+        assertEquals(12L, back.bytesProcessed)
+        assertEquals(100L, back.bytesTotal)
+    }
 }

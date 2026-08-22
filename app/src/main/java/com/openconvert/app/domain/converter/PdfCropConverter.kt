@@ -34,7 +34,10 @@ class PdfCropConverter(
         margins: PdfCropMargins,
         targetPages: Set<Int>? = null, // null 表示全部页面 (1-based)
     ): Long = withContext(Dispatchers.IO) {
-        val tempFile = File(context.cacheDir, "pdf_crop_${System.currentTimeMillis()}.pdf")
+        val tempFile = com.openconvert.app.domain.work.TempWorkspaceManager(context).file(
+            com.openconvert.app.domain.work.TempWorkspaceManager.NS_PDF,
+            "pdf_crop_${System.currentTimeMillis()}.pdf",
+        )
         try {
             onProgress(10)
             resolver.openInputStream(inputUri)?.use { input ->

@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [ConversionEntity::class, BatchJobEntity::class, PresetEntity::class],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 abstract class OpenConvertDatabase : RoomDatabase() {
@@ -98,6 +98,18 @@ abstract class OpenConvertDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE conversion_tasks ADD COLUMN errorCode TEXT")
+                db.execSQL(
+                    "ALTER TABLE conversion_tasks ADD COLUMN bytesProcessed INTEGER NOT NULL DEFAULT 0",
+                )
+                db.execSQL(
+                    "ALTER TABLE conversion_tasks ADD COLUMN bytesTotal INTEGER NOT NULL DEFAULT 0",
+                )
+            }
+        }
+
         /**
          * @param dbName 数据库文件名。生产用默认值；迁移测试传独立名字，
          *   避免污染真机上的用户库。
@@ -116,6 +128,7 @@ abstract class OpenConvertDatabase : RoomDatabase() {
             MIGRATION_4_5,
             MIGRATION_5_6,
             MIGRATION_6_7,
+            MIGRATION_7_8,
         ).build()
     }
 }

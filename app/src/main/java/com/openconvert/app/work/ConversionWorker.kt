@@ -56,8 +56,12 @@ class ConversionWorker(
                     if (isStopped) throw CancellationException()
                     val latest = repo.get(taskId)
                     if (latest?.status == ConversionStatus.CANCELLED) throw CancellationException()
+                    val total = task.fileSize
+                    val processed = if (total > 0L) total * progress.toLong() / 100L else 0L
                     val updated = (latest ?: task).copy(
-                        progress = progress,
+                        progress = progress.coerceIn(0, 100),
+                        bytesProcessed = processed,
+                        bytesTotal = total,
                         status = ConversionStatus.RUNNING,
                     )
                     repo.save(updated)
@@ -93,6 +97,7 @@ class ConversionWorker(
                     val failed = (latest ?: task).copy(
                         status = ConversionStatus.FAILED,
                         errorMessage = result.message,
+                        errorCode = result.errorCode,
                         completedAt = System.currentTimeMillis(),
                     )
                     repo.save(failed)
@@ -113,12 +118,15 @@ class ConversionWorker(
             val failed = task.copy(
                 status = ConversionStatus.FAILED,
                 errorMessage = "转换失败，请重试",
+                errorCode = com.openconvert.app.domain.error.ConversionError.Code.UNKNOWN.name,
                 completedAt = System.currentTimeMillis(),
             )
             repo.save(failed)
             ConversionNotifier.notifyFinished(applicationContext, failed)
             updateBatchProgress(repo, taskId)
             Result.failure()
+        } finally {
+            cleanupTemps(taskId)
         }
     }
 
@@ -172,6 +180,15 @@ class ConversionWorker(
             )
         }
         ConversionNotifier.dismissProgress(applicationContext)
+    }
+
+    private fun cleanupTemps(taskId: String) {
+        val temps = (applicationContext as? OpenConvertApplication)?.tempWorkspace
+            ?: com.openconvert.app.domain.work.TempWorkspaceManager(applicationContext)
+        temps.cleanup(com.openconvert.app.domain.work.TempWorkspaceManager.NS_MEDIA, taskId)
+        temps.cleanup(com.openconvert.app.domain.work.TempWorkspaceManager.NS_OFFICE, taskId)
+        temps.cleanup(com.openconvert.app.domain.work.TempWorkspaceManager.NS_ARCHIVE, taskId)
+        temps.cleanup(com.openconvert.app.domain.work.TempWorkspaceManager.NS_PDF, taskId)
     }
 
     private fun repository() = (applicationContext as? OpenConvertApplication)?.historyRepository

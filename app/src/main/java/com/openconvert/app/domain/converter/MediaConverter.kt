@@ -18,6 +18,7 @@ import com.openconvert.app.domain.planner.ConversionPlan
 import com.openconvert.app.domain.device.PersistentCodecBlacklist
 import com.openconvert.app.domain.work.BoundedIo
 import com.openconvert.app.domain.work.StorageGuard
+import com.openconvert.app.domain.work.TempWorkspaceManager
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
@@ -65,7 +66,7 @@ class MediaConverter(
             )
         }
 
-        val workDir = File(context.cacheDir, "media-conversions/${task.id}")
+        val workDir = TempWorkspaceManager(context).directory(TempWorkspaceManager.NS_MEDIA, task.id)
         val outputFile = File(workDir, "output.${task.targetFormat.preferredExtension}")
 
         try {

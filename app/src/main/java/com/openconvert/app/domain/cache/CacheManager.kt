@@ -1,9 +1,9 @@
 package com.openconvert.app.domain.cache
 
 import android.content.Context
+import com.openconvert.app.domain.work.TempWorkspaceManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.File
 
 data class CacheStats(
     val totalSizeBytes: Long,
@@ -15,12 +15,12 @@ data class CacheStats(
  */
 class CacheManager(
     private val context: Context,
+    private val workspaces: TempWorkspaceManager = TempWorkspaceManager(context),
 ) {
     suspend fun getCacheStats(): CacheStats = withContext(Dispatchers.IO) {
         val cacheDir = context.cacheDir
         var totalSize = 0L
         var count = 0
-
         cacheDir.walkTopDown().forEach { file ->
             if (file.isFile) {
                 totalSize += file.length()
@@ -31,14 +31,13 @@ class CacheManager(
     }
 
     suspend fun clearCache(): Boolean = withContext(Dispatchers.IO) {
-        val cacheDir = context.cacheDir
-        var success = true
-        cacheDir.listFiles()?.forEach { file ->
-            // 保留必要的空目录结构，删除所有临时生成文件
+        var success = workspaces.cleanupAll()
+        context.cacheDir.listFiles()?.forEach { file ->
             if (file.name.startsWith("pdf_") ||
                 file.name.startsWith("media-") ||
                 file.name.startsWith("office-") ||
-                file.name.startsWith("tmp_")
+                file.name.startsWith("tmp_") ||
+                file.name == TempWorkspaceManager.ROOT_NAME
             ) {
                 if (!file.deleteRecursively()) {
                     success = false

@@ -31,7 +31,7 @@ class ThroughputTracker(private val clock: () -> Long = System::currentTimeMilli
         }
 
         val now = clock()
-        val current = ProgressSample(task.progress, now)
+        val current = ProgressSample(task.progress, now, task.bytesProcessed)
         val previous = samples[task.id]
 
         if (previous == null) {

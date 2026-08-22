@@ -55,6 +55,8 @@ object TaskCardFactory {
                     message = task.errorMessage,
                     sourceFormat = task.sourceFormat,
                     targetFormat = task.targetFormat,
+                    code = com.openconvert.app.domain.error.ConversionError.parse(task.errorCode)
+                        ?: com.openconvert.app.domain.error.ConversionError.fromMessage(task.errorMessage),
                 )
             } else {
                 null

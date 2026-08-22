@@ -53,7 +53,10 @@ class PdfCompressConverter(
         val targetDpi = customDpi ?: preset.maxDpi
         val quality = (customQuality ?: preset.quality).coerceIn(0.1f, 1.0f)
 
-        val tempFile = File(context.cacheDir, "pdf_compress_${System.currentTimeMillis()}.pdf")
+        val tempFile = com.openconvert.app.domain.work.TempWorkspaceManager(context).file(
+            com.openconvert.app.domain.work.TempWorkspaceManager.NS_PDF,
+            "pdf_compress_${System.currentTimeMillis()}.pdf",
+        )
         var originalSize = 0L
 
         try {

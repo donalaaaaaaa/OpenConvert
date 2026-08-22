@@ -30,9 +30,12 @@ data class ConversionEntity(
     val kind: String,
     val payloadJson: String?,
     val errorMessage: String?,
+    val errorCode: String? = null,
     val outputName: String?,
     val batchId: String? = null,
     val actualEngine: String? = null,
+    val bytesProcessed: Long = 0L,
+    val bytesTotal: Long = 0L,
 )
 
 fun ConversionEntity.toDomain() = ConversionTask(
@@ -53,10 +56,13 @@ fun ConversionEntity.toDomain() = ConversionTask(
     kind = runCatching { ConversionKind.valueOf(kind) }.getOrDefault(ConversionKind.SINGLE),
     payload = ConversionPayloadCodec.decode(payloadJson),
     errorMessage = errorMessage,
+    errorCode = errorCode,
     outputName = outputName,
     actualEngine = actualEngine?.let { stored ->
         runCatching { EngineType.valueOf(stored) }.getOrNull()
     },
+    bytesProcessed = bytesProcessed,
+    bytesTotal = bytesTotal,
 )
 
 fun ConversionTask.toEntity() = ConversionEntity(
@@ -77,7 +83,10 @@ fun ConversionTask.toEntity() = ConversionEntity(
     kind = kind.name,
     payloadJson = ConversionPayloadCodec.encode(payload),
     errorMessage = errorMessage,
+    errorCode = errorCode,
     outputName = outputName,
     batchId = payload.batchId,
     actualEngine = actualEngine?.name,
+    bytesProcessed = bytesProcessed,
+    bytesTotal = bytesTotal,
 )
