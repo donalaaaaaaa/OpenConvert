@@ -33,7 +33,8 @@ class BasicUpgradeSeedInstrumentedTest {
         val app = targetContext.applicationContext as OpenConvertApplication
 
         assertFalse("Seed phase must run against Basic Release", BuildConfig.OFFICE_BUNDLED)
-        assertEquals("1.0.0", BuildConfig.VERSION_NAME)
+        assertEquals("1.1.0", BuildConfig.VERSION_NAME)
+        assertEquals(BuildConfig.VERSION_CODE_BASE, BuildConfig.VERSION_CODE)
 
         val persistedGrant = targetContext.contentResolver.persistedUriPermissions.firstOrNull {
             permission ->

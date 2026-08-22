@@ -6,7 +6,7 @@
 
 - **只提供 arm64-v8a。** 32 位机和多数官方模拟器装不上。
 - **双 Edition，不是动态功能模块。** Basic 不含 LibreOfficeKit。商店内按需交付应走 Play Feature Delivery / split APK，不要使用已确认崩溃的 `files/` 动态加载。
-- **同 versionCode。** Basic 与 Office 都是 `100` / `1.0.0`（Office 版本名为 `1.0.0-office`）。图形安装器可能拒绝同版本覆盖，原地升级请用 `adb install -r`。
+- **v1.0.0 同 versionCode。** 已发布的 `1.0.0` Basic / Office 都是 `100`，图形安装器可能拒绝同版本覆盖。**下一版 `1.1.0`** 改为 Basic `1100` / Office `1101`，图形安装器可直接 Basic → Office。旧证覆盖仍只适用于已装 1.0.0。
 - **签名口令曾进入 git 历史**，必须视为已泄露。当前包仍用该证书，以便覆盖已安装的 1.0。对外换新 keystore 会切断覆盖升级。
 
 ## 能力边界

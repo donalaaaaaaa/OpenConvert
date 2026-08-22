@@ -37,6 +37,9 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Verify version scheme
+        run: ./gradlew :app:verifyOpenConvertVersion --no-daemon --stacktrace
+
       - name: Unit tests
         run: ./gradlew testBasicDebugUnitTest testOfficeDebugUnitTest --no-daemon --stacktrace
 

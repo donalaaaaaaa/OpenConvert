@@ -30,7 +30,8 @@ class OfficeUpgradeVerifyInstrumentedTest {
         val app = targetContext.applicationContext as OpenConvertApplication
 
         assertTrue("Verify phase must run against Office Release", BuildConfig.OFFICE_BUNDLED)
-        assertEquals("1.0.0-office", BuildConfig.VERSION_NAME)
+        assertEquals("1.1.0-office", BuildConfig.VERSION_NAME)
+        assertEquals(BuildConfig.VERSION_CODE_BASE + 1, BuildConfig.VERSION_CODE)
 
         val history = app.database.conversionDao().getById(UpgradeStateFixture.HISTORY_ID)
         assertNotNull("Basic conversion history must survive replacement", history)

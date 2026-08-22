@@ -39,6 +39,16 @@ val releaseInstrumentationEnabled =
     providers.gradleProperty("openconvertTestBuildType").orNull == "release"
 val emulatorAbi = providers.gradleProperty("openconvertEmulatorAbi").orNull
 val ciSmoke = providers.gradleProperty("openconvertCiSmoke").orNull == "true"
+val openConvertVersionName = providers.gradleProperty("OPENCONVERT_VERSION_NAME")
+    .orNull
+    ?.trim()
+    ?.takeIf { it.isNotEmpty() }
+    ?: error("OPENCONVERT_VERSION_NAME missing from gradle.properties")
+val openConvertVersionCode = providers.gradleProperty("OPENCONVERT_VERSION_CODE")
+    .orNull
+    ?.trim()
+    ?.toIntOrNull()
+    ?: error("OPENCONVERT_VERSION_CODE missing or not an int")
 
 android {
     namespace = "com.openconvert.app"
@@ -52,8 +62,9 @@ android {
         applicationId = "com.openconvert.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 100
-        versionName = "1.0.0"
+        versionCode = openConvertVersionCode
+        versionName = openConvertVersionName
+        buildConfigField("int", "VERSION_CODE_BASE", openConvertVersionCode.toString())
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -95,6 +106,7 @@ android {
         }
         create("office") {
             dimension = "edition"
+            versionCode = openConvertVersionCode + 1
             versionNameSuffix = "-office"
             buildConfigField("boolean", "OFFICE_BUNDLED", "true")
         }
@@ -218,3 +230,28 @@ dependencies {
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
+
+tasks.register("verifyOpenConvertVersion") {
+    group = "verification"
+    description = "Fail if version properties are invalid or a v* tag does not match VERSION_NAME"
+    doLast {
+        require(openConvertVersionName.matches(Regex("""^\d+\.\d+\.\d+$"""))) {
+            "OPENCONVERT_VERSION_NAME must be x.y.z, got '$openConvertVersionName'"
+        }
+        require(openConvertVersionCode > 100) {
+            "OPENCONVERT_VERSION_CODE must be > 100 (v1.0 was 100), got $openConvertVersionCode"
+        }
+        val ref = System.getenv("GITHUB_REF").orEmpty()
+        if (ref.startsWith("refs/tags/v")) {
+            val tag = System.getenv("GITHUB_REF_NAME").orEmpty().removePrefix("v")
+            require(tag == openConvertVersionName) {
+                "Git tag v$tag != OPENCONVERT_VERSION_NAME $openConvertVersionName"
+            }
+        }
+        logger.lifecycle(
+            "OpenConvert version $openConvertVersionName " +
+                "(Basic=$openConvertVersionCode Office=${openConvertVersionCode + 1})",
+        )
+    }
+}
+
