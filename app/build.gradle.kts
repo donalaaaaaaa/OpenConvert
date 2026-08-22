@@ -37,6 +37,8 @@ val hasReleaseSigning = releaseKeystore.exists() &&
     releaseKeyPassword != null
 val releaseInstrumentationEnabled =
     providers.gradleProperty("openconvertTestBuildType").orNull == "release"
+val emulatorAbi = providers.gradleProperty("openconvertEmulatorAbi").orNull
+val ciSmoke = providers.gradleProperty("openconvertCiSmoke").orNull == "true"
 
 android {
     namespace = "com.openconvert.app"
@@ -55,6 +57,18 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
+        if (ciSmoke) {
+            // GitHub-hosted emulator is x86_64 and has no Office/vips native.
+            // Only run tests that stay in Java/Kotlin + Room + Compose.
+            testInstrumentationRunnerArguments["class"] = listOf(
+                "com.openconvert.app.ui.StringsCatalogInstrumentedTest",
+                "com.openconvert.app.ui.AccessibilitySemanticsInstrumentedTest",
+                "com.openconvert.app.ui.FileDrivenFlowInstrumentedTest",
+                "com.openconvert.app.domain.converter.ArchiveConverterInstrumentedTest",
+                "com.openconvert.app.domain.work.ConversionRecoveryInstrumentedTest",
+                "com.openconvert.app.data.PresetStoreInstrumentedTest",
+            ).joinToString(",")
+        }
     }
 
     signingConfigs {
@@ -112,12 +126,13 @@ android {
         }
     }
 
-    // ABI planning: P0 = arm64-v8a (modern phones). armeabi-v7a / x86_64 arrive later.
+    // Release and local debug stay arm64-v8a. CI emulator sets
+    // -PopenconvertEmulatorAbi=x86_64 so GitHub-hosted AVD can install the APK.
     splits {
         abi {
             isEnable = true
             reset()
-            include("arm64-v8a")
+            include(if (emulatorAbi == "x86_64") "x86_64" else "arm64-v8a")
             isUniversalApk = false
         }
     }
