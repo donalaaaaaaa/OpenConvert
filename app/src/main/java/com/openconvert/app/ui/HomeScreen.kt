@@ -91,6 +91,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -108,6 +109,7 @@ import com.openconvert.app.domain.model.ConversionStatus
 import com.openconvert.app.domain.model.ConversionKind
 import com.openconvert.app.domain.model.ConversionTask
 import com.openconvert.app.BuildConfig
+import com.openconvert.app.R
 import com.openconvert.app.domain.benchmark.BenchmarkReportFormat
 import java.io.File
 import com.openconvert.app.domain.model.BatchJob
@@ -156,11 +158,11 @@ internal fun HomeScreen(
                 verticalAlignment = Alignment.Top,
             ) {
                 Column {
-                    Text("OpenConvert", fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
-                    Text("本地文件转换", color = Muted, fontSize = 15.sp)
+                    Text(stringResource(R.string.app_name), fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.app_tagline), color = Muted, fontSize = 15.sp)
                 }
                 IconButton(onClick = onSettings) {
-                    Icon(Icons.Outlined.Settings, contentDescription = "设置", tint = Ink)
+                    Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.nav_settings), tint = Ink)
                 }
             }
         }
@@ -172,11 +174,13 @@ internal fun HomeScreen(
                     .clickable { picker.launch(arrayOf("*/*")) }
                     .actionSemantics(
                         AccessibilityCopy.pickFile(
-                            if (BuildConfig.OFFICE_BUNDLED) {
-                                "PDF、图片、视频、音频、Office"
-                            } else {
-                                "PDF、图片、视频、音频"
-                            },
+                            stringResource(
+                                if (BuildConfig.OFFICE_BUNDLED) {
+                                    R.string.a11y_pick_formats_office
+                                } else {
+                                    R.string.a11y_pick_formats_basic
+                                },
+                            ),
                         ),
                     ),
                 shape = RoundedCornerShape(16.dp),
@@ -196,13 +200,15 @@ internal fun HomeScreen(
                             modifier = Modifier.padding(9.dp).size(22.dp),
                         )
                     }
-                    Text("选择文件", fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                    Text(stringResource(R.string.home_pick_file), fontSize = 18.sp, fontWeight = FontWeight.Medium)
                     Text(
-                        if (BuildConfig.OFFICE_BUNDLED) {
-                            "PDF · 图片 · 视频 · 音频 · Office"
-                        } else {
-                            "PDF · 图片 · 视频 · 音频"
-                        },
+                        stringResource(
+                            if (BuildConfig.OFFICE_BUNDLED) {
+                                R.string.home_formats_office
+                            } else {
+                                R.string.home_formats_basic
+                            },
+                        ),
                         color = Muted,
                         fontSize = 13.sp,
                     )
@@ -210,21 +216,21 @@ internal fun HomeScreen(
             }
         }
 
-        item { SectionTitle("常用工具") }
+        item { SectionTitle(stringResource(R.string.home_section_tools)) }
 
         item {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     ToolCard(
-                        "图片转换",
-                        "JPG · PNG · WEBP",
+                        stringResource(R.string.home_tool_image),
+                        stringResource(R.string.home_tool_image_sub),
                         Icons.Outlined.Image,
                         Modifier.weight(1f),
                         onClick = { picker.launch(arrayOf("image/*")) },
                     )
                     ToolCard(
-                        "PDF 工具",
-                        "转换 · 合并 · 拆分",
+                        stringResource(R.string.home_tool_pdf),
+                        stringResource(R.string.home_tool_pdf_sub),
                         Icons.Outlined.Description,
                         Modifier.weight(1f),
                         onClick = onPdfTools,
@@ -232,15 +238,15 @@ internal fun HomeScreen(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     ToolCard(
-                        "视频转换",
-                        "MP4 · MOV · MKV",
+                        stringResource(R.string.home_tool_video),
+                        stringResource(R.string.home_tool_video_sub),
                         Icons.Outlined.VideoFile,
                         Modifier.weight(1f),
                         onClick = { picker.launch(arrayOf("video/*")) },
                     )
                     ToolCard(
-                        "音频转换",
-                        "MP3 · WAV · FLAC",
+                        stringResource(R.string.home_tool_audio),
+                        stringResource(R.string.home_tool_audio_sub),
                         Icons.Outlined.AudioFile,
                         Modifier.weight(1f),
                         onClick = { picker.launch(arrayOf("audio/*")) },
@@ -248,15 +254,15 @@ internal fun HomeScreen(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     ToolCard(
-                        "批量转换",
-                        "一次转换多个文件",
+                        stringResource(R.string.home_tool_batch),
+                        stringResource(R.string.home_tool_batch_sub),
                         Icons.Outlined.Add,
                         Modifier.weight(1f),
                         onClick = onBatch,
                     )
                     ToolCard(
-                        "压缩包",
-                        "ZIP · TAR · GZIP · BZIP2",
+                        stringResource(R.string.home_tool_archive),
+                        stringResource(R.string.home_tool_archive_sub),
                         Icons.Outlined.Folder,
                         Modifier.weight(1f),
                         onClick = onArchive,
@@ -264,12 +270,14 @@ internal fun HomeScreen(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     ToolCard(
-                        "Office 转换",
-                        if (BuildConfig.OFFICE_BUNDLED) {
-                            "DOCX · PPTX · XLSX → PDF"
-                        } else {
-                            "Office 版提供"
-                        },
+                        stringResource(R.string.home_tool_office),
+                        stringResource(
+                            if (BuildConfig.OFFICE_BUNDLED) {
+                                R.string.home_tool_office_sub
+                            } else {
+                                R.string.home_tool_office_basic
+                            },
+                        ),
                         Icons.AutoMirrored.Outlined.Article,
                         Modifier.fillMaxWidth(),
                         onClick = onOffice,
@@ -278,12 +286,12 @@ internal fun HomeScreen(
             }
         }
 
-        item { SectionTitle("最近转换") }
+        item { SectionTitle(stringResource(R.string.home_section_recent)) }
 
         if (recentTasks.isEmpty()) {
             item {
                 Text(
-                    "还没有转换记录，选择一个文件开始。",
+                    stringResource(R.string.home_recent_empty),
                     color = Muted,
                     fontSize = 14.sp,
                     modifier = Modifier.padding(vertical = 10.dp),

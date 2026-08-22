@@ -91,6 +91,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -186,8 +187,11 @@ fun OpenConvertApp(
                                     restoreState = true
                                 }
                             },
-                            icon = { Icon(destination.icon, contentDescription = destination.label) },
-                            label = { Text(destination.label) },
+                            icon = {
+                                val label = stringResource(destination.labelRes)
+                                Icon(destination.icon, contentDescription = label)
+                            },
+                            label = { Text(stringResource(destination.labelRes)) },
                         )
                     }
                 }

@@ -91,6 +91,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -108,6 +109,7 @@ import com.openconvert.app.domain.model.ConversionStatus
 import com.openconvert.app.domain.model.ConversionKind
 import com.openconvert.app.domain.model.ConversionTask
 import com.openconvert.app.BuildConfig
+import com.openconvert.app.R
 import com.openconvert.app.domain.benchmark.BenchmarkReportFormat
 import java.io.File
 import com.openconvert.app.domain.model.BatchJob
@@ -455,7 +457,7 @@ internal fun ConversionProgressScreen(task: ConversionTask, onCancel: () -> Unit
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("正在转换", fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.conversion_running), fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(16.dp))
         Text(task.sourceName, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(
@@ -486,9 +488,9 @@ internal fun ConversionProgressScreen(task: ConversionTask, onCancel: () -> Unit
                 fontSize = 13.sp,
             )
         }
-        Text("正在本地处理", color = Muted, fontSize = 13.sp)
+        Text(stringResource(R.string.conversion_local), color = Muted, fontSize = 13.sp)
         Spacer(Modifier.height(36.dp))
-        TextButton(onClick = onCancel) { Text("取消转换", color = Ink) }
+        TextButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel_conversion), color = Ink) }
         Spacer(Modifier.height(22.dp))
         PrivacyHint()
     }
@@ -516,11 +518,11 @@ internal fun ConversionCompleteScreen(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {
-            Icon(Icons.Outlined.CheckCircleOutline, contentDescription = "转换完成", modifier = Modifier.size(58.dp))
+            Icon(Icons.Outlined.CheckCircleOutline, contentDescription = stringResource(R.string.conversion_complete), modifier = Modifier.size(58.dp))
         }
         item {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("转换完成", fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.conversion_complete), fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(8.dp))
                 Text(outputName, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(formatFileSize(outputSize), color = Muted)
@@ -528,12 +530,12 @@ internal fun ConversionCompleteScreen(
         }
         item {
             SettingsGroup {
-                SettingRow("原文件", formatFileSize(task.fileSize))
+                SettingRow(stringResource(R.string.conversion_original), formatFileSize(task.fileSize))
                 HorizontalDivider(color = Border)
-                SettingRow("新文件", formatFileSize(outputSize))
+                SettingRow(stringResource(R.string.conversion_new_file), formatFileSize(outputSize))
                 HorizontalDivider(color = Border)
                 SettingRow(
-                    if (savedBytes >= 0) "节省" else "增加",
+                    stringResource(if (savedBytes >= 0) R.string.conversion_saved else R.string.conversion_grew),
                     formatFileSize(kotlin.math.abs(savedBytes)),
                 )
             }
@@ -556,7 +558,7 @@ internal fun ConversionCompleteScreen(
             ) {
                 Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null)
                 Spacer(Modifier.size(8.dp))
-                Text(if (parsedOutputUris.size > 1) "打开第一个文件" else "打开文件")
+                Text(if (parsedOutputUris.size > 1) stringResource(R.string.action_open_first_file) else stringResource(R.string.action_open_file))
             }
         }
         item {
@@ -582,10 +584,10 @@ internal fun ConversionCompleteScreen(
                 ) {
                     Icon(Icons.Outlined.Share, contentDescription = null)
                     Spacer(Modifier.size(6.dp))
-                    Text("分享", color = Ink)
+                    Text(stringResource(R.string.action_share), color = Ink)
                 }
                 TextButton(onClick = onDone, modifier = Modifier.weight(1f)) {
-                    Text("完成", color = Ink)
+                    Text(stringResource(R.string.action_done), color = Ink)
                 }
             }
         }
@@ -603,9 +605,9 @@ internal fun ConversionFailedScreen(message: String, onRetry: () -> Unit, onBack
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(Icons.Outlined.ErrorOutline, contentDescription = "转换失败", modifier = Modifier.size(52.dp))
+        Icon(Icons.Outlined.ErrorOutline, contentDescription = stringResource(R.string.conversion_failed), modifier = Modifier.size(52.dp))
         Spacer(Modifier.height(18.dp))
-        Text("转换失败", fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.conversion_failed), fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
         Text(message, color = Muted, lineHeight = 21.sp)
         Spacer(Modifier.height(28.dp))
@@ -616,8 +618,8 @@ internal fun ConversionFailedScreen(message: String, onRetry: () -> Unit, onBack
         ) {
             Icon(Icons.Outlined.Refresh, contentDescription = null)
             Spacer(Modifier.size(8.dp))
-            Text("调整设置后重试")
+            Text(stringResource(R.string.action_retry))
         }
-        TextButton(onClick = onBack) { Text("返回首页", color = Ink) }
+        TextButton(onClick = onBack) { Text(stringResource(R.string.action_back_home), color = Ink) }
     }
 }

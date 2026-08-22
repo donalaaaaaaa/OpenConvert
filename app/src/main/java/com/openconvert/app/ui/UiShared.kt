@@ -91,6 +91,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -108,6 +109,7 @@ import com.openconvert.app.domain.model.ConversionStatus
 import com.openconvert.app.domain.model.ConversionKind
 import com.openconvert.app.domain.model.ConversionTask
 import com.openconvert.app.BuildConfig
+import com.openconvert.app.R
 import com.openconvert.app.domain.benchmark.BenchmarkReportFormat
 import java.io.File
 import com.openconvert.app.domain.model.BatchJob
@@ -153,15 +155,15 @@ internal const val OFFICE_TOOLS = "office_tools"
 
 internal data class MainDestination(
     val route: String,
-    val label: String,
+    val labelRes: Int,
     val icon: ImageVector,
 )
 
 internal val mainDestinations = listOf(
-    MainDestination(HOME, "首页", Icons.Outlined.Home),
-    MainDestination(TASKS, "任务", Icons.Outlined.Sync),
-    MainDestination(HISTORY, "历史", Icons.Outlined.History),
-    MainDestination(SETTINGS, "设置", Icons.Outlined.Settings),
+    MainDestination(HOME, R.string.nav_home, Icons.Outlined.Home),
+    MainDestination(TASKS, R.string.nav_tasks, Icons.Outlined.Sync),
+    MainDestination(HISTORY, R.string.nav_history, Icons.Outlined.History),
+    MainDestination(SETTINGS, R.string.nav_settings, Icons.Outlined.Settings),
 )
 
 /**
@@ -237,7 +239,7 @@ internal fun PdfConfigurationScaffold(
     ) {
         item {
             IconButton(onClick = onBack, modifier = Modifier.size(44.dp)) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "返回")
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.action_back))
             }
         }
         item {
@@ -312,7 +314,7 @@ internal fun PrivacyHint() {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Outlined.Lock, contentDescription = null, tint = Muted, modifier = Modifier.size(16.dp))
         Spacer(Modifier.size(6.dp))
-        Text("文件不会离开您的设备", color = Muted, fontSize = 13.sp)
+        Text(stringResource(R.string.privacy_hint), color = Muted, fontSize = 13.sp)
     }
 }
 

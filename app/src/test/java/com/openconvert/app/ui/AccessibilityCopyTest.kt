@@ -57,9 +57,9 @@ class AccessibilityCopyTest {
     }
 
     @Test
-    fun mainDestinationsAreNamed() {
+    fun mainDestinationsHaveResourceIds() {
         mainDestinations.forEach { dest ->
-            assertTrue(dest.label.isNotBlank())
+            assertTrue(dest.labelRes != 0)
             assertTrue(dest.route.isNotBlank())
         }
     }

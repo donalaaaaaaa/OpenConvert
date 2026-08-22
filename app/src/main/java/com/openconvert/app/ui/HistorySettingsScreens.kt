@@ -91,6 +91,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -108,6 +109,7 @@ import com.openconvert.app.domain.model.ConversionStatus
 import com.openconvert.app.domain.model.ConversionKind
 import com.openconvert.app.domain.model.ConversionTask
 import com.openconvert.app.BuildConfig
+import com.openconvert.app.R
 import com.openconvert.app.domain.benchmark.BenchmarkReportFormat
 import java.io.File
 import com.openconvert.app.domain.model.BatchJob
@@ -366,37 +368,41 @@ internal fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {
-            Text("设置", fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.settings_title), fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
         }
-        item { SectionTitle("偏好") }
+        item { SectionTitle(stringResource(R.string.settings_section_prefs)) }
         item {
             SettingsGroup {
-                SettingRow("外观", "浅色")
+                SettingRow(stringResource(R.string.settings_appearance), stringResource(R.string.settings_appearance_value))
                 HorizontalDivider(color = Border)
-                SettingRow("默认保存位置", "每次询问")
+                SettingRow(stringResource(R.string.settings_save_location), stringResource(R.string.settings_save_location_value))
                 HorizontalDivider(color = Border)
-                SettingRow("图片默认质量", imageQuality.label, onClick = { picking = "image" })
+                SettingRow(stringResource(R.string.settings_image_quality), imageQuality.label, onClick = { picking = "image" })
                 HorizontalDivider(color = Border)
-                SettingRow("视频默认质量", videoQuality.label, onClick = { picking = "video" })
+                SettingRow(stringResource(R.string.settings_video_quality), videoQuality.label, onClick = { picking = "video" })
             }
         }
-        item { SectionTitle("系统能力与性能") }
+        item { SectionTitle(stringResource(R.string.settings_section_system)) }
         item {
             SettingsGroup {
                 SettingRow(
-                    "硬件编解码加速",
-                    "H.264 / H.265 / VP8 芯片加速已就绪",
+                    stringResource(R.string.settings_hw_accel),
+                    stringResource(R.string.settings_hw_accel_value),
                 )
                 HorizontalDivider(color = Border)
                 SettingRow(
-                    "清理缓存",
-                    "一键清理转换中间件与缩略图缓存",
+                    stringResource(R.string.settings_clear_cache),
+                    stringResource(R.string.settings_clear_cache_value),
                     onClick = onClearCache,
                 )
                 HorizontalDivider(color = Border)
                 SettingRow(
-                    "性能 Benchmark",
-                    if (benchmarkRecordCount > 0) "$benchmarkRecordCount 条 · 导出报告" else "暂无记录",
+                    stringResource(R.string.settings_benchmark),
+                    if (benchmarkRecordCount > 0) {
+                        stringResource(R.string.settings_benchmark_count, benchmarkRecordCount)
+                    } else {
+                        stringResource(R.string.settings_benchmark_empty)
+                    },
                     onClick = if (benchmarkRecordCount > 0) {
                         { showBenchmarkExport = true }
                     } else {
@@ -405,40 +411,42 @@ internal fun SettingsScreen(
                 )
                 HorizontalDivider(color = Border)
                 SettingRow(
-                    "导出自定义预设",
-                    "保存为 JSON，方便换机或备份",
+                    stringResource(R.string.settings_export_presets),
+                    stringResource(R.string.settings_export_presets_value),
                     onClick = {
                         presetExporter.launch("openconvert-presets.json")
                     },
                 )
                 HorizontalDivider(color = Border)
                 SettingRow(
-                    "导入预设",
-                    "从 JSON 文件添加自定义预设，不覆盖内置项",
+                    stringResource(R.string.settings_import_presets),
+                    stringResource(R.string.settings_import_presets_value),
                     onClick = { presetImporter.launch(arrayOf("application/json", "text/plain", "*/*")) },
                 )
             }
         }
-        item { SectionTitle("Office 引擎") }
+        item { SectionTitle(stringResource(R.string.settings_section_office)) }
         item {
             SettingsGroup {
                 SettingRow(
-                    "LibreOfficeKit 引擎",
-                    if (BuildConfig.OFFICE_BUNDLED) {
-                        "已内置 · DOCX / PPTX / XLSX 离线转 PDF"
-                    } else {
-                        "轻量版未内置 · Office 版提供"
-                    },
+                    stringResource(R.string.settings_office_engine),
+                    stringResource(
+                        if (BuildConfig.OFFICE_BUNDLED) {
+                            R.string.settings_office_bundled
+                        } else {
+                            R.string.settings_office_basic
+                        },
+                    ),
                     onClick = onOfficeTools,
                 )
             }
         }
-        item { SectionTitle("关于") }
+        item { SectionTitle(stringResource(R.string.settings_section_about)) }
         item {
             SettingsGroup {
-                SettingRow("隐私", "无网络权限 · 本地处理", onClick = onPrivacy)
+                SettingRow(stringResource(R.string.settings_privacy), stringResource(R.string.settings_privacy_value), onClick = onPrivacy)
                 HorizontalDivider(color = Border)
-                SettingRow("OpenConvert", "1.0.0 正式版")
+                SettingRow(stringResource(R.string.app_name), stringResource(R.string.app_version_label))
             }
         }
     }

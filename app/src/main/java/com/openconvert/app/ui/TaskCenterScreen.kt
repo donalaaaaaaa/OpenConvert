@@ -23,11 +23,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.openconvert.app.R
 import com.openconvert.app.domain.task.TaskBucket
 import com.openconvert.app.domain.task.TaskCardModel
 import com.openconvert.app.domain.task.TaskGroup
@@ -56,8 +58,8 @@ fun TaskCenterScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Text("暂无任务", fontSize = 17.sp, fontWeight = FontWeight.Medium)
-                Text("选择文件开始一次转换", color = Muted, fontSize = 14.sp)
+                Text(stringResource(R.string.tasks_empty_title), fontSize = 17.sp, fontWeight = FontWeight.Medium)
+                Text(stringResource(R.string.tasks_empty_body), color = Muted, fontSize = 14.sp)
             }
         }
         return
@@ -71,7 +73,7 @@ fun TaskCenterScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item {
-            Text("任务中心", fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.tasks_title), fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
         }
 
         groups.forEach { group ->
@@ -149,17 +151,17 @@ private fun TaskCard(
                 ProgressBar(percent = card.progressPercent)
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text("${card.progressPercent}%", fontSize = 12.sp, color = Muted)
-                    card.speedText?.let { Text("速度 $it", fontSize = 12.sp, color = Muted) }
-                    card.remainingText?.let { Text("剩余 $it", fontSize = 12.sp, color = Muted) }
+                    card.speedText?.let { Text(stringResource(R.string.tasks_speed, it), fontSize = 12.sp, color = Muted) }
+                    card.remainingText?.let { Text(stringResource(R.string.tasks_remaining, it), fontSize = 12.sp, color = Muted) }
                 }
                 if (bucket == TaskBucket.RUNNING) {
                     Text(
-                        "取消",
+                        stringResource(R.string.action_cancel),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier
                             .clickable(onClick = onCancel)
-                            .actionSemantics("取消转换")
+                            .actionSemantics(stringResource(R.string.tasks_cancel))
                             .padding(top = 2.dp),
                     )
                 }

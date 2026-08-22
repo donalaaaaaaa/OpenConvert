@@ -91,6 +91,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -108,6 +109,7 @@ import com.openconvert.app.domain.model.ConversionStatus
 import com.openconvert.app.domain.model.ConversionKind
 import com.openconvert.app.domain.model.ConversionTask
 import com.openconvert.app.BuildConfig
+import com.openconvert.app.R
 import com.openconvert.app.domain.benchmark.BenchmarkReportFormat
 import java.io.File
 import com.openconvert.app.domain.model.BatchJob
@@ -185,19 +187,19 @@ internal fun PdfToolsScreen(
     ) {
         item {
             IconButton(onClick = onBack, modifier = Modifier.size(44.dp)) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "返回")
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.action_back))
             }
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("PDF 工具箱", fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
-                Text("全部操作 100% 离线完成，保护文件隐私", color = Muted, fontSize = 14.sp)
+                Text(stringResource(R.string.pdf_tools_title), fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.pdf_tools_subtitle), color = Muted, fontSize = 14.sp)
             }
         }
         item {
             ToolCard(
-                "PDF 页面管理器",
-                "可视化页面网格、拖拽重排、旋转与删除",
+                stringResource(R.string.pdf_tool_pages),
+                stringResource(R.string.pdf_tool_pages_sub),
                 Icons.Outlined.Description,
                 Modifier.fillMaxWidth(),
                 onClick = { pageManagerPicker.launch(arrayOf(FileFormat.PDF.mimeType)) },
@@ -205,8 +207,8 @@ internal fun PdfToolsScreen(
         }
         item {
             ToolCard(
-                "PDF 智能压缩",
-                "图像降采样与智能压缩，大幅减小体积",
+                stringResource(R.string.pdf_tool_compress),
+                stringResource(R.string.pdf_tool_compress_sub),
                 Icons.Outlined.Refresh,
                 Modifier.fillMaxWidth(),
                 onClick = { compressPicker.launch(arrayOf(FileFormat.PDF.mimeType)) },
@@ -214,8 +216,8 @@ internal fun PdfToolsScreen(
         }
         item {
             ToolCard(
-                "图片转 PDF",
-                "多张 JPG、PNG 或 WEBP 生成一个 PDF",
+                stringResource(R.string.pdf_tool_images_to_pdf),
+                stringResource(R.string.pdf_tool_images_to_pdf_sub),
                 Icons.Outlined.Image,
                 Modifier.fillMaxWidth(),
                 onClick = { imagesPicker.launch(arrayOf("image/*")) },
@@ -223,8 +225,8 @@ internal fun PdfToolsScreen(
         }
         item {
             ToolCard(
-                "PDF 转图片",
-                "导出全部页面或指定页为 JPG、PNG",
+                stringResource(R.string.pdf_tool_pdf_to_images),
+                stringResource(R.string.pdf_tool_pdf_to_images_sub),
                 Icons.Outlined.Description,
                 Modifier.fillMaxWidth(),
                 onClick = { pdfToImagesPicker.launch(arrayOf(FileFormat.PDF.mimeType)) },
@@ -232,8 +234,8 @@ internal fun PdfToolsScreen(
         }
         item {
             ToolCard(
-                "PDF 合并",
-                "选择多个 PDF 并调整顺序",
+                stringResource(R.string.pdf_tool_merge),
+                stringResource(R.string.pdf_tool_merge_sub),
                 Icons.Outlined.Add,
                 Modifier.fillMaxWidth(),
                 onClick = { mergePicker.launch(arrayOf(FileFormat.PDF.mimeType)) },
@@ -241,8 +243,8 @@ internal fun PdfToolsScreen(
         }
         item {
             ToolCard(
-                "PDF 拆分",
-                "按 1-3、5、8-10 等页码范围拆分",
+                stringResource(R.string.pdf_tool_split),
+                stringResource(R.string.pdf_tool_split_sub),
                 Icons.Outlined.Description,
                 Modifier.fillMaxWidth(),
                 onClick = { splitPicker.launch(arrayOf(FileFormat.PDF.mimeType)) },
@@ -250,8 +252,8 @@ internal fun PdfToolsScreen(
         }
         item {
             ToolCard(
-                "PDF 加密 / 解密",
-                "设置密码保护或移除已知密码导出副本",
+                stringResource(R.string.pdf_tool_security),
+                stringResource(R.string.pdf_tool_security_sub),
                 Icons.Outlined.Lock,
                 Modifier.fillMaxWidth(),
                 onClick = { securityPicker.launch(arrayOf(FileFormat.PDF.mimeType)) },
@@ -259,8 +261,8 @@ internal fun PdfToolsScreen(
         }
         item {
             ToolCard(
-                "PDF 边距裁剪",
-                "自动识别或自定义裁剪上下左右边距",
+                stringResource(R.string.pdf_tool_crop),
+                stringResource(R.string.pdf_tool_crop_sub),
                 Icons.Outlined.Description,
                 Modifier.fillMaxWidth(),
                 onClick = { cropPicker.launch(arrayOf(FileFormat.PDF.mimeType)) },
@@ -268,8 +270,8 @@ internal fun PdfToolsScreen(
         }
         item {
             ToolCard(
-                "PDF 元数据",
-                "查看与编辑文档标题、作者与关键词信息",
+                stringResource(R.string.pdf_tool_metadata),
+                stringResource(R.string.pdf_tool_metadata_sub),
                 Icons.Outlined.Description,
                 Modifier.fillMaxWidth(),
                 onClick = { metadataPicker.launch(arrayOf(FileFormat.PDF.mimeType)) },
@@ -277,8 +279,8 @@ internal fun PdfToolsScreen(
         }
         item {
             ToolCard(
-                "PDF 文字水印",
-                "斜向 / 居中 / 页脚半透明文字，离线写入每一页",
+                stringResource(R.string.pdf_tool_watermark),
+                stringResource(R.string.pdf_tool_watermark_sub),
                 Icons.Outlined.Description,
                 Modifier.fillMaxWidth(),
                 onClick = { watermarkPicker.launch(arrayOf(FileFormat.PDF.mimeType)) },
@@ -286,8 +288,8 @@ internal fun PdfToolsScreen(
         }
         item {
             ToolCard(
-                "PDF 删除页面",
-                "移除不需要的页面后另存新文件",
+                stringResource(R.string.pdf_tool_delete),
+                stringResource(R.string.pdf_tool_delete_sub),
                 Icons.Outlined.DeleteOutline,
                 Modifier.fillMaxWidth(),
                 onClick = { deletePicker.launch(arrayOf(FileFormat.PDF.mimeType)) },
@@ -295,8 +297,8 @@ internal fun PdfToolsScreen(
         }
         item {
             ToolCard(
-                "PDF 旋转",
-                "将全部或指定页面旋转 90° / 180° / 270°",
+                stringResource(R.string.pdf_tool_rotate),
+                stringResource(R.string.pdf_tool_rotate_sub),
                 Icons.Outlined.Refresh,
                 Modifier.fillMaxWidth(),
                 onClick = { rotatePicker.launch(arrayOf(FileFormat.PDF.mimeType)) },
