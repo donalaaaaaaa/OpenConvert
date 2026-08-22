@@ -117,7 +117,7 @@ object ConversionGraph {
             ),
         )
 
-        listOf(FileFormat.ZIP, FileFormat.TAR_GZ, FileFormat.BZIP2)
+        listOf(FileFormat.ZIP, FileFormat.TAR_GZ, FileFormat.BZIP2, FileFormat.SEVEN_Z)
             .forEach { put(it, listOf(ConversionKind.ARCHIVE_EXTRACT)) }
     }
 

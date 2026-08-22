@@ -15,6 +15,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry
+import org.apache.commons.compress.archivers.sevenz.SevenZFile
+import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
 import org.apache.commons.compress.archivers.zip.Zip64Mode
@@ -29,9 +32,9 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream
 
 /**
  * 压缩包引擎（Phase 7）：Apache Commons Compress。
- * - 多文件 → ZIP / TAR
+ * - 多文件 → ZIP / TAR / 7Z
  * - 单文件 → GZIP / BZIP2
- * - ZIP / TAR.GZ / TAR.BZ2 → 解压到目录
+ * - ZIP / TAR.GZ / TAR.BZ2 / 7Z → 解压到目录
  * 全部流式处理，不整包载入内存。
  */
 class ArchiveConverter(
@@ -60,6 +63,7 @@ class ArchiveConverter(
             when (targetFormat) {
                 FileFormat.ZIP -> writeZip(inputUris, inputNames, outputUri)
                 FileFormat.TAR -> writeTar(inputUris, inputNames, outputUri)
+                FileFormat.SEVEN_Z -> writeSevenZ(inputUris, inputNames, outputUri)
                 FileFormat.GZIP -> writeSingleStream(inputUris.first(), inputNames.first(), outputUri) {
                     GzipCompressorOutputStream(it)
                 }
@@ -94,9 +98,10 @@ class ArchiveConverter(
             val lower = sourceName.lowercase()
             when {
                 lower.endsWith(".zip") -> extractZip(inputUri, outputDirectory)
+                lower.endsWith(".7z") -> extractSevenZ(inputUri, outputDirectory)
                 lower.endsWith(".tar.gz") || lower.endsWith(".tgz") -> extractTar(inputUri, outputDirectory, gzip = true)
                 lower.endsWith(".tar.bz2") || lower.endsWith(".tbz2") -> extractTar(inputUri, outputDirectory, gzip = false)
-                else -> return@withContext ConversionResult.Failure("仅支持 ZIP / TAR.GZ / TAR.BZ2 解压")
+                else -> return@withContext ConversionResult.Failure("仅支持 ZIP / 7Z / TAR.GZ / TAR.BZ2 解压")
             }
             onProgress(100)
             ConversionResult.Success(
@@ -145,6 +150,42 @@ class ArchiveConverter(
         } ?: throw FileNotFoundException("无法写入压缩包")
     }
 
+    private suspend fun writeSevenZ(inputUris: List<Uri>, inputNames: List<String>, outputUri: Uri) {
+        val temps = com.openconvert.app.domain.work.TempWorkspaceManager(context)
+        val pack = temps.file(
+            com.openconvert.app.domain.work.TempWorkspaceManager.NS_ARCHIVE,
+            "pack_${System.currentTimeMillis()}.7z",
+        )
+        try {
+            SevenZOutputFile(pack).use { seven ->
+                inputUris.forEachIndexed { index, uri ->
+                    currentCoroutineContext().ensureActive()
+                    val entryName = inputNames[index].substringAfterLast('/').ifBlank { "file_$index" }
+                    val entry = SevenZArchiveEntry().apply {
+                        name = entryName
+                        size = resolver.openAssetFileDescriptor(uri, "r")?.use { it.length } ?: 0L
+                    }
+                    seven.putArchiveEntry(entry)
+                    copyResolverStream(uri, object : java.io.OutputStream() {
+                        override fun write(b: Int) {
+                            seven.write(byteArrayOf(b.toByte()))
+                        }
+                        override fun write(b: ByteArray, off: Int, len: Int) {
+                            seven.write(b, off, len)
+                        }
+                    }, entryName)
+                    seven.closeArchiveEntry()
+                    onProgress(((index + 1) * 90 / inputUris.size).coerceAtLeast(1))
+                }
+            }
+            resolver.openOutputStream(outputUri, "w")?.use { out ->
+                pack.inputStream().use { input -> input.copyTo(out, BUFFER_SIZE) }
+            } ?: throw FileNotFoundException("无法写入 7Z")
+        } finally {
+            pack.delete()
+        }
+    }
+
     private suspend fun writeSingleStream(
         inputUri: Uri,
         inputName: String,
@@ -178,6 +219,36 @@ class ArchiveConverter(
                 }
             }
         } ?: throw FileNotFoundException("无法读取压缩包")
+    }
+
+    private suspend fun extractSevenZ(inputUri: Uri, directory: DocumentFile) {
+        val temps = com.openconvert.app.domain.work.TempWorkspaceManager(context)
+        val pack = temps.file(
+            com.openconvert.app.domain.work.TempWorkspaceManager.NS_ARCHIVE,
+            "extract_${System.currentTimeMillis()}.7z",
+        )
+        try {
+            resolver.openInputStream(inputUri)?.use { input ->
+                pack.outputStream().use { output -> input.copyTo(output, BUFFER_SIZE) }
+            } ?: throw FileNotFoundException("无法读取压缩包")
+            SevenZFile.builder().setFile(pack).get().use { seven ->
+                var index = 0
+                while (true) {
+                    currentCoroutineContext().ensureActive()
+                    val entry = seven.nextEntry ?: break
+                    if (entry.isDirectory) continue
+                    val name = entry.name.substringAfterLast('/').substringAfterLast('\\')
+                    if (name.isBlank() || name.contains("..")) continue
+                    val target = directory.createFile(FileFormat.fromFileName(name).mimeType, name)
+                        ?: throw IOException("无法创建解压文件 $name")
+                    seven.getInputStream(entry).use { stream -> writeTo(target.uri, stream) }
+                    index++
+                    onProgress(((index + 1) * 90 / 100).coerceAtMost(90))
+                }
+            }
+        } finally {
+            pack.delete()
+        }
     }
 
     private suspend fun extractTar(inputUri: Uri, directory: DocumentFile, gzip: Boolean) {

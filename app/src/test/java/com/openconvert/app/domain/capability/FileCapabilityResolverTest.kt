@@ -2,6 +2,7 @@ package com.openconvert.app.domain.capability
 
 import com.openconvert.app.BuildConfig
 import com.openconvert.app.R
+import com.openconvert.app.domain.model.ConversionGraph
 import com.openconvert.app.domain.model.ConversionKind
 import com.openconvert.app.domain.model.FileFormat
 import org.junit.Assert.assertEquals
@@ -90,6 +91,9 @@ class FileCapabilityResolverTest {
         assertTrue(caps.convertTargets.contains(FileFormat.TAR))
         val kinds = caps.tools.map { it.kind }
         assertTrue(kinds.contains(ConversionKind.ARCHIVE_EXTRACT))
+        assertTrue(
+            ConversionGraph.toolsFor(FileFormat.SEVEN_Z).contains(ConversionKind.ARCHIVE_EXTRACT),
+        )
         assertTrue(kinds.contains(ConversionKind.ARCHIVE_COMPRESS))
     }
 

@@ -171,7 +171,7 @@ internal fun ArchiveToolsScreen(
                 stringResource(R.string.archive_tool_extract_sub),
                 Icons.Outlined.Folder,
                 Modifier.fillMaxWidth(),
-                onClick = { extractPicker.launch(arrayOf("application/zip", "application/gzip", "application/x-tar", "application/x-bzip2")) },
+                onClick = { extractPicker.launch(arrayOf("application/zip", "application/gzip", "application/x-tar", "application/x-bzip2", "application/x-7z-compressed")) },
             )
         }
         item {
@@ -242,7 +242,7 @@ internal fun ArchiveCompressScreen(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 FieldLabel("压缩格式")
-                listOf(FileFormat.ZIP, FileFormat.TAR, FileFormat.GZIP, FileFormat.BZIP2).forEach { format ->
+                listOf(FileFormat.ZIP, FileFormat.TAR, FileFormat.SEVEN_Z, FileFormat.GZIP, FileFormat.BZIP2).forEach { format ->
                     val disabled = format in setOf(FileFormat.GZIP, FileFormat.BZIP2) && draft.documents.size > 1
                     Row(
                         modifier = Modifier

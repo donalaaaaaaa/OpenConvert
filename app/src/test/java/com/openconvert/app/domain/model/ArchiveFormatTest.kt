@@ -15,6 +15,16 @@ class ArchiveFormatTest {
         assertEquals(FileFormat.TAR_GZ, FileFormat.fromFileName("backup.tar.gz"))
         assertEquals(FileFormat.TAR_GZ, FileFormat.fromFileName("backup.tgz"))
         assertEquals(FileFormat.TAR_GZ, FileFormat.fromFileName("BACKUP.TAR.GZ"))
+        assertEquals(FileFormat.SEVEN_Z, FileFormat.fromFileName("backup.7z"))
+        assertEquals(FileFormat.SEVEN_Z, FileFormat.fromFileName("BACKUP.7Z"))
+    }
+
+    @Test
+    fun recognizesSevenZMagicAndMime() {
+        val header = byteArrayOf(0x37, 0x7A, 0xBC.toByte(), 0xAF.toByte(), 0x27, 0x1C)
+        assertEquals(FileFormat.SEVEN_Z, FileTypeDetector.fromMagicBytes(header, header.size))
+        assertEquals(FileFormat.SEVEN_Z, FileTypeDetector.fromMimeType("application/x-7z-compressed"))
+        assertTrue(ConversionGraph.toolsFor(FileFormat.SEVEN_Z).contains(ConversionKind.ARCHIVE_EXTRACT))
     }
 
     @Test

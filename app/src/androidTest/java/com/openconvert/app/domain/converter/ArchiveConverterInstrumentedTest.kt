@@ -9,6 +9,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.openconvert.app.domain.model.ConversionResult
 import com.openconvert.app.domain.model.FileFormat
+import com.openconvert.app.domain.model.FileTypeDetector
 import java.io.ByteArrayOutputStream
 import java.util.UUID
 import java.util.zip.ZipInputStream
@@ -122,6 +123,50 @@ class ArchiveConverterInstrumentedTest {
         } finally {
             runCatching { resolver.delete(input, null, null) }
             runCatching { resolver.delete(zip, null, null) }
+            outputDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun compressesAndExtractsSevenZ() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val resolver = context.contentResolver
+        val testId = UUID.randomUUID().toString()
+        val input = createTextFile(resolver, "seven-src-$testId.txt", "seven-z payload")
+        val pack = createPendingDownload(resolver, "seven-out-$testId.7z", "application/x-7z-compressed")
+        val outputDir = java.io.File(context.cacheDir, "extract-7z-$testId")
+        outputDir.mkdirs()
+        try {
+            val compress = ArchiveConverter(context).compress(
+                inputUris = listOf(input),
+                inputNames = listOf("seven-src-$testId.txt"),
+                outputUri = pack,
+                targetFormat = FileFormat.SEVEN_Z,
+            )
+            assertTrue("7z compress failed: $compress", compress is ConversionResult.Success)
+
+            resolver.openFileDescriptor(pack, "r")!!.use { pfd ->
+                java.io.FileInputStream(pfd.fileDescriptor).use { stream ->
+                    val header = ByteArray(6)
+                    assertEquals(6, stream.read(header))
+                    assertEquals(
+                        FileFormat.SEVEN_Z,
+                        FileTypeDetector.fromMagicBytes(header, 6),
+                    )
+                }
+            }
+
+            val extract = ArchiveConverter(context).extract(
+                inputUri = pack,
+                outputDirectory = DocumentFile.fromFile(outputDir),
+                sourceName = "seven-out-$testId.7z",
+            )
+            assertTrue("7z extract failed: $extract", extract is ConversionResult.Success)
+            val extracted = outputDir.listFiles()?.firstOrNull { it.name.startsWith("seven-src-") }
+            assertEquals("seven-z payload", extracted!!.readText())
+        } finally {
+            runCatching { resolver.delete(input, null, null) }
+            runCatching { resolver.delete(pack, null, null) }
             outputDir.deleteRecursively()
         }
     }

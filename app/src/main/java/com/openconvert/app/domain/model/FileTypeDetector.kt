@@ -44,6 +44,7 @@ object FileTypeDetector {
             "application/x-tar" -> FileFormat.TAR
             "application/gzip", "application/x-gzip" -> FileFormat.GZIP
             "application/x-bzip2" -> FileFormat.BZIP2
+            "application/x-7z-compressed", "application/x-7z" -> FileFormat.SEVEN_Z
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document" -> FileFormat.DOCX
             "application/msword" -> FileFormat.DOC
             "application/vnd.openxmlformats-officedocument.presentationml.presentation" -> FileFormat.PPTX
@@ -172,6 +173,15 @@ object FileTypeDetector {
             h[2] == 'h'.code.toByte()
         ) {
             return FileFormat.BZIP2
+        }
+
+        // 7z: 37 7A BC AF 27 1C
+        if (n >= 6 &&
+            h[0] == 0x37.toByte() && h[1] == 0x7A.toByte() &&
+            h[2] == 0xBC.toByte() && h[3] == 0xAF.toByte() &&
+            h[4] == 0x27.toByte() && h[5] == 0x1C.toByte()
+        ) {
+            return FileFormat.SEVEN_Z
         }
 
         return FileFormat.UNKNOWN

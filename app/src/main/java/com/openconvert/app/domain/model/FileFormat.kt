@@ -42,6 +42,7 @@ enum class FileFormat(
     TAR_GZ("TAR.GZ", FileCategory.ARCHIVE, setOf("tar.gz", "tgz"), "application/gzip"),
     GZIP("GZIP", FileCategory.ARCHIVE, setOf("gz"), "application/gzip"),
     BZIP2("BZIP2", FileCategory.ARCHIVE, setOf("bz2"), "application/x-bzip2"),
+    SEVEN_Z("7Z", FileCategory.ARCHIVE, setOf("7z"), "application/x-7z-compressed"),
     DOCX("DOCX", FileCategory.OFFICE, setOf("docx"), "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
     DOC("DOC", FileCategory.OFFICE, setOf("doc"), "application/msword"),
     PPTX("PPTX", FileCategory.OFFICE, setOf("pptx"), "application/vnd.openxmlformats-officedocument.presentationml.presentation"),

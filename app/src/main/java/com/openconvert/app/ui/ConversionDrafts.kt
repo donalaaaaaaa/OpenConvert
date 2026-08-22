@@ -121,6 +121,7 @@ data class ArchiveCompressDraft(
         get() = when (targetFormat) {
             FileFormat.ZIP -> "OpenConvert_${documents.size}_files.zip"
             FileFormat.TAR -> "OpenConvert_${documents.size}_files.tar"
+            FileFormat.SEVEN_Z -> "OpenConvert_${documents.size}_files.7z"
             FileFormat.GZIP -> "${documents.first().name.substringBeforeLast('.')}.gz"
             FileFormat.BZIP2 -> "${documents.first().name.substringBeforeLast('.')}.bz2"
             else -> "OpenConvert_archive.${targetFormat.preferredExtension}"
