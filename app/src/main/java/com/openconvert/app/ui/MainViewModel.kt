@@ -41,44 +41,65 @@ import kotlinx.coroutines.launch
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val app = application as OpenConvertApplication
     private val resolver = application.contentResolver
-    private var trackedTaskId: String? = null
-    private var observeJob: Job? = null
+    private val host = ConversionHost(app, viewModelScope)
+    private val pdf = PdfToolsCoordinator(host, app, resolver, viewModelScope)
+
+    val imagesToPdfDraft get() = pdf.imagesToPdfDraft
+    val pdfToImagesDraft get() = pdf.pdfToImagesDraft
+    val pdfMergeDraft get() = pdf.pdfMergeDraft
+    val pdfSplitDraft get() = pdf.pdfSplitDraft
+    val pdfDeleteDraft get() = pdf.pdfDeleteDraft
+    val pdfRotateDraft get() = pdf.pdfRotateDraft
+    val pdfCompressDraft get() = pdf.pdfCompressDraft
+    val pdfSecurityDraft get() = pdf.pdfSecurityDraft
+    val pdfCropDraft get() = pdf.pdfCropDraft
+    val pdfMetadataDraft get() = pdf.pdfMetadataDraft
+    val pdfPageManagerDraft get() = pdf.pdfPageManagerDraft
+
+    fun onImagesPicked(uris: List<Uri>) = pdf.onImagesPicked(uris)
+    fun movePdfImage(index: Int, direction: Int) = pdf.movePdfImage(index, direction)
+    fun removePdfImage(index: Int) = pdf.removePdfImage(index)
+    fun onPdfToImagesPicked(uri: Uri) = pdf.onPdfToImagesPicked(uri)
+    fun selectPdfImageFormat(format: FileFormat) = pdf.selectPdfImageFormat(format)
+    fun updatePdfImageRanges(value: String) = pdf.updatePdfImageRanges(value)
+    fun onPdfsToMergePicked(uris: List<Uri>) = pdf.onPdfsToMergePicked(uris)
+    fun moveMergePdf(index: Int, direction: Int) = pdf.moveMergePdf(index, direction)
+    fun removeMergePdf(index: Int) = pdf.removeMergePdf(index)
+    fun onPdfToSplitPicked(uri: Uri) = pdf.onPdfToSplitPicked(uri)
+    fun updatePdfSplitRanges(value: String) = pdf.updatePdfSplitRanges(value)
+    fun startImagesToPdf(outputUri: Uri) = pdf.startImagesToPdf(outputUri)
+    fun startPdfToImages(outputTreeUri: Uri) = pdf.startPdfToImages(outputTreeUri)
+    fun startPdfMerge(outputUri: Uri) = pdf.startPdfMerge(outputUri)
+    fun startPdfSplit(outputTreeUri: Uri) = pdf.startPdfSplit(outputTreeUri)
+    fun onPdfToDeletePicked(uri: Uri) = pdf.onPdfToDeletePicked(uri)
+    fun togglePdfDeletePage(page: Int) = pdf.togglePdfDeletePage(page)
+    fun startPdfDelete(outputUri: Uri) = pdf.startPdfDelete(outputUri)
+    fun onPdfToRotatePicked(uri: Uri) = pdf.onPdfToRotatePicked(uri)
+    fun selectPdfRotateDegrees(degrees: Int) = pdf.selectPdfRotateDegrees(degrees)
+    fun updatePdfRotateRanges(value: String) = pdf.updatePdfRotateRanges(value)
+    fun startPdfRotate(outputUri: Uri) = pdf.startPdfRotate(outputUri)
+    fun onPdfCompressPicked(uri: Uri) = pdf.onPdfCompressPicked(uri)
+    fun selectPdfCompressPreset(preset: com.openconvert.app.domain.converter.PdfCompressPreset) = pdf.selectPdfCompressPreset(preset)
+    fun startPdfCompress(outputUri: Uri) = pdf.startPdfCompress(outputUri)
+    fun onPdfSecurityPicked(uri: Uri, isEncrypt: Boolean) = pdf.onPdfSecurityPicked(uri, isEncrypt)
+    fun setPdfSecurityPassword(password: String) = pdf.setPdfSecurityPassword(password)
+    fun startPdfSecurity(outputUri: Uri) = pdf.startPdfSecurity(outputUri)
+    fun onPdfCropPicked(uri: Uri) = pdf.onPdfCropPicked(uri)
+    fun setPdfCropMargins(left: Float, top: Float, right: Float, bottom: Float) = pdf.setPdfCropMargins(left, top, right, bottom)
+    fun startPdfCrop(outputUri: Uri) = pdf.startPdfCrop(outputUri)
+    fun onPdfMetadataPicked(uri: Uri) = pdf.onPdfMetadataPicked(uri)
+    fun startPdfMetadata(outputUri: Uri, title: String, author: String, subject: String, keywords: String) = pdf.startPdfMetadata(outputUri, title, author, subject, keywords)
+    fun onPdfPageManagerPicked(uri: Uri) = pdf.onPdfPageManagerPicked(uri)
+    fun reorderPdfPages(fromIndex: Int, toIndex: Int) = pdf.reorderPdfPages(fromIndex, toIndex)
+    fun rotatePdfPages(targetIds: Set<String>, delta: Int) = pdf.rotatePdfPages(targetIds, delta)
+    fun deletePdfPages(targetIds: Set<String>) = pdf.deletePdfPages(targetIds)
+    fun startPdfPageManagerExport(outputUri: Uri) = pdf.startPdfPageManagerExport(outputUri)
+
+    private var batchObserveJob: Job? = null
 
     private val _draft = MutableStateFlow<ConversionDraft?>(null)
     val draft: StateFlow<ConversionDraft?> = _draft.asStateFlow()
 
-    private val _imagesToPdfDraft = MutableStateFlow<ImagesToPdfDraft?>(null)
-    val imagesToPdfDraft: StateFlow<ImagesToPdfDraft?> = _imagesToPdfDraft.asStateFlow()
-
-    private val _pdfToImagesDraft = MutableStateFlow<PdfToImagesDraft?>(null)
-    val pdfToImagesDraft: StateFlow<PdfToImagesDraft?> = _pdfToImagesDraft.asStateFlow()
-
-    private val _pdfMergeDraft = MutableStateFlow<PdfMergeDraft?>(null)
-    val pdfMergeDraft: StateFlow<PdfMergeDraft?> = _pdfMergeDraft.asStateFlow()
-
-    private val _pdfSplitDraft = MutableStateFlow<PdfSplitDraft?>(null)
-    val pdfSplitDraft: StateFlow<PdfSplitDraft?> = _pdfSplitDraft.asStateFlow()
-
-    private val _pdfDeleteDraft = MutableStateFlow<PdfDeletePagesDraft?>(null)
-    val pdfDeleteDraft: StateFlow<PdfDeletePagesDraft?> = _pdfDeleteDraft.asStateFlow()
-
-    private val _pdfRotateDraft = MutableStateFlow<PdfRotatePagesDraft?>(null)
-    val pdfRotateDraft: StateFlow<PdfRotatePagesDraft?> = _pdfRotateDraft.asStateFlow()
-
-    private val _pdfCompressDraft = MutableStateFlow<PdfCompressDraft?>(null)
-    val pdfCompressDraft: StateFlow<PdfCompressDraft?> = _pdfCompressDraft.asStateFlow()
-
-    private val _pdfSecurityDraft = MutableStateFlow<PdfSecurityDraft?>(null)
-    val pdfSecurityDraft: StateFlow<PdfSecurityDraft?> = _pdfSecurityDraft.asStateFlow()
-
-    private val _pdfCropDraft = MutableStateFlow<PdfCropDraft?>(null)
-    val pdfCropDraft: StateFlow<PdfCropDraft?> = _pdfCropDraft.asStateFlow()
-
-    private val _pdfMetadataDraft = MutableStateFlow<PdfMetadataDraft?>(null)
-    val pdfMetadataDraft: StateFlow<PdfMetadataDraft?> = _pdfMetadataDraft.asStateFlow()
-
-    private val _pdfPageManagerDraft = MutableStateFlow<PdfPageManagerDraft?>(null)
-    val pdfPageManagerDraft: StateFlow<PdfPageManagerDraft?> = _pdfPageManagerDraft.asStateFlow()
 
     private val _archiveCompressDraft = MutableStateFlow<ArchiveCompressDraft?>(null)
     val archiveCompressDraft: StateFlow<ArchiveCompressDraft?> = _archiveCompressDraft.asStateFlow()
@@ -95,11 +116,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _batchUiState = MutableStateFlow<BatchUiState>(BatchUiState.Idle)
     val batchUiState: StateFlow<BatchUiState> = _batchUiState.asStateFlow()
 
-    private val _conversionState = MutableStateFlow<ConversionUiState>(ConversionUiState.Configuring)
-    val conversionState: StateFlow<ConversionUiState> = _conversionState.asStateFlow()
-
-    private val _message = MutableStateFlow<String?>(null)
-    val message: StateFlow<String?> = _message.asStateFlow()
+    val conversionState: StateFlow<ConversionUiState> = host.conversionState
+    val message: StateFlow<String?> = host.message
 
     /**
      * 首页 UI 2.0（计划书 §六）：用户选中的文件及其可执行能力。
@@ -162,13 +180,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         val document = runCatching { resolver.readSelectedDocument(uri) }
             .getOrElse {
-                _message.value = "无法读取所选文件"
+                host.postedMessage = "无法读取所选文件"
                 return false
             }
 
         val capabilities = FileCapabilityResolver.resolve(document.format)
         if (!capabilities.hasAnything) {
-            _message.value = if (document.format == FileFormat.UNKNOWN) {
+            host.postedMessage = if (document.format == FileFormat.UNKNOWN) {
                 "暂不支持此文件格式"
             } else {
                 "暂不支持 ${document.format.displayName}"
@@ -185,7 +203,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun chooseConvertTarget(format: FileFormat): Boolean {
         val document = _pickedFile.value ?: return false
         if (!FileCapabilityResolver.canConvertInEdition(document.format, format)) {
-            _message.value = if (document.format.category == FileCategory.OFFICE) {
+            host.postedMessage = if (document.format.category == FileCategory.OFFICE) {
                 "当前为轻量版，Office 转换需要安装 Office 版"
             } else {
                 "暂不支持 ${document.format.displayName} → ${format.displayName}"
@@ -193,7 +211,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return false
         }
         _draft.value = ConversionDraft(document, format, defaultQualityFor(document.format))
-        _conversionState.value = ConversionUiState.Configuring
+        host.uiState = ConversionUiState.Configuring
         return true
     }
 
@@ -209,12 +227,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         val document = runCatching { resolver.readSelectedDocument(uri) }
             .getOrElse {
-                _message.value = "无法读取所选文件"
+                host.postedMessage = "无法读取所选文件"
                 return false
             }
 
         if (document.format == FileFormat.UNKNOWN) {
-            _message.value = "暂不支持此文件格式"
+            host.postedMessage = "暂不支持此文件格式"
             return false
         }
 
@@ -222,7 +240,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (firstTarget == null) {
             // 有工具能力但没有一进一出的转换边（典型：PDF）——引导到对应工具页，
             // 而不是笼统地说「不支持」。
-            _message.value = if (document.format.category == FileCategory.OFFICE) {
+            host.postedMessage = if (document.format.category == FileCategory.OFFICE) {
                 "当前为轻量版，Office 转换需要安装 Office 版"
             } else if (com.openconvert.app.domain.model.ConversionGraph.toolsFor(document.format).size > 1) {
                 "${document.format.displayName} 请在工具页处理"
@@ -233,7 +251,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         _draft.value = ConversionDraft(document, firstTarget, defaultQualityFor(document.format))
-        _conversionState.value = ConversionUiState.Configuring
+        host.uiState = ConversionUiState.Configuring
         return true
     }
 
@@ -276,7 +294,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun applyPreset(preset: com.openconvert.app.domain.preset.Preset): Boolean {
         val current = _draft.value ?: return false
         if (!ConversionGraph.canConvert(current.document.format, preset.targetFormat)) {
-            _message.value =
+            host.postedMessage =
                 "「${preset.name}」的目标格式 ${preset.targetFormat.displayName} 不适用于 ${current.document.format.displayName}"
             return false
         }
@@ -308,7 +326,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun saveDraftAsPreset(name: String) {
         val draft = _draft.value ?: return
         if (name.isBlank()) {
-            _message.value = "请输入预设名称"
+            host.postedMessage = "请输入预设名称"
             return
         }
         viewModelScope.launch {
@@ -335,14 +353,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 ),
             )
             _appliedPresetId.value = saved.id
-            _message.value = "已保存预设「${saved.name}」"
+            host.postedMessage = "已保存预设「${saved.name}」"
         }
     }
 
     fun deletePreset(preset: com.openconvert.app.domain.preset.Preset) {
         viewModelScope.launch {
             val deleted = app.presetStore.deleteCustom(preset.id)
-            _message.value = if (deleted) {
+            host.postedMessage = if (deleted) {
                 "已删除预设「${preset.name}」"
             } else {
                 "内置预设不可删除"
@@ -353,129 +371,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setDefaultPreset(preset: com.openconvert.app.domain.preset.Preset) {
         viewModelScope.launch {
             app.presetStore.setDefault(preset)
-            _message.value = "「${preset.name}」已设为默认"
+            host.postedMessage = "「${preset.name}」已设为默认"
         }
     }
 
-    fun onImagesPicked(uris: List<Uri>): Boolean {
-        val uniqueUris = uris.distinct()
-        if (uniqueUris.isEmpty()) return false
-        if (uniqueUris.size > MAX_PDF_IMAGES) {
-            _message.value = "一次最多选择 $MAX_PDF_IMAGES 张图片"
-            return false
-        }
-
-        val documents = uniqueUris.mapNotNull { uri ->
-            runCatching {
-                resolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            runCatching { resolver.readSelectedDocument(uri) }.getOrNull()
-        }.filter { it.format.category == FileCategory.IMAGE }
-
-        if (documents.isEmpty()) {
-            _message.value = "没有读到可用的 JPG、PNG 或 WEBP 图片"
-            return false
-        }
-        if (documents.size != uniqueUris.size) {
-            _message.value = "已忽略无法读取或不支持的文件"
-        }
-
-        _imagesToPdfDraft.value = ImagesToPdfDraft(documents)
-        _conversionState.value = ConversionUiState.Configuring
-        return true
-    }
-
-    fun movePdfImage(index: Int, direction: Int) {
-        val current = _imagesToPdfDraft.value ?: return
-        val target = index + direction
-        if (index !in current.documents.indices || target !in current.documents.indices) return
-        val reordered = current.documents.toMutableList().apply {
-            val item = removeAt(index)
-            add(target, item)
-        }
-        _imagesToPdfDraft.value = current.copy(documents = reordered)
-    }
-
-    fun removePdfImage(index: Int) {
-        val current = _imagesToPdfDraft.value ?: return
-        if (index !in current.documents.indices || current.documents.size == 1) return
-        _imagesToPdfDraft.value = current.copy(
-            documents = current.documents.filterIndexed { itemIndex, _ -> itemIndex != index },
-        )
-    }
-
-    fun onPdfToImagesPicked(uri: Uri): Boolean {
-        val document = readPdfDocument(uri) ?: return false
-        val pageCount = readPdfPageCount(uri) ?: return false
-        _pdfToImagesDraft.value = PdfToImagesDraft(document, pageCount)
-        _conversionState.value = ConversionUiState.Configuring
-        return true
-    }
-
-    fun selectPdfImageFormat(format: FileFormat) {
-        if (format !in setOf(FileFormat.JPG, FileFormat.PNG)) return
-        _pdfToImagesDraft.value = _pdfToImagesDraft.value?.copy(targetFormat = format)
-    }
-
-    fun updatePdfImageRanges(value: String) {
-        _pdfToImagesDraft.value = _pdfToImagesDraft.value?.copy(pageRanges = value)
-    }
-
-    fun onPdfsToMergePicked(uris: List<Uri>): Boolean {
-        val uniqueUris = uris.distinct()
-        if (uniqueUris.size < 2) {
-            _message.value = "请至少选择 2 个 PDF"
-            return false
-        }
-        if (uniqueUris.size > MAX_MERGE_PDFS) {
-            _message.value = "一次最多合并 $MAX_MERGE_PDFS 个 PDF"
-            return false
-        }
-        val documents = uniqueUris.mapNotNull(::readPdfDocument)
-        if (documents.size != uniqueUris.size) {
-            _message.value = "存在无法读取或不是 PDF 的文件"
-            return false
-        }
-        _pdfMergeDraft.value = PdfMergeDraft(documents)
-        _conversionState.value = ConversionUiState.Configuring
-        return true
-    }
-
-    fun moveMergePdf(index: Int, direction: Int) {
-        val current = _pdfMergeDraft.value ?: return
-        val target = index + direction
-        if (index !in current.documents.indices || target !in current.documents.indices) return
-        val reordered = current.documents.toMutableList().apply {
-            val item = removeAt(index)
-            add(target, item)
-        }
-        _pdfMergeDraft.value = current.copy(documents = reordered)
-    }
-
-    fun removeMergePdf(index: Int) {
-        val current = _pdfMergeDraft.value ?: return
-        if (index !in current.documents.indices || current.documents.size <= 2) return
-        _pdfMergeDraft.value = current.copy(
-            documents = current.documents.filterIndexed { itemIndex, _ -> itemIndex != index },
-        )
-    }
-
-    fun onPdfToSplitPicked(uri: Uri): Boolean {
-        val document = readPdfDocument(uri) ?: return false
-        val pageCount = readPdfPageCount(uri) ?: return false
-        _pdfSplitDraft.value = PdfSplitDraft(document, pageCount)
-        _conversionState.value = ConversionUiState.Configuring
-        return true
-    }
-
-    fun updatePdfSplitRanges(value: String) {
-        _pdfSplitDraft.value = _pdfSplitDraft.value?.copy(pageRanges = value)
-    }
 
     fun startConversion(outputUri: Uri) {
         val current = _draft.value ?: return
         if (!current.engineAvailable) {
-            _message.value = "${current.document.format.displayName} → ${current.targetFormat.displayName} 引擎尚未接入"
+            host.postedMessage = "${current.document.format.displayName} → ${current.targetFormat.displayName} 引擎尚未接入"
             return
         }
         persistDocumentPermission(outputUri)
@@ -509,450 +413,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    fun startImagesToPdf(outputUri: Uri) {
-        val current = _imagesToPdfDraft.value ?: return
-        if (current.documents.isEmpty()) return
-        persistDocumentPermission(outputUri)
-        submit(
-            ConversionTask(
-                id = UUID.randomUUID().toString(),
-                sourceUri = current.documents.first().uri.toString(),
-                sourceName = if (current.documents.size == 1) current.documents.first().name else "${current.documents.size} 张图片",
-                sourceFormat = current.documents.first().format,
-                targetFormat = FileFormat.PDF,
-                outputUri = outputUri.toString(),
-                fileSize = current.documents.sumOf { it.sizeBytes },
-                progress = 1,
-                status = ConversionStatus.PENDING,
-                kind = ConversionKind.IMAGES_TO_PDF,
-                payload = ConversionPayload(sourceUris = current.documents.map { it.uri.toString() }),
-                outputName = current.suggestedOutputName,
-            ),
-        )
-    }
-
-    fun startPdfToImages(outputTreeUri: Uri) {
-        val current = _pdfToImagesDraft.value ?: return
-        val ranges = parsePdfPageRanges(current.pageRanges, current.pageCount).getOrElse {
-            _message.value = it.message ?: "页码格式不正确"
-            return
-        }
-        val pages = flattenPdfPages(ranges)
-        if (pages.size > MAX_EXPORTED_PDF_PAGES) {
-            _message.value = "一次最多导出 $MAX_EXPORTED_PDF_PAGES 页"
-            return
-        }
-        persistTreePermission(outputTreeUri)
-        submit(
-            ConversionTask(
-                id = UUID.randomUUID().toString(),
-                sourceUri = current.document.uri.toString(),
-                sourceName = current.document.name,
-                sourceFormat = FileFormat.PDF,
-                targetFormat = current.targetFormat,
-                fileSize = current.document.sizeBytes,
-                progress = 1,
-                status = ConversionStatus.PENDING,
-                kind = ConversionKind.PDF_TO_IMAGES,
-                payload = ConversionPayload(
-                    sourceUris = listOf(current.document.uri.toString()),
-                    pageRanges = current.pageRanges,
-                    pages = pages,
-                    outputTreeUri = outputTreeUri.toString(),
-                ),
-                outputName = "${pages.size} 个 ${current.targetFormat.displayName} 文件",
-            ),
-        )
-    }
-
-    fun startPdfMerge(outputUri: Uri) {
-        val current = _pdfMergeDraft.value ?: return
-        if (current.documents.size < 2) return
-        persistDocumentPermission(outputUri)
-        submit(
-            ConversionTask(
-                id = UUID.randomUUID().toString(),
-                sourceUri = current.documents.first().uri.toString(),
-                sourceName = "${current.documents.size} 个 PDF",
-                sourceFormat = FileFormat.PDF,
-                targetFormat = FileFormat.PDF,
-                outputUri = outputUri.toString(),
-                fileSize = current.documents.sumOf { it.sizeBytes },
-                progress = 1,
-                status = ConversionStatus.PENDING,
-                kind = ConversionKind.PDF_MERGE,
-                payload = ConversionPayload(sourceUris = current.documents.map { it.uri.toString() }),
-                outputName = current.suggestedOutputName,
-            ),
-        )
-    }
-
-    fun startPdfSplit(outputTreeUri: Uri) {
-        val current = _pdfSplitDraft.value ?: return
-        val ranges = parsePdfPageRanges(current.pageRanges, current.pageCount).getOrElse {
-            _message.value = it.message ?: "页码格式不正确"
-            return
-        }
-        if (ranges.size > MAX_SPLIT_OUTPUTS) {
-            _message.value = "一次最多生成 $MAX_SPLIT_OUTPUTS 个 PDF"
-            return
-        }
-        persistTreePermission(outputTreeUri)
-        submit(
-            ConversionTask(
-                id = UUID.randomUUID().toString(),
-                sourceUri = current.document.uri.toString(),
-                sourceName = current.document.name,
-                sourceFormat = FileFormat.PDF,
-                targetFormat = FileFormat.PDF,
-                fileSize = current.document.sizeBytes,
-                progress = 1,
-                status = ConversionStatus.PENDING,
-                kind = ConversionKind.PDF_SPLIT,
-                payload = ConversionPayload(
-                    sourceUris = listOf(current.document.uri.toString()),
-                    pageRanges = current.pageRanges,
-                    outputTreeUri = outputTreeUri.toString(),
-                ),
-                outputName = "${ranges.size} 个 PDF 文件",
-            ),
-        )
-    }
-
-    fun onPdfToDeletePicked(uri: Uri): Boolean {
-        val document = readPdfDocument(uri) ?: return false
-        val pageCount = readPdfPageCount(uri) ?: return false
-        if (pageCount <= 1) {
-            _message.value = "PDF 只有一页，无需删除"
-            return false
-        }
-        _pdfDeleteDraft.value = PdfDeletePagesDraft(document, pageCount)
-        _conversionState.value = ConversionUiState.Configuring
-        return true
-    }
-
-    fun togglePdfDeletePage(page: Int) {
-        val current = _pdfDeleteDraft.value ?: return
-        val selected = if (page in current.selectedPages) {
-            current.selectedPages - page
-        } else {
-            current.selectedPages + page
-        }
-        _pdfDeleteDraft.value = current.copy(selectedPages = selected)
-    }
-
-    fun startPdfDelete(outputUri: Uri) {
-        val current = _pdfDeleteDraft.value ?: return
-        val pages = current.selectedPages.sorted()
-        if (pages.isEmpty()) {
-            _message.value = "请先选择要删除的页面"
-            return
-        }
-        if (pages.size >= current.pageCount) {
-            _message.value = "不能删除全部页面"
-            return
-        }
-        persistDocumentPermission(outputUri)
-        submit(
-            ConversionTask(
-                id = UUID.randomUUID().toString(),
-                sourceUri = current.document.uri.toString(),
-                sourceName = current.document.name,
-                sourceFormat = FileFormat.PDF,
-                targetFormat = FileFormat.PDF,
-                outputUri = outputUri.toString(),
-                fileSize = current.document.sizeBytes,
-                progress = 1,
-                status = ConversionStatus.PENDING,
-                kind = ConversionKind.PDF_DELETE_PAGES,
-                payload = ConversionPayload(
-                    sourceUris = listOf(current.document.uri.toString()),
-                    pages = pages,
-                ),
-                outputName = "${current.remaining} 页的 PDF",
-            ),
-        )
-    }
-
-    fun onPdfToRotatePicked(uri: Uri): Boolean {
-        val document = readPdfDocument(uri) ?: return false
-        val pageCount = readPdfPageCount(uri) ?: return false
-        _pdfRotateDraft.value = PdfRotatePagesDraft(document, pageCount)
-        _conversionState.value = ConversionUiState.Configuring
-        return true
-    }
-
-    fun selectPdfRotateDegrees(degrees: Int) {
-        _pdfRotateDraft.value = _pdfRotateDraft.value?.copy(degrees = degrees)
-    }
-
-    fun updatePdfRotateRanges(value: String) {
-        _pdfRotateDraft.value = _pdfRotateDraft.value?.copy(pageRanges = value)
-    }
-
-    fun startPdfRotate(outputUri: Uri) {
-        val current = _pdfRotateDraft.value ?: return
-        val pages = if (current.pageRanges.isBlank()) {
-            emptyList()
-        } else {
-            val ranges = parsePdfPageRanges(current.pageRanges, current.pageCount).getOrElse {
-                _message.value = it.message ?: "页码格式不正确"
-                return
-            }
-            flattenPdfPages(ranges)
-        }
-        persistDocumentPermission(outputUri)
-        submit(
-            ConversionTask(
-                id = UUID.randomUUID().toString(),
-                sourceUri = current.document.uri.toString(),
-                sourceName = current.document.name,
-                sourceFormat = FileFormat.PDF,
-                targetFormat = FileFormat.PDF,
-                outputUri = outputUri.toString(),
-                fileSize = current.document.sizeBytes,
-                progress = 1,
-                status = ConversionStatus.PENDING,
-                kind = ConversionKind.PDF_ROTATE_PAGES,
-                payload = ConversionPayload(
-                    sourceUris = listOf(current.document.uri.toString()),
-                    pages = pages,
-                    rotateDegrees = current.degrees,
-                ),
-                outputName = "旋转 ${current.degrees}° 的 PDF",
-            ),
-        )
-    }
-
-    // PDF 2.0: 压缩
-    fun onPdfCompressPicked(uri: Uri): Boolean {
-        val document = readPdfDocument(uri) ?: return false
-        _pdfCompressDraft.value = PdfCompressDraft(document)
-        _conversionState.value = ConversionUiState.Configuring
-        return true
-    }
-
-    fun selectPdfCompressPreset(preset: com.openconvert.app.domain.converter.PdfCompressPreset) {
-        _pdfCompressDraft.value = _pdfCompressDraft.value?.copy(preset = preset)
-    }
-
-    fun startPdfCompress(outputUri: Uri) {
-        val current = _pdfCompressDraft.value ?: return
-        persistDocumentPermission(outputUri)
-        submit(
-            ConversionTask(
-                id = UUID.randomUUID().toString(),
-                sourceUri = current.document.uri.toString(),
-                sourceName = current.document.name,
-                sourceFormat = FileFormat.PDF,
-                targetFormat = FileFormat.PDF,
-                outputUri = outputUri.toString(),
-                fileSize = current.document.sizeBytes,
-                progress = 1,
-                status = ConversionStatus.PENDING,
-                kind = ConversionKind.PDF_COMPRESS,
-                payload = ConversionPayload(
-                    sourceUris = listOf(current.document.uri.toString()),
-                    compressDpi = current.preset.maxDpi,
-                    compressQuality = current.preset.quality,
-                ),
-                outputName = "压缩后的 PDF",
-            ),
-        )
-    }
-
-    // PDF 2.0: 安全 (加密/解密)
-    fun onPdfSecurityPicked(uri: Uri, isEncrypt: Boolean): Boolean {
-        val document = readPdfDocument(uri) ?: return false
-        _pdfSecurityDraft.value = PdfSecurityDraft(document, isEncrypt = isEncrypt)
-        _conversionState.value = ConversionUiState.Configuring
-        return true
-    }
-
-    fun setPdfSecurityPassword(password: String) {
-        _pdfSecurityDraft.value = _pdfSecurityDraft.value?.copy(password = password)
-    }
-
-    fun startPdfSecurity(outputUri: Uri) {
-        val current = _pdfSecurityDraft.value ?: return
-        if (current.password.isBlank()) {
-            _message.value = "请输入密码"
-            return
-        }
-        persistDocumentPermission(outputUri)
-        submit(
-            ConversionTask(
-                id = UUID.randomUUID().toString(),
-                sourceUri = current.document.uri.toString(),
-                sourceName = current.document.name,
-                sourceFormat = FileFormat.PDF,
-                targetFormat = FileFormat.PDF,
-                outputUri = outputUri.toString(),
-                fileSize = current.document.sizeBytes,
-                progress = 1,
-                status = ConversionStatus.PENDING,
-                kind = ConversionKind.PDF_SECURITY,
-                payload = ConversionPayload(
-                    sourceUris = listOf(current.document.uri.toString()),
-                    password = current.password,
-                    isEncrypt = current.isEncrypt,
-                ),
-                outputName = if (current.isEncrypt) "加密保护的 PDF" else "解密后的 PDF",
-            ),
-        )
-    }
-
-    // PDF 2.0: 页面裁剪
-    fun onPdfCropPicked(uri: Uri): Boolean {
-        val document = readPdfDocument(uri) ?: return false
-        val pageCount = readPdfPageCount(uri) ?: return false
-        _pdfCropDraft.value = PdfCropDraft(document, pageCount)
-        _conversionState.value = ConversionUiState.Configuring
-        return true
-    }
-
-    fun setPdfCropMargins(left: Float, top: Float, right: Float, bottom: Float) {
-        _pdfCropDraft.value = _pdfCropDraft.value?.copy(
-            leftPt = left,
-            topPt = top,
-            rightPt = right,
-            bottomPt = bottom,
-        )
-    }
-
-    fun startPdfCrop(outputUri: Uri) {
-        val current = _pdfCropDraft.value ?: return
-        persistDocumentPermission(outputUri)
-        submit(
-            ConversionTask(
-                id = UUID.randomUUID().toString(),
-                sourceUri = current.document.uri.toString(),
-                sourceName = current.document.name,
-                sourceFormat = FileFormat.PDF,
-                targetFormat = FileFormat.PDF,
-                outputUri = outputUri.toString(),
-                fileSize = current.document.sizeBytes,
-                progress = 1,
-                status = ConversionStatus.PENDING,
-                kind = ConversionKind.PDF_CROP,
-                payload = ConversionPayload(
-                    sourceUris = listOf(current.document.uri.toString()),
-                    cropMarginsLeft = current.leftPt,
-                    cropMarginsTop = current.topPt,
-                    cropMarginsRight = current.rightPt,
-                    cropMarginsBottom = current.bottomPt,
-                ),
-                outputName = "裁剪边距后的 PDF",
-            ),
-        )
-    }
-
-    // PDF 2.0: 元数据
-    fun onPdfMetadataPicked(uri: Uri): Boolean {
-        val document = readPdfDocument(uri) ?: return false
-        viewModelScope.launch {
-            val meta = runCatching {
-                com.openconvert.app.domain.pdf.PdfMetadataManager(app).readMetadata(uri)
-            }.getOrElse { com.openconvert.app.domain.pdf.PdfMetadataInfo() }
-            _pdfMetadataDraft.value = PdfMetadataDraft(document, meta)
-            _conversionState.value = ConversionUiState.Configuring
-        }
-        return true
-    }
-
-    fun startPdfMetadata(outputUri: Uri, title: String, author: String, subject: String, keywords: String) {
-        val current = _pdfMetadataDraft.value ?: return
-        persistDocumentPermission(outputUri)
-        submit(
-            ConversionTask(
-                id = UUID.randomUUID().toString(),
-                sourceUri = current.document.uri.toString(),
-                sourceName = current.document.name,
-                sourceFormat = FileFormat.PDF,
-                targetFormat = FileFormat.PDF,
-                outputUri = outputUri.toString(),
-                fileSize = current.document.sizeBytes,
-                progress = 1,
-                status = ConversionStatus.PENDING,
-                kind = ConversionKind.PDF_METADATA,
-                payload = ConversionPayload(
-                    sourceUris = listOf(current.document.uri.toString()),
-                    metadataTitle = title,
-                    metadataAuthor = author,
-                    metadataSubject = subject,
-                    metadataKeywords = keywords,
-                ),
-                outputName = "更新元数据后的 PDF",
-            ),
-        )
-    }
-
-    // PDF 2.0: 页面管理器
-    fun onPdfPageManagerPicked(uri: Uri): Boolean {
-        val document = readPdfDocument(uri) ?: return false
-        viewModelScope.launch {
-            val pages = runCatching {
-                com.openconvert.app.domain.pdf.PdfPageManager(app).parsePages(uri)
-            }.getOrElse { emptyList() }
-            if (pages.isEmpty()) {
-                _message.value = "无法解析 PDF 页面"
-                return@launch
-            }
-            _pdfPageManagerDraft.value = PdfPageManagerDraft(document, pages)
-            _conversionState.value = ConversionUiState.Configuring
-        }
-        return true
-    }
-
-    fun reorderPdfPages(fromIndex: Int, toIndex: Int) {
-        val current = _pdfPageManagerDraft.value ?: return
-        val reordered = com.openconvert.app.domain.pdf.PdfPageManager(app).reorder(current.pages, fromIndex, toIndex)
-        _pdfPageManagerDraft.value = current.copy(pages = reordered)
-    }
-
-    fun rotatePdfPages(targetIds: Set<String>, delta: Int) {
-        val current = _pdfPageManagerDraft.value ?: return
-        val rotated = com.openconvert.app.domain.pdf.PdfPageManager(app).rotate(current.pages, targetIds, delta)
-        _pdfPageManagerDraft.value = current.copy(pages = rotated)
-    }
-
-    fun deletePdfPages(targetIds: Set<String>) {
-        val current = _pdfPageManagerDraft.value ?: return
-        val deleted = runCatching {
-            com.openconvert.app.domain.pdf.PdfPageManager(app).delete(current.pages, targetIds)
-        }.getOrElse {
-            _message.value = it.message ?: "删除失败"
-            return
-        }
-        _pdfPageManagerDraft.value = current.copy(pages = deleted)
-    }
-
-    fun startPdfPageManagerExport(outputUri: Uri) {
-        val current = _pdfPageManagerDraft.value ?: return
-        persistDocumentPermission(outputUri)
-        submit(
-            ConversionTask(
-                id = UUID.randomUUID().toString(),
-                sourceUri = current.document.uri.toString(),
-                sourceName = current.document.name,
-                sourceFormat = FileFormat.PDF,
-                targetFormat = FileFormat.PDF,
-                outputUri = outputUri.toString(),
-                fileSize = current.document.sizeBytes,
-                progress = 1,
-                status = ConversionStatus.PENDING,
-                kind = ConversionKind.PDF_PAGE_MANAGER,
-                payload = ConversionPayload(
-                    sourceUris = listOf(current.document.uri.toString()),
-                    pages = current.pages.map { it.originalPageIndex },
-                    rotateDegrees = current.pages.firstOrNull()?.rotationDegrees ?: 0,
-                ),
-                outputName = "重新排版的 PDF",
-            ),
-        )
-    }
-
-    // 缓存管理
     fun refreshCacheStats() {
         viewModelScope.launch {
             _cacheStats.value = app.cacheManager.getCacheStats()
@@ -963,7 +423,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             app.cacheManager.clearCache()
             _cacheStats.value = app.cacheManager.getCacheStats()
-            _message.value = "缓存已清理"
+            host.postedMessage = "缓存已清理"
         }
     }
 
@@ -985,10 +445,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         com.openconvert.app.domain.benchmark.BenchmarkReportFormat.MARKDOWN -> "Markdown"
                         com.openconvert.app.domain.benchmark.BenchmarkReportFormat.CSV -> "CSV"
                     }
-                    _message.value = "已导出 $label 报告（${exported.recordCount} 条记录）"
+                    host.postedMessage = "已导出 $label 报告（${exported.recordCount} 条记录）"
                 },
                 onFailure = { error ->
-                    _message.value = error.message ?: "Benchmark 报告导出失败"
+                    host.postedMessage = error.message ?: "Benchmark 报告导出失败"
                 },
             )
         }
@@ -998,7 +458,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val uniqueUris = uris.distinct()
         if (uniqueUris.isEmpty()) return false
         if (uniqueUris.size > MAX_BATCH_FILES) {
-            _message.value = "一次最多选择 $MAX_BATCH_FILES 个文件"
+            host.postedMessage = "一次最多选择 $MAX_BATCH_FILES 个文件"
             return false
         }
         val documents = uniqueUris.mapNotNull { uri ->
@@ -1008,15 +468,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             runCatching { resolver.readSelectedDocument(uri) }.getOrNull()
         }.filter { it.format != FileFormat.UNKNOWN }
         if (documents.isEmpty()) {
-            _message.value = "没有读到可用的文件"
+            host.postedMessage = "没有读到可用的文件"
             return false
         }
         if (documents.size != uniqueUris.size) {
-            _message.value = "已忽略无法读取或不支持的文件"
+            host.postedMessage = "已忽略无法读取或不支持的文件"
         }
         val firstTarget = if (documents.size == 1) FileFormat.ZIP else FileFormat.ZIP
         _archiveCompressDraft.value = ArchiveCompressDraft(documents, firstTarget)
-        _conversionState.value = ConversionUiState.Configuring
+        host.uiState = ConversionUiState.Configuring
         return true
     }
 
@@ -1024,7 +484,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val current = _archiveCompressDraft.value ?: return
         if (format !in setOf(FileFormat.ZIP, FileFormat.TAR, FileFormat.GZIP, FileFormat.BZIP2)) return
         if (format in setOf(FileFormat.GZIP, FileFormat.BZIP2) && current.documents.size > 1) {
-            _message.value = "${format.displayName} 只支持单个文件压缩"
+            host.postedMessage = "${format.displayName} 只支持单个文件压缩"
             return
         }
         _archiveCompressDraft.value = current.copy(targetFormat = format)
@@ -1033,7 +493,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun startArchiveCompress(outputUri: Uri) {
         val current = _archiveCompressDraft.value ?: return
         if (current.singleFileOnly && current.documents.size > 1) {
-            _message.value = "${current.targetFormat.displayName} 只支持单个文件压缩"
+            host.postedMessage = "${current.targetFormat.displayName} 只支持单个文件压缩"
             return
         }
         persistDocumentPermission(outputUri)
@@ -1067,18 +527,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             resolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
             resolver.readSelectedDocument(uri)
         }.getOrElse {
-            _message.value = "无法读取所选文件"
+            host.postedMessage = "无法读取所选文件"
             return false
         }
         val lower = document.name.lowercase()
         if (!(lower.endsWith(".zip") || lower.endsWith(".tar.gz") || lower.endsWith(".tgz") ||
                 lower.endsWith(".tar.bz2") || lower.endsWith(".tbz2"))
         ) {
-            _message.value = "请选择 ZIP / TAR.GZ / TAR.BZ2 压缩包"
+            host.postedMessage = "请选择 ZIP / TAR.GZ / TAR.BZ2 压缩包"
             return false
         }
         _archiveExtractDraft.value = ArchiveExtractDraft(document)
-        _conversionState.value = ConversionUiState.Configuring
+        host.uiState = ConversionUiState.Configuring
         return true
     }
 
@@ -1108,11 +568,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun onBatchFilesPicked(uris: List<Uri>): Boolean {
         val uniqueUris = uris.distinct()
         if (uniqueUris.size < 2) {
-            _message.value = "批量转换至少选择 2 个文件"
+            host.postedMessage = "批量转换至少选择 2 个文件"
             return false
         }
         if (uniqueUris.size > MAX_BATCH_FILES) {
-            _message.value = "一次最多选择 $MAX_BATCH_FILES 个文件"
+            host.postedMessage = "一次最多选择 $MAX_BATCH_FILES 个文件"
             return false
         }
         val documents = uniqueUris.mapNotNull { uri ->
@@ -1123,24 +583,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }.filter { it.format != FileFormat.UNKNOWN }
 
         if (documents.isEmpty()) {
-            _message.value = "没有读到可用的文件"
+            host.postedMessage = "没有读到可用的文件"
             return false
         }
         if (documents.size != uniqueUris.size) {
-            _message.value = "已忽略无法读取或不支持的文件"
+            host.postedMessage = "已忽略无法读取或不支持的文件"
         }
         val categories = documents.map { it.format.category }.distinct()
         if (categories.size != 1) {
-            _message.value = "批量转换需要同一类文件（如图片或视频）"
+            host.postedMessage = "批量转换需要同一类文件（如图片或视频）"
             return false
         }
         val draft = BatchDraft(
             documents = documents,
             targetFormat = FileCapabilityResolver.targetsForEdition(documents.first().format).firstOrNull()
-                ?: return false.also { _message.value = "暂不支持 ${documents.first().format.displayName} 批量转换" },
+                ?: return false.also { host.postedMessage = "暂不支持 ${documents.first().format.displayName} 批量转换" },
         )
         if (draft.commonFormats.isEmpty()) {
-            _message.value = "所选文件没有共同的输出格式"
+            host.postedMessage = "所选文件没有共同的输出格式"
             return false
         }
         _batchDraft.value = draft
@@ -1181,7 +641,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 presets = listOf(preset),
             )
         ) {
-            _message.value =
+            host.postedMessage =
                 "「${preset.name}」不适用于所选全部文件"
             return false
         }
@@ -1214,7 +674,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun startBatch(outputTreeUri: Uri) {
         val draft = _batchDraft.value ?: return
         if (!draft.engineAvailable) {
-            _message.value = "${draft.targetFormat.displayName} 引擎尚未接入"
+            host.postedMessage = "${draft.targetFormat.displayName} 引擎尚未接入"
             return
         }
         persistTreePermission(outputTreeUri)
@@ -1292,8 +752,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun observeBatch() {
         val batchId = _batchJobId.value ?: return
-        observeJob?.cancel()
-        observeJob = viewModelScope.launch {
+        batchObserveJob?.cancel()
+        batchObserveJob = viewModelScope.launch {
             combine(
                 app.historyRepository.observeBatch(batchId),
                 app.historyRepository.observeBatchTasks(batchId),
@@ -1309,51 +769,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun resetBatch() {
-        observeJob?.cancel()
+        batchObserveJob?.cancel()
         _batchJobId.value = null
         _batchDraft.value = null
         _batchUiState.value = BatchUiState.Idle
     }
 
-    fun cancelConversion() {
-        val taskId = trackedTaskId ?: return
-        cancelTask(taskId)
-    }
+    fun cancelConversion() = host.cancelConversion()
 
     /**
      * 从任务中心取消任意任务（不限于当前追踪的那个）。
      * Room 收尾由 ConversionScheduler.cancel 统一处理（幂等），
      * 这里不重复写状态——历史上取消逻辑散在三处导致过僵尸任务。
      */
-    fun cancelTask(taskId: String) {
-        app.conversionScheduler.cancel(taskId)
-    }
+    fun cancelTask(taskId: String) = host.cancelTask(taskId)
 
-    private fun legacyCancelConversion() {
-        val taskId = trackedTaskId ?: return
-        app.conversionScheduler.cancel(taskId)
-        viewModelScope.launch {
-            val task = app.historyRepository.get(taskId) ?: return@launch
-            if (task.status == ConversionStatus.RUNNING || task.status == ConversionStatus.PENDING) {
-                app.historyRepository.save(
-                    task.copy(
-                        status = ConversionStatus.CANCELLED,
-                        completedAt = System.currentTimeMillis(),
-                    ),
-                )
-            }
-        }
-    }
+    fun retryConversion() = host.retryConversion()
 
-    fun retryConversion() {
-        _conversionState.value = ConversionUiState.Configuring
-    }
-
-    fun resetConversion() {
-        val current = _conversionState.value
-        if (current is ConversionUiState.Running) cancelConversion()
-        _conversionState.value = ConversionUiState.Configuring
-    }
+    fun resetConversion() = host.resetConversion()
 
     fun clearHistory() {
         viewModelScope.launch { app.historyRepository.clearFinished() }
@@ -1366,25 +799,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun reuseConversion(task: ConversionTask): Boolean {
         val uri = runCatching { Uri.parse(task.sourceUri) }.getOrNull()
         if (uri == null) {
-            _message.value = "找不到原来的文件"
+            host.postedMessage = "找不到原来的文件"
             return false
         }
         runCatching {
             resolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         val document = runCatching { resolver.readSelectedDocument(uri) }.getOrElse {
-            _message.value = "原文件已不可用，请重新选择"
+            host.postedMessage = "原文件已不可用，请重新选择"
             return false
         }
         if (document.format == FileFormat.UNKNOWN) {
-            _message.value = "暂不支持此文件格式"
+            host.postedMessage = "暂不支持此文件格式"
             return false
         }
         val target = FileCapabilityResolver.targetsForEdition(document.format).let { targets ->
             if (task.targetFormat in targets) task.targetFormat else targets.firstOrNull()
         }
         if (target == null) {
-            _message.value = if (document.format.category == FileCategory.OFFICE) {
+            host.postedMessage = if (document.format.category == FileCategory.OFFICE) {
                 "当前为轻量版，Office 转换记录需要安装 Office 版才能重试"
             } else {
                 "暂不支持 ${document.format.displayName} 转换"
@@ -1397,7 +830,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             quality = task.quality,
             resolution = task.resolution,
         )
-        _conversionState.value = ConversionUiState.Configuring
+        host.uiState = ConversionUiState.Configuring
         return true
     }
 
@@ -1424,99 +857,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             app.userPreferences.videoQuality.value
         }
 
-    fun consumeMessage() {
-        _message.value = null
-    }
+    fun consumeMessage() = host.consumeMessage()
 
-    private fun submit(task: ConversionTask) {
-        if (!ensureIdle()) return
-        trackTask(task.copy(status = ConversionStatus.RUNNING, progress = 1))
-        viewModelScope.launch {
-            app.historyRepository.save(task)
-            app.conversionScheduler.enqueue(task.id)
-        }
-    }
+    private fun submit(task: ConversionTask) = host.submit(task)
 
-    private fun trackTask(task: ConversionTask) {
-        trackedTaskId = task.id
-        applyTask(task)
-        observeJob?.cancel()
-        observeJob = viewModelScope.launch {
-            app.historyRepository.observe(task.id).collect { latest ->
-                if (latest != null) applyTask(latest)
-            }
-        }
-    }
+    private fun trackTask(task: ConversionTask) = host.trackTask(task)
 
-    private fun applyTask(task: ConversionTask) {
-        _conversionState.value = when (task.status) {
-            ConversionStatus.PENDING, ConversionStatus.RUNNING -> ConversionUiState.Running(task)
-            ConversionStatus.COMPLETED -> ConversionUiState.Completed(
-                task = task,
-                outputName = task.outputName ?: task.sourceName,
-                outputUris = task.payload.outputUris.ifEmpty { listOfNotNull(task.outputUri) },
-            )
-            ConversionStatus.FAILED -> ConversionUiState.Failed(
-                task,
-                task.errorMessage ?: "转换失败",
-            )
-            ConversionStatus.CANCELLED -> {
-                if (_conversionState.value is ConversionUiState.Running) {
-                    _message.value = "转换已取消"
-                }
-                ConversionUiState.Configuring
-            }
-        }
-    }
+    private fun persistDocumentPermission(uri: Uri) = host.persistDocumentPermission(uri)
 
-    private fun ensureIdle(): Boolean {
-        if (_conversionState.value is ConversionUiState.Running) {
-            _message.value = "请等待当前转换完成"
-            return false
-        }
-        return true
-    }
+    private fun persistTreePermission(uri: Uri) = host.persistTreePermission(uri)
 
-    private fun readPdfDocument(uri: Uri): SelectedDocument? {
-        runCatching {
-            resolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        val document = runCatching { resolver.readSelectedDocument(uri) }.getOrElse {
-            _message.value = "无法读取所选 PDF"
-            return null
-        }
-        if (document.format != FileFormat.PDF) {
-            _message.value = "请选择 PDF 文件"
-            return null
-        }
-        return document
-    }
-
-    private fun readPdfPageCount(uri: Uri): Int? = runCatching {
-        resolver.openFileDescriptor(uri, "r")?.use { descriptor ->
-            PdfRenderer(descriptor).use { renderer -> renderer.pageCount }
-        } ?: error("无法打开 PDF")
-    }.getOrElse {
-        _message.value = "无法读取 PDF 页数，文件可能已损坏或带密码"
-        null
-    }
-
-    private fun persistDocumentPermission(uri: Uri) {
-        runCatching {
-            resolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-            )
-        }
-    }
-
-    private fun persistTreePermission(uri: Uri) = persistDocumentPermission(uri)
 
     private companion object {
-        const val MAX_PDF_IMAGES = 50
-        const val MAX_MERGE_PDFS = 20
-        const val MAX_EXPORTED_PDF_PAGES = 200
-        const val MAX_SPLIT_OUTPUTS = 100
         const val MAX_BATCH_FILES = 200
     }
 }

@@ -29,6 +29,18 @@ class ConversionHost(
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
+    var postedMessage: String?
+        get() = _message.value
+        set(value) {
+            _message.value = value
+        }
+
+    var uiState: ConversionUiState
+        get() = _conversionState.value
+        set(value) {
+            _conversionState.value = value
+        }
+
     fun postMessage(text: String) {
         _message.value = text
     }
