@@ -52,6 +52,7 @@ class FileCapabilityResolverTest {
             ConversionKind.PDF_SECURITY,
             ConversionKind.PDF_CROP,
             ConversionKind.PDF_METADATA,
+            ConversionKind.PDF_WATERMARK,
         ).forEach { assertTrue("PDF 应提供 $it", kinds.contains(it)) }
         assertTrue(caps.hasAnything)
     }

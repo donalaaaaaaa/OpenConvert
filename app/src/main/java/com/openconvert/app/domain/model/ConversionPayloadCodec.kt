@@ -23,6 +23,21 @@ object ConversionPayloadCodec {
         json.put("longestEdgePx", payload.longestEdgePx ?: JSONObject.NULL)
         json.put("fixedWidthPx", payload.fixedWidthPx ?: JSONObject.NULL)
         json.put("fixedHeightPx", payload.fixedHeightPx ?: JSONObject.NULL)
+        json.put("password", payload.password)
+        json.put("isEncrypt", payload.isEncrypt)
+        json.put("compressDpi", payload.compressDpi)
+        json.put("compressQuality", payload.compressQuality.toDouble())
+        json.put("cropMarginsLeft", payload.cropMarginsLeft.toDouble())
+        json.put("cropMarginsTop", payload.cropMarginsTop.toDouble())
+        json.put("cropMarginsRight", payload.cropMarginsRight.toDouble())
+        json.put("cropMarginsBottom", payload.cropMarginsBottom.toDouble())
+        json.put("metadataTitle", payload.metadataTitle)
+        json.put("metadataAuthor", payload.metadataAuthor)
+        json.put("metadataSubject", payload.metadataSubject)
+        json.put("metadataKeywords", payload.metadataKeywords)
+        json.put("watermarkText", payload.watermarkText)
+        json.put("watermarkOpacity", payload.watermarkOpacity.toDouble())
+        json.put("watermarkPosition", payload.watermarkPosition)
         return json.toString()
     }
 
@@ -45,6 +60,21 @@ object ConversionPayloadCodec {
             longestEdgePx = json.optionalInt("longestEdgePx"),
             fixedWidthPx = json.optionalInt("fixedWidthPx"),
             fixedHeightPx = json.optionalInt("fixedHeightPx"),
+            password = json.optString("password"),
+            isEncrypt = json.optBoolean("isEncrypt", true),
+            compressDpi = json.optInt("compressDpi", 200),
+            compressQuality = json.optDouble("compressQuality", 0.8).toFloat(),
+            cropMarginsLeft = json.optDouble("cropMarginsLeft", 0.0).toFloat(),
+            cropMarginsTop = json.optDouble("cropMarginsTop", 0.0).toFloat(),
+            cropMarginsRight = json.optDouble("cropMarginsRight", 0.0).toFloat(),
+            cropMarginsBottom = json.optDouble("cropMarginsBottom", 0.0).toFloat(),
+            metadataTitle = json.optString("metadataTitle"),
+            metadataAuthor = json.optString("metadataAuthor"),
+            metadataSubject = json.optString("metadataSubject"),
+            metadataKeywords = json.optString("metadataKeywords"),
+            watermarkText = json.optString("watermarkText"),
+            watermarkOpacity = json.optDouble("watermarkOpacity", 0.18).toFloat(),
+            watermarkPosition = json.optString("watermarkPosition", "DIAGONAL"),
         )
     }
 

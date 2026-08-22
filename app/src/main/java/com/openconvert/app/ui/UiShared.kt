@@ -144,6 +144,7 @@ internal const val PDF_COMPRESS = "pdf_compress"
 internal const val PDF_SECURITY = "pdf_security"
 internal const val PDF_CROP = "pdf_crop"
 internal const val PDF_METADATA = "pdf_metadata"
+internal const val PDF_WATERMARK = "pdf_watermark"
 internal const val PDF_PAGE_MANAGER = "pdf_page_manager"
 internal const val ARCHIVE = "archive"
 internal const val ARCHIVE_COMPRESS_SCREEN = "archive_compress"
@@ -181,6 +182,7 @@ internal fun routeForTool(kind: ConversionKind): String? = when (kind) {
     ConversionKind.PDF_SECURITY -> PDF_SECURITY
     ConversionKind.PDF_CROP -> PDF_CROP
     ConversionKind.PDF_METADATA -> PDF_METADATA
+    ConversionKind.PDF_WATERMARK -> PDF_WATERMARK
     ConversionKind.PDF_PAGE_MANAGER -> PDF_PAGE_MANAGER
     ConversionKind.ARCHIVE_COMPRESS -> ARCHIVE_COMPRESS_SCREEN
     ConversionKind.ARCHIVE_EXTRACT -> ARCHIVE_EXTRACT_SCREEN

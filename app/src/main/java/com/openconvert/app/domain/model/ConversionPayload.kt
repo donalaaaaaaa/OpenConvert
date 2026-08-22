@@ -13,6 +13,7 @@ enum class ConversionKind {
     PDF_SECURITY,
     PDF_CROP,
     PDF_METADATA,
+    PDF_WATERMARK,
     BATCH,
     ARCHIVE_COMPRESS,
     ARCHIVE_EXTRACT,
@@ -49,6 +50,10 @@ data class ConversionPayload(
     val metadataAuthor: String = "",
     val metadataSubject: String = "",
     val metadataKeywords: String = "",
+    /** 文本水印 */
+    val watermarkText: String = "",
+    val watermarkOpacity: Float = 0.18f,
+    val watermarkPosition: String = "DIAGONAL",
     /** 预设（计划书 §八）：应用的预设 id 与尺寸约束。 */
     val presetId: String? = null,
     val longestEdgePx: Int? = null,

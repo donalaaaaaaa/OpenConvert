@@ -38,7 +38,6 @@ class PresetPayloadCodecTest {
 
     @Test
     fun `absent size constraints decode as null not zero`() {
-        // 0 与 null 语义不同：0 会被 presetTargetSize 当作"有约束但非法"。
         val decoded = ConversionPayloadCodec.decode(ConversionPayloadCodec.encode(ConversionPayload()))
         assertNull(decoded.presetId)
         assertNull(decoded.longestEdgePx)
@@ -48,12 +47,28 @@ class PresetPayloadCodecTest {
 
     @Test
     fun `payloads written before presets existed still decode`() {
-        // 老记录的 JSON 没有这些键，解码不能抛异常。
         val legacy = """{"pageRanges":"","rotateDegrees":0,"cropAspect":"free","flip":0}"""
         val decoded = ConversionPayloadCodec.decode(legacy)
         assertNull(decoded.presetId)
         assertNull(decoded.longestEdgePx)
         assertEquals("free", decoded.cropAspect)
+    }
+
+    @Test
+    fun `watermark fields survive a round trip`() {
+        val payload = ConversionPayload(
+            watermarkText = "机密",
+            watermarkOpacity = 0.28f,
+            watermarkPosition = "FOOTER",
+            cropMarginsLeft = 12f,
+            metadataTitle = "报告",
+        )
+        val decoded = ConversionPayloadCodec.decode(ConversionPayloadCodec.encode(payload))
+        assertEquals("机密", decoded.watermarkText)
+        assertEquals(0.28f, decoded.watermarkOpacity, 0.001f)
+        assertEquals("FOOTER", decoded.watermarkPosition)
+        assertEquals(12f, decoded.cropMarginsLeft, 0.001f)
+        assertEquals("报告", decoded.metadataTitle)
     }
 
     @Test

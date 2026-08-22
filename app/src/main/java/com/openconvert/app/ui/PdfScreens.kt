@@ -138,6 +138,7 @@ internal fun PdfToolsScreen(
     onPdfSecurityPicked: (Uri) -> Unit = {},
     onPdfCropPicked: (Uri) -> Unit = {},
     onPdfMetadataPicked: (Uri) -> Unit = {},
+    onPdfWatermarkPicked: (Uri) -> Unit = {},
     onPdfPageManagerPicked: (Uri) -> Unit = {},
 ) {
     val imagesPicker = rememberLauncherForActivityResult(
@@ -170,6 +171,9 @@ internal fun PdfToolsScreen(
     val metadataPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri -> uri?.let(onPdfMetadataPicked) }
+    val watermarkPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> uri?.let(onPdfWatermarkPicked) }
     val pageManagerPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri -> uri?.let(onPdfPageManagerPicked) }
@@ -269,6 +273,15 @@ internal fun PdfToolsScreen(
                 Icons.Outlined.Description,
                 Modifier.fillMaxWidth(),
                 onClick = { metadataPicker.launch(arrayOf(FileFormat.PDF.mimeType)) },
+            )
+        }
+        item {
+            ToolCard(
+                "PDF 文字水印",
+                "斜向 / 居中 / 页脚半透明文字，离线写入每一页",
+                Icons.Outlined.Description,
+                Modifier.fillMaxWidth(),
+                onClick = { watermarkPicker.launch(arrayOf(FileFormat.PDF.mimeType)) },
             )
         }
         item {
@@ -757,6 +770,94 @@ internal fun PdfCropScreen(
                 "选择保存位置并裁剪 PDF",
                 onClick = {
                     createDocument.launch("${draft.document.name.substringBeforeLast('.')}_cropped.pdf")
+                },
+            )
+        }
+        item { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { PrivacyHint() } }
+    }
+}
+
+@Composable
+internal fun PdfWatermarkScreen(
+    draft: PdfWatermarkDraft?,
+    onBack: () -> Unit,
+    onChange: (String, Float, com.openconvert.app.domain.converter.PdfWatermarkPosition) -> Unit,
+    onStart: (Uri) -> Unit,
+) {
+    if (draft == null) return EmptyPdfSelection("没有已选择的 PDF")
+    val createDocument = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(FileFormat.PDF.mimeType),
+    ) { uri -> uri?.let(onStart) }
+    var text by remember { mutableStateOf(draft.text) }
+    var opacity by remember { mutableStateOf(draft.opacity) }
+    var position by remember { mutableStateOf(draft.position) }
+
+    PdfConfigurationScaffold(
+        title = "PDF 文字水印",
+        subtitle = "离线写入每一页，默认半透明斜向居中",
+        onBack = onBack,
+    ) {
+        item {
+            FileCard(draft.document.name, "PDF · ${draft.pageCount} 页 · ${formatFileSize(draft.document.sizeBytes)}")
+        }
+        item {
+            OutlinedTextField(
+                value = text,
+                onValueChange = {
+                    text = it
+                    onChange(it, opacity, position)
+                },
+                label = { Text("水印文字") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+            )
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                FieldLabel("位置")
+                com.openconvert.app.domain.converter.PdfWatermarkPosition.entries.forEach { option ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                position = option
+                                onChange(text, opacity, option)
+                            },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(
+                            selected = position == option,
+                            onClick = {
+                                position = option
+                                onChange(text, opacity, option)
+                            },
+                        )
+                        Text(option.label)
+                    }
+                }
+            }
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                FieldLabel("透明度 ${(opacity * 100).toInt()}%")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(0.12f, 0.18f, 0.28f, 0.40f).forEach { value ->
+                        OutlinedButton(
+                            onClick = {
+                                opacity = value
+                                onChange(text, value, position)
+                            },
+                        ) { Text("${(value * 100).toInt()}%") }
+                    }
+                }
+            }
+        }
+        item {
+            PrimaryPdfButton(
+                "选择保存位置并加水印",
+                onClick = {
+                    if (text.trim().isEmpty()) return@PrimaryPdfButton
+                    createDocument.launch("${draft.document.name.substringBeforeLast('.')}_watermark.pdf")
                 },
             )
         }

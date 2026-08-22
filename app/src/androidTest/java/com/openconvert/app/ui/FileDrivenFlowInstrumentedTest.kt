@@ -113,6 +113,7 @@ class FileDrivenFlowInstrumentedTest {
         ConversionKind.PDF_SECURITY -> "pdf_security"
         ConversionKind.PDF_CROP -> "pdf_crop"
         ConversionKind.PDF_METADATA -> "pdf_metadata"
+        ConversionKind.PDF_WATERMARK -> "pdf_watermark"
         ConversionKind.PDF_PAGE_MANAGER -> "pdf_page_manager"
         ConversionKind.ARCHIVE_COMPRESS -> "archive_compress"
         ConversionKind.ARCHIVE_EXTRACT -> "archive_extract"

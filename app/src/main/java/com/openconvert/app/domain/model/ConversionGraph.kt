@@ -113,6 +113,7 @@ object ConversionGraph {
                 ConversionKind.PDF_SECURITY,
                 ConversionKind.PDF_CROP,
                 ConversionKind.PDF_METADATA,
+                ConversionKind.PDF_WATERMARK,
             ),
         )
 

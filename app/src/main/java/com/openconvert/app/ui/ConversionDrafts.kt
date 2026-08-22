@@ -99,6 +99,15 @@ data class PdfMetadataDraft(
     val metadata: com.openconvert.app.domain.pdf.PdfMetadataInfo = com.openconvert.app.domain.pdf.PdfMetadataInfo(),
 )
 
+data class PdfWatermarkDraft(
+    val document: SelectedDocument,
+    val pageCount: Int,
+    val text: String = "OpenConvert",
+    val opacity: Float = 0.18f,
+    val position: com.openconvert.app.domain.converter.PdfWatermarkPosition =
+        com.openconvert.app.domain.converter.PdfWatermarkPosition.DIAGONAL,
+)
+
 data class PdfPageManagerDraft(
     val document: SelectedDocument,
     val pages: List<com.openconvert.app.domain.pdf.PdfPageItem> = emptyList(),

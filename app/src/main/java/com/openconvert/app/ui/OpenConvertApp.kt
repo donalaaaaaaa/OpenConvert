@@ -558,6 +558,9 @@ fun OpenConvertApp(
                     onPdfMetadataPicked = { uri ->
                         if (viewModel.onPdfMetadataPicked(uri)) navController.navigate(PDF_METADATA)
                     },
+                    onPdfWatermarkPicked = { uri ->
+                        if (viewModel.onPdfWatermarkPicked(uri)) navController.navigate(PDF_WATERMARK)
+                    },
                     onPdfPageManagerPicked = { uri ->
                         if (viewModel.onPdfPageManagerPicked(uri)) navController.navigate(PDF_PAGE_MANAGER)
                     },
@@ -663,6 +666,36 @@ fun OpenConvertApp(
                         onSave = { title, author, subject, keywords, uri ->
                             viewModel.startPdfMetadata(uri, title, author, subject, keywords)
                         },
+                    )
+                    is ConversionUiState.Running -> ConversionProgressScreen(state.task, viewModel::cancelConversion)
+                    is ConversionUiState.Completed -> ConversionCompleteScreen(
+                        state.task,
+                        state.outputName,
+                        state.outputUris,
+                        onDone = {
+                            viewModel.resetConversion()
+                            navController.popBackStack(PDF_TOOLS, false)
+                        },
+                    )
+                    is ConversionUiState.Failed -> ConversionFailedScreen(
+                        state.message,
+                        viewModel::retryConversion,
+                        onBack = {
+                            viewModel.resetConversion()
+                            navController.popBackStack(PDF_TOOLS, false)
+                        },
+                    )
+                }
+            }
+            composable(PDF_WATERMARK) {
+                val draft by viewModel.pdfWatermarkDraft.collectAsStateWithLifecycle()
+                val conversionState by viewModel.conversionState.collectAsStateWithLifecycle()
+                when (val state = conversionState) {
+                    ConversionUiState.Configuring -> PdfWatermarkScreen(
+                        draft = draft,
+                        onBack = navController::popBackStack,
+                        onChange = viewModel::setPdfWatermark,
+                        onStart = viewModel::startPdfWatermark,
                     )
                     is ConversionUiState.Running -> ConversionProgressScreen(state.task, viewModel::cancelConversion)
                     is ConversionUiState.Completed -> ConversionCompleteScreen(

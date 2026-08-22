@@ -59,6 +59,9 @@ class PdfToolsCoordinator(
     private val _pdfMetadataDraft = MutableStateFlow<PdfMetadataDraft?>(null)
     val pdfMetadataDraft: StateFlow<PdfMetadataDraft?> = _pdfMetadataDraft.asStateFlow()
 
+    private val _pdfWatermarkDraft = MutableStateFlow<PdfWatermarkDraft?>(null)
+    val pdfWatermarkDraft: StateFlow<PdfWatermarkDraft?> = _pdfWatermarkDraft.asStateFlow()
+
     private val _pdfPageManagerDraft = MutableStateFlow<PdfPageManagerDraft?>(null)
     val pdfPageManagerDraft: StateFlow<PdfPageManagerDraft?> = _pdfPageManagerDraft.asStateFlow()
 
@@ -551,6 +554,53 @@ class PdfToolsCoordinator(
                     metadataKeywords = keywords,
                 ),
                 outputName = "更新元数据后的 PDF",
+            ),
+        )
+    }
+
+    fun onPdfWatermarkPicked(uri: Uri): Boolean {
+        val document = readPdfDocument(uri) ?: return false
+        val pageCount = readPdfPageCount(uri) ?: return false
+        _pdfWatermarkDraft.value = PdfWatermarkDraft(document, pageCount)
+        host.uiState = ConversionUiState.Configuring
+        return true
+    }
+
+    fun setPdfWatermark(text: String, opacity: Float, position: com.openconvert.app.domain.converter.PdfWatermarkPosition) {
+        _pdfWatermarkDraft.value = _pdfWatermarkDraft.value?.copy(
+            text = text,
+            opacity = opacity,
+            position = position,
+        )
+    }
+
+    fun startPdfWatermark(outputUri: Uri) {
+        val current = _pdfWatermarkDraft.value ?: return
+        val text = current.text.trim()
+        if (text.isEmpty()) {
+            host.postedMessage = "请输入水印文字"
+            return
+        }
+        host.persistDocumentPermission(outputUri)
+        submit(
+            ConversionTask(
+                id = UUID.randomUUID().toString(),
+                sourceUri = current.document.uri.toString(),
+                sourceName = current.document.name,
+                sourceFormat = FileFormat.PDF,
+                targetFormat = FileFormat.PDF,
+                outputUri = outputUri.toString(),
+                fileSize = current.document.sizeBytes,
+                progress = 1,
+                status = ConversionStatus.PENDING,
+                kind = ConversionKind.PDF_WATERMARK,
+                payload = ConversionPayload(
+                    sourceUris = listOf(current.document.uri.toString()),
+                    watermarkText = text,
+                    watermarkOpacity = current.opacity,
+                    watermarkPosition = current.position.name,
+                ),
+                outputName = "加水印后的 PDF",
             ),
         )
     }

@@ -470,6 +470,31 @@ class ConversionExecutor(private val context: Context) {
                     actualEngine = EngineType.PDFBOX,
                 )
             }
+
+            ConversionKind.PDF_WATERMARK -> {
+                val inputUri = sourceUris(task).firstOrNull()
+                    ?: return ExecutionResult.Failure("没有选择 PDF")
+                val outputUri = task.outputUri?.let { Uri.parse(it) }
+                    ?: return ExecutionResult.Failure("没有选择输出文件")
+                val text = task.payload.watermarkText.trim()
+                if (text.isEmpty()) return ExecutionResult.Failure("请输入水印文字")
+                val size = runCatching {
+                    PdfWatermarkConverter(context, onProgress).apply(
+                        inputUri = inputUri,
+                        outputUri = outputUri,
+                        text = text,
+                        opacity = task.payload.watermarkOpacity,
+                        position = PdfWatermarkLayout.parsePosition(task.payload.watermarkPosition),
+                    )
+                }.getOrElse { return ExecutionResult.Failure(it.message ?: "添加水印失败") }
+                ExecutionResult.Success(
+                    outputUri = outputUri.toString(),
+                    outputUris = listOf(outputUri.toString()),
+                    outputSize = size,
+                    outputName = task.outputName,
+                    actualEngine = EngineType.PDFBOX,
+                )
+            }
         }
     }
 

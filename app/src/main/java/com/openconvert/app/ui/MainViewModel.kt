@@ -108,6 +108,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val pdfSecurityDraft get() = pdf.pdfSecurityDraft
     val pdfCropDraft get() = pdf.pdfCropDraft
     val pdfMetadataDraft get() = pdf.pdfMetadataDraft
+    val pdfWatermarkDraft get() = pdf.pdfWatermarkDraft
     val pdfPageManagerDraft get() = pdf.pdfPageManagerDraft
 
     fun onImagesPicked(uris: List<Uri>) = pdf.onImagesPicked(uris)
@@ -143,6 +144,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun startPdfCrop(outputUri: Uri) = pdf.startPdfCrop(outputUri)
     fun onPdfMetadataPicked(uri: Uri) = pdf.onPdfMetadataPicked(uri)
     fun startPdfMetadata(outputUri: Uri, title: String, author: String, subject: String, keywords: String) = pdf.startPdfMetadata(outputUri, title, author, subject, keywords)
+    fun onPdfWatermarkPicked(uri: Uri) = pdf.onPdfWatermarkPicked(uri)
+    fun setPdfWatermark(text: String, opacity: Float, position: com.openconvert.app.domain.converter.PdfWatermarkPosition) = pdf.setPdfWatermark(text, opacity, position)
+    fun startPdfWatermark(outputUri: Uri) = pdf.startPdfWatermark(outputUri)
     fun onPdfPageManagerPicked(uri: Uri) = pdf.onPdfPageManagerPicked(uri)
     fun reorderPdfPages(fromIndex: Int, toIndex: Int) = pdf.reorderPdfPages(fromIndex, toIndex)
     fun rotatePdfPages(targetIds: Set<String>, delta: Int) = pdf.rotatePdfPages(targetIds, delta)
