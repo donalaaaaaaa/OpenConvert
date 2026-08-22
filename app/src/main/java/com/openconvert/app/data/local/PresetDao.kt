@@ -16,6 +16,9 @@ interface PresetDao {
     @Query("SELECT * FROM conversion_presets WHERE category = :category ORDER BY createdAt ASC")
     fun getPresetsByCategoryFlow(category: String): Flow<List<PresetEntity>>
 
+    @Query("SELECT * FROM conversion_presets ORDER BY createdAt ASC")
+    suspend fun getAll(): List<PresetEntity>
+
     @Query("SELECT COUNT(*) FROM conversion_presets")
     suspend fun count(): Int
 

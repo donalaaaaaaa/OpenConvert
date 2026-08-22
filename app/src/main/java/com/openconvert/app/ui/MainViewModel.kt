@@ -225,6 +225,53 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun exportPresets(outputUri: Uri) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val customs = app.presetStore.customPresets()
+            if (customs.isEmpty()) {
+                host.postedMessage = "没有可导出的自定义预设"
+                return@launch
+            }
+            runCatching {
+                app.contentResolver.openOutputStream(outputUri)?.use { stream ->
+                    stream.write(
+                        com.openconvert.app.domain.preset.PresetPackCodec.encode(customs)
+                            .toByteArray(Charsets.UTF_8),
+                    )
+                } ?: error("无法写入文件")
+            }.onSuccess {
+                host.postedMessage = "已导出 ${customs.size} 条自定义预设"
+            }.onFailure { error ->
+                host.postedMessage = error.message ?: "预设导出失败"
+            }
+        }
+    }
+
+    fun importPresets(inputUri: Uri) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val raw = runCatching {
+                app.contentResolver.openInputStream(inputUri)?.use { stream ->
+                    stream.readBytes().toString(Charsets.UTF_8)
+                } ?: error("无法读取文件")
+            }.getOrElse { error ->
+                host.postedMessage = error.message ?: "无法读取预设文件"
+                return@launch
+            }
+            app.presetStore.importPack(raw).fold(
+                onSuccess = { report ->
+                    host.postedMessage = if (report.imported == 0) {
+                        "预设文件里没有可用条目"
+                    } else {
+                        "已导入 ${report.imported} 条预设"
+                    }
+                },
+                onFailure = { error ->
+                    host.postedMessage = error.message ?: "预设导入失败"
+                },
+            )
+        }
+    }
+
 
     fun cancelConversion() = host.cancelConversion()
 

@@ -326,6 +326,8 @@ internal fun SettingsScreen(
     onClearCache: () -> Unit = {},
     onRefreshBenchmark: () -> Unit = {},
     onExportBenchmark: (Uri, BenchmarkReportFormat) -> Unit = { _, _ -> },
+    onExportPresets: (Uri) -> Unit = {},
+    onImportPresets: (Uri) -> Unit = {},
 ) {
     var picking by remember { mutableStateOf<String?>(null) }
     var showBenchmarkExport by remember { mutableStateOf(false) }
@@ -339,6 +341,16 @@ internal fun SettingsScreen(
         ActivityResultContracts.CreateDocument(BenchmarkReportFormat.CSV.mimeType),
     ) { uri ->
         uri?.let { onExportBenchmark(it, BenchmarkReportFormat.CSV) }
+    }
+    val presetExporter = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        uri?.let(onExportPresets)
+    }
+    val presetImporter = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        uri?.let(onImportPresets)
     }
     val reportTimestamp = remember {
         SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date())
@@ -390,6 +402,20 @@ internal fun SettingsScreen(
                     } else {
                         null
                     },
+                )
+                HorizontalDivider(color = Border)
+                SettingRow(
+                    "导出自定义预设",
+                    "保存为 JSON，方便换机或备份",
+                    onClick = {
+                        presetExporter.launch("openconvert-presets.json")
+                    },
+                )
+                HorizontalDivider(color = Border)
+                SettingRow(
+                    "导入预设",
+                    "从 JSON 文件添加自定义预设，不覆盖内置项",
+                    onClick = { presetImporter.launch(arrayOf("application/json", "text/plain", "*/*")) },
                 )
             }
         }

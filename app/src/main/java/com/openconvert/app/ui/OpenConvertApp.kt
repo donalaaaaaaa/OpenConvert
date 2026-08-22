@@ -294,6 +294,8 @@ fun OpenConvertApp(
                     onClearCache = viewModel::clearCache,
                     onRefreshBenchmark = viewModel::refreshBenchmarkStats,
                     onExportBenchmark = viewModel::exportBenchmarkReport,
+                    onExportPresets = viewModel::exportPresets,
+                    onImportPresets = viewModel::importPresets,
                 )
             }
             composable(OFFICE_TOOLS) {

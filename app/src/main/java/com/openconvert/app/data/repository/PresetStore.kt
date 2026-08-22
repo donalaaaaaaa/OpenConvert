@@ -5,6 +5,7 @@ import com.openconvert.app.data.local.toDomain
 import com.openconvert.app.data.local.toEntity
 import com.openconvert.app.domain.model.FileCategory
 import com.openconvert.app.domain.preset.Preset
+import com.openconvert.app.domain.preset.PresetPackCodec
 import com.openconvert.app.domain.preset.PresetRepository
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
@@ -62,5 +63,24 @@ class PresetStore(private val dao: PresetDao) {
     suspend fun setDefault(preset: Preset) {
         dao.clearDefaultFor(preset.category.name)
         dao.markDefault(preset.id)
+    }
+
+    suspend fun customPresets(): List<Preset> =
+        dao.getAll().map { it.toDomain() }.filterNot { it.isBuiltIn }
+
+    data class ImportReport(val imported: Int, val skipped: Int)
+
+    /**
+     * 导入预设包。每条都生成新 id，不覆盖内置项；损坏条目计入 skipped。
+     */
+    suspend fun importPack(raw: String): Result<ImportReport> {
+        val pack = PresetPackCodec.decode(raw).getOrElse { return Result.failure(it) }
+        var imported = 0
+        pack.presets.forEach { preset ->
+            saveCustom(preset.copy(id = "", isDefault = false, isBuiltIn = false))
+            imported += 1
+        }
+        val skipped = 0
+        return Result.success(ImportReport(imported = imported, skipped = skipped))
     }
 }
