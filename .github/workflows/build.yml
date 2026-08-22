@@ -128,11 +128,7 @@ jobs:
           force-avd-creation: false
           disable-animations: true
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: |
-            ./gradlew connectedBasicDebugAndroidTest \
-              -PopenconvertEmulatorAbi=x86_64 \
-              -PopenconvertCiSmoke=true \
-              --no-daemon --stacktrace
+          script: ./gradlew connectedBasicDebugAndroidTest -PopenconvertEmulatorAbi=x86_64 -PopenconvertCiSmoke=true --no-daemon --stacktrace
 
   device-tests:
     name: Device instrumentation
