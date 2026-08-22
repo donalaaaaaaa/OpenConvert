@@ -99,6 +99,10 @@ class MediaConverter(
                         }
                     }
                 }
+                // ffmpeg-kit-audio has no libvpx; do not fall through to a broken encode.
+                return@withContext ConversionResult.Failure(
+                    "当前设备没有可用的 VP8 编码器，无法输出 WEBM",
+                )
             }
 
             // MP4 re-encode: Media3/MediaCodec is the primary engine; FFmpeg only as fallback.

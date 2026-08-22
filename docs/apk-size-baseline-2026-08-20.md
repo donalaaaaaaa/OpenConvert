@@ -94,10 +94,25 @@ Release APK 内含 26 个 `.so`：未压缩合计 231,896,608 字节，ZIP 压�
 `liblo-native-code.so` 单项占 Office 版全部 native 未压缩体积约 77.4%。双 Edition 已把它从
 默认 Basic 包移除，Basic Release APK 降到 35.39 MiB。
 
+## 2026-08-22：FFmpegKit full → audio
+
+生产调用面只用 lame / opus / vorbis / aac / flac / mpeg4 / 流拷贝；WEBM 主路径是 LiTr。
+因此依赖从 `ffmpeg-kit-full:8.1.7` 换成 `ffmpeg-kit-audio:8.1.7`，不再打进 libvpx /
+dav1d / kvazaar / gnutls。无 VP8 硬件编码器时 WEBM 直接 `NoUsableEncoder`，不再走
+FFmpeg libvpx。
+
+| 指标 | full（2026-08-21） | audio（本轮） | 减少 |
+|---|---:|---:|---:|
+| Basic Release APK | 37,112,209 B / 35.39 MiB | 32,782,661 B / 31.26 MiB | 4.13 MiB / 11.67% |
+| `libavcodec.so` 未压缩 | 18.22 MiB | 11.08 MiB | 7.14 MiB |
+| `libavfilter.so` 未压缩 | 4.87 MiB | 2.78 MiB | 2.09 MiB |
+
+Basic APK 仍含 13 个 arm64 `.so`；解压 native 合计约 34.93 MiB（此前安装态约 44.56 MiB）。
+
 ## 结论与下一步
 
 1. Office 已按 Basic / Office 双 Flavor 拆分；下一步验证 Basic → Office 同签名覆盖升级的数据保留。
-2. 评估 FFmpegKit 裁剪构建，仅保留实际使用的 demuxer / muxer / codec / filter。
+2. FFmpegKit 已从 full 换到 audio；自定义 demuxer/codec 精简构建收益低于 Dynamic Feature，暂缓。
 3. `libvips_android.so` 已是项目核心图片引擎，收益/风险比低于前两项，暂不优先拆。
 4. PHY110 的 split 下载体积已记录；后续增加至少一台不同 density / locale 的设备作横向对照。
 5. 已记录两种 Edition 的即时安装代码占用；后续在系统 dex 优化后再次取数。

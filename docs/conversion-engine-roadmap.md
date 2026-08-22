@@ -11,7 +11,7 @@
 - **统一原则 §一**：所有音视频任务转换前先用 Android `MediaExtractor` 探测真实编码/码率，再决定 Remux / 拷流 / 硬件转码 / 软件兜底（不用 ffprobe，避免与 FFmpeg 抢 SAF fd）
 - **视频主引擎 §二（2026-08-14）**：MP4 重编码走 `media3-transformer`（MediaCodec H.264 硬件 + AAC），失败自动回退 FFmpeg。证据：PHY110 上 `engine=media3 result=success`。Media3 要求所有 Transformer API 调用在其绑定 Looper 线程；MediaCodec 需 16 像素对齐
 - 视频 Remux：能拷流则拷流（H.264/HEVC + AAC → MP4 不重编码）
-- **MP4→WEBM**：LiTr + MediaCodec VP8 + Opus，禁止默认 VP9；LiTr 失败回退 FFmpeg libvpx realtime
+- **MP4→WEBM**：LiTr + MediaCodec VP8 + Opus，禁止默认 VP9。FFmpeg 已切到 `ffmpeg-kit-audio`（无 libvpx），无 VP8 硬件时拒绝并提示改用 MP4
 - **音频 §3**：同编码转换（M4A↔AAC、MP3→MP3、FLAC→FLAC、WAV→WAV）走 `demux → -c:a copy` 直拷换容器，不重新编码；其余按目标重新编码
 - 任务：WorkManager + 前台服务，不在 Compose 里跑转码
 - 大文件：流式读写；ARM64-v8a
@@ -21,7 +21,7 @@
 
 ## 已知约束
 
-- FFmpegKit 8.1.7 构建无 libx264（仅 mpeg4/h264_mediacodec）；软件 H.264 已由 Media3 取代
+- FFmpegKit 8.1.7 **audio** 包：有 lame/opus/vorbis，无 libx264、无 libvpx。软件 H.264 走 mpeg4；WEBM 仅 LiTr
 - MP4→MP4 自身压缩不在产品矩阵内（`canConvertLocallyTo` 拒绝同格式）
 
 ## 下一阶段引擎（未做）

@@ -179,7 +179,9 @@ dependencies {
     implementation("androidx.exifinterface:exifinterface:1.4.2")
     implementation("androidx.documentfile:documentfile:1.1.0")
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
-    implementation("dev.ffmpegkit-maintained:ffmpeg-kit-full:8.1.7")
+    // audio covers every encoder we actually invoke (lame/opus/vorbis/aac/flac/mpeg4).
+    // full also ships libvpx/dav1d/kvazaar/gnutls we no longer need; WEBM is LiTr-only.
+    implementation("dev.ffmpegkit-maintained:ffmpeg-kit-audio:8.1.7")
     implementation("com.linkedin.android.litr:litr:1.5.7")
     implementation("androidx.media3:media3-transformer:1.11.0")
     // The maintained FFmpegKit AAR currently omits this runtime dependency

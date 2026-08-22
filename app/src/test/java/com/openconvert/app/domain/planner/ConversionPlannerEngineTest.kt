@@ -135,12 +135,13 @@ class ConversionPlannerEngineTest {
             ),
         )
         assertEquals(EngineType.LITR, plan.primaryEngine)
+        assertNull(plan.fallbackEngine)
         assertEquals(EncodeMode.LITR_VP8, plan.encodeMode)
     }
 
     @Test
-    fun `webm target without vp8 hardware uses ffmpeg fast vp8`() {
-        val plan = readyPlan(
+    fun `webm target without vp8 hardware is rejected`() {
+        val rejected = rejection(
             request(
                 FileFormat.MP4,
                 FileFormat.WEBM,
@@ -148,8 +149,9 @@ class ConversionPlannerEngineTest {
                 hardware = FakeHardware(hasVp8HardwareEncoder = false),
             ),
         )
-        assertEquals(EngineType.FFMPEG_KIT, plan.primaryEngine)
-        assertEquals(EncodeMode.FAST_VP8, plan.encodeMode)
+        val encoder = rejected as PlanRejection.NoUsableEncoder
+        assertEquals("vp8", encoder.codec)
+        assertEquals(listOf(EngineType.LITR), encoder.attempted)
     }
 
     @Test

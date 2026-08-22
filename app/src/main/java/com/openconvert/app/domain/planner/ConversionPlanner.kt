@@ -195,18 +195,17 @@ object ConversionPlanner {
             EncodeMode.LITR_VP8 -> if (request.hardware.hasVp8HardwareEncoder) {
                 DraftResult.Draft(
                     primary = EngineType.LITR,
-                    fallback = EngineType.FFMPEG_KIT,
+                    fallback = null,
                     encodeMode = mode,
                     isStreamCopy = false,
-                    reason = "LiTr + MediaCodec VP8 硬件编码，失败回退 FFmpeg libvpx",
+                    reason = "LiTr + MediaCodec VP8 硬件编码（FFmpeg audio 包无 libvpx）",
                 )
             } else {
-                DraftResult.Draft(
-                    primary = EngineType.FFMPEG_KIT,
-                    fallback = null,
-                    encodeMode = EncodeMode.FAST_VP8,
-                    isStreamCopy = false,
-                    reason = "本机无 VP8 硬件编码器，改用 FFmpeg libvpx realtime",
+                DraftResult.Rejected(
+                    PlanRejection.NoUsableEncoder(
+                        codec = "vp8",
+                        attempted = listOf(EngineType.LITR),
+                    ),
                 )
             }
 

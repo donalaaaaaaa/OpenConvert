@@ -5,6 +5,7 @@ import com.openconvert.app.domain.model.QualityPreset
 import com.openconvert.app.domain.model.ResolutionPreset
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -71,7 +72,7 @@ class MediaEncodePlannerTest {
             phoneVideo,
         )
         assertEquals(EncodeMode.LITR_VP8, plan.mode)
-        assertEquals(EncodeMode.FAST_VP8, MediaEncodePlanner.fallback(plan)?.mode)
+        assertNull(MediaEncodePlanner.fallback(plan))
     }
 
     @Test
@@ -104,18 +105,17 @@ class MediaCommandBuilderTest {
     }
 
     @Test
-    fun `webm conversion uses realtime vp8 because mp4 cannot be remuxed`() {
+    fun `webm litr plan does not emit libvpx`() {
         val command = MediaCommandBuilder.build(
             "input.mp4",
             "output.webm",
             FileFormat.WEBM,
             QualityPreset.BALANCED,
             ResolutionPreset.MEDIUM,
-            EncodePlan(EncodeMode.FAST_VP8, "2500k"),
+            EncodePlan(EncodeMode.LITR_VP8, "2500k"),
         ).toList()
 
-        assertTrue(command.containsAll(listOf("libvpx", "realtime", "8", "libopus")))
-        assertTrue(command.any { it.contains("trunc(iw*0.75/2)*2") })
+        assertFalse(command.contains("libvpx"))
         assertFalse(command.contains("libvpx-vp9"))
         assertFalse(command.contains("mpeg4"))
     }

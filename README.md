@@ -54,7 +54,8 @@ JPG / PNG / WEBP / AVIF / HEIC / GIF / BMP / TIFF 读入；输出 JPG / PNG / WE
 - Media3 Transformer / MediaCodec 硬编优先
 - 同编码流拷贝（不重编码）
 - 视频抽音轨
-- LiTr VP8、FFmpegKit 兜底
+- LiTr VP8（无硬件则不能出 WEBM）
+- 音频与 MP4 软件兜底走 FFmpegKit audio
 
 ### PDF
 

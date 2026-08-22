@@ -67,7 +67,8 @@ object MediaEncodePlanner {
 
     fun fallback(plan: EncodePlan): EncodePlan? = when (plan.mode) {
         EncodeMode.HARDWARE_H264 -> EncodePlan(EncodeMode.SOFTWARE_MPEG4)
-        EncodeMode.LITR_VP8 -> EncodePlan(EncodeMode.FAST_VP8, plan.videoBitrate)
+        // ffmpeg-kit-audio has no libvpx; LiTr is the only WEBM encoder.
+        EncodeMode.LITR_VP8 -> null
         EncodeMode.AUDIO_COPY -> EncodePlan(EncodeMode.AUDIO_ONLY)
         else -> null
     }
