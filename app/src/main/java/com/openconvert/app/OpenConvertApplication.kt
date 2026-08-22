@@ -29,6 +29,7 @@ class OpenConvertApplication : Application() {
     val conversionScheduler by lazy { ConversionScheduler(this) }
     val batchScheduler by lazy { BatchScheduler(this) }
     val cacheManager by lazy { com.openconvert.app.domain.cache.CacheManager(this) }
+    val conversionHost by lazy { com.openconvert.app.ui.ConversionHost(this, applicationScope) }
 
     override fun onCreate() {
         super.onCreate()
