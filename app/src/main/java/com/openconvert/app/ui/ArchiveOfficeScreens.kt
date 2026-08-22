@@ -242,8 +242,16 @@ internal fun ArchiveCompressScreen(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 FieldLabel("压缩格式")
-                listOf(FileFormat.ZIP, FileFormat.TAR, FileFormat.SEVEN_Z, FileFormat.GZIP, FileFormat.BZIP2).forEach { format ->
-                    val disabled = format in setOf(FileFormat.GZIP, FileFormat.BZIP2) && draft.documents.size > 1
+                listOf(
+                    FileFormat.ZIP,
+                    FileFormat.TAR,
+                    FileFormat.SEVEN_Z,
+                    FileFormat.GZIP,
+                    FileFormat.BZIP2,
+                    FileFormat.XZ,
+                ).forEach { format ->
+                    val disabled = format in setOf(FileFormat.GZIP, FileFormat.BZIP2, FileFormat.XZ) &&
+                        draft.documents.size > 1
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()

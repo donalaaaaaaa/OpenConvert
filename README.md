@@ -72,7 +72,7 @@ DOCX / DOC / PPTX / PPT / XLSX / XLS → PDF，内置 LibreOfficeKit，不另下
 
 ### 压缩包
 
-ZIP、TAR、TAR.GZ、GZIP、BZIP2：打包、多级压缩比、解压。
+ZIP、TAR、TAR.GZ、GZIP、BZIP2、XZ、7Z：打包、多级压缩比、解压。
 
 ### 任务与预设
 
@@ -93,7 +93,7 @@ ZIP、TAR、TAR.GZ、GZIP、BZIP2：打包、多级压缩比、解压。
 | 音频 | MP3, AAC, WAV, FLAC, M4A, OGG, OPUS | 同左互转 | FFmpegKit + 流拷贝 |
 | PDF | PDF、多张图片 | PDF、JPG、PNG | PdfBox-Android + PdfRenderer |
 | 文档 | DOCX, DOC, PPTX, PPT, XLSX, XLS | PDF | LibreOfficeKit（Office Edition） |
-| 压缩包 | 文件/目录, ZIP, TAR, GZ, BZ2 | ZIP, TAR, TAR.GZ, GZIP, BZIP2, 解压目录 | Commons Compress |
+| 压缩包 | 文件/目录, ZIP, TAR, GZ, BZ2, XZ, 7Z | ZIP, TAR, GZIP, BZIP2, XZ, 7Z, 解压目录 | Commons Compress |
 
 AVIF / HEIC / GIF / BMP / TIFF 是只读输入，不能作为图片输出格式。
 

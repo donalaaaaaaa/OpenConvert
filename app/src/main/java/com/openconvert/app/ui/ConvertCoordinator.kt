@@ -355,8 +355,16 @@ class ConvertCoordinator(
 
     fun selectArchiveTarget(format: FileFormat) {
         val current = _archiveCompressDraft.value ?: return
-        if (format !in setOf(FileFormat.ZIP, FileFormat.TAR, FileFormat.GZIP, FileFormat.BZIP2)) return
-        if (format in setOf(FileFormat.GZIP, FileFormat.BZIP2) && current.documents.size > 1) {
+        if (format !in setOf(
+                FileFormat.ZIP,
+                FileFormat.TAR,
+                FileFormat.SEVEN_Z,
+                FileFormat.GZIP,
+                FileFormat.BZIP2,
+                FileFormat.XZ,
+            )
+        ) return
+        if (format in setOf(FileFormat.GZIP, FileFormat.BZIP2, FileFormat.XZ) && current.documents.size > 1) {
             host.postedMessage = "${format.displayName} 只支持单个文件压缩"
             return
         }

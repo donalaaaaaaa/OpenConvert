@@ -44,6 +44,7 @@ object FileTypeDetector {
             "application/x-tar" -> FileFormat.TAR
             "application/gzip", "application/x-gzip" -> FileFormat.GZIP
             "application/x-bzip2" -> FileFormat.BZIP2
+            "application/x-xz", "application/x-lzma" -> FileFormat.XZ
             "application/x-7z-compressed", "application/x-7z" -> FileFormat.SEVEN_Z
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document" -> FileFormat.DOCX
             "application/msword" -> FileFormat.DOC
@@ -173,6 +174,15 @@ object FileTypeDetector {
             h[2] == 'h'.code.toByte()
         ) {
             return FileFormat.BZIP2
+        }
+
+        // xz: FD 37 7A 58 5A 00
+        if (n >= 6 &&
+            h[0] == 0xFD.toByte() && h[1] == 0x37.toByte() &&
+            h[2] == 0x7A.toByte() && h[3] == 0x58.toByte() &&
+            h[4] == 0x5A.toByte() && h[5] == 0x00.toByte()
+        ) {
+            return FileFormat.XZ
         }
 
         // 7z: 37 7A BC AF 27 1C

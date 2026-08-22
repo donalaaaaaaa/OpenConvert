@@ -171,6 +171,111 @@ class ArchiveConverterInstrumentedTest {
         }
     }
 
+    @Test
+    fun compressesAndExtractsXz() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val resolver = context.contentResolver
+        val testId = UUID.randomUUID().toString()
+        val input = createTextFile(resolver, "xz-src-$testId.txt", "xz payload")
+        val pack = createPendingDownload(resolver, "xz-out-$testId.xz", "application/x-xz")
+        val outputDir = java.io.File(context.cacheDir, "extract-xz-$testId")
+        outputDir.mkdirs()
+        try {
+            val compress = ArchiveConverter(context).compress(
+                inputUris = listOf(input),
+                inputNames = listOf("xz-src-$testId.txt"),
+                outputUri = pack,
+                targetFormat = FileFormat.XZ,
+            )
+            assertTrue("xz compress failed: $compress", compress is ConversionResult.Success)
+
+            resolver.openFileDescriptor(pack, "r")!!.use { pfd ->
+                java.io.FileInputStream(pfd.fileDescriptor).use { stream ->
+                    val header = ByteArray(6)
+                    assertEquals(6, stream.read(header))
+                    assertEquals(FileFormat.XZ, FileTypeDetector.fromMagicBytes(header, 6))
+                }
+            }
+
+            val extract = ArchiveConverter(context).extract(
+                inputUri = pack,
+                outputDirectory = DocumentFile.fromFile(outputDir),
+                sourceName = "xz-out-$testId.xz",
+            )
+            assertTrue("xz extract failed: $extract", extract is ConversionResult.Success)
+            val extracted = outputDir.listFiles()?.firstOrNull { it.name.startsWith("xz-out-") }
+            assertEquals("xz payload", extracted!!.readText())
+        } finally {
+            runCatching { resolver.delete(input, null, null) }
+            runCatching { resolver.delete(pack, null, null) }
+            outputDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun compressesAndExtractsPlainTar() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val resolver = context.contentResolver
+        val testId = UUID.randomUUID().toString()
+        val input = createTextFile(resolver, "tar-src-$testId.txt", "plain tar payload")
+        val pack = createPendingDownload(resolver, "tar-out-$testId.tar", "application/x-tar")
+        val outputDir = java.io.File(context.cacheDir, "extract-tar-$testId")
+        outputDir.mkdirs()
+        try {
+            val compress = ArchiveConverter(context).compress(
+                inputUris = listOf(input),
+                inputNames = listOf("tar-src-$testId.txt"),
+                outputUri = pack,
+                targetFormat = FileFormat.TAR,
+            )
+            assertTrue("tar compress failed: $compress", compress is ConversionResult.Success)
+            val extract = ArchiveConverter(context).extract(
+                inputUri = pack,
+                outputDirectory = DocumentFile.fromFile(outputDir),
+                sourceName = "tar-out-$testId.tar",
+            )
+            assertTrue("tar extract failed: $extract", extract is ConversionResult.Success)
+            val extracted = outputDir.listFiles()?.firstOrNull { it.name.startsWith("tar-src-") }
+            assertEquals("plain tar payload", extracted!!.readText())
+        } finally {
+            runCatching { resolver.delete(input, null, null) }
+            runCatching { resolver.delete(pack, null, null) }
+            outputDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun compressesAndExtractsGzip() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val resolver = context.contentResolver
+        val testId = UUID.randomUUID().toString()
+        val input = createTextFile(resolver, "gz-src-$testId.txt", "gzip payload")
+        val pack = createPendingDownload(resolver, "gz-out-$testId.gz", "application/gzip")
+        val outputDir = java.io.File(context.cacheDir, "extract-gz-$testId")
+        outputDir.mkdirs()
+        try {
+            val compress = ArchiveConverter(context).compress(
+                inputUris = listOf(input),
+                inputNames = listOf("gz-src-$testId.txt"),
+                outputUri = pack,
+                targetFormat = FileFormat.GZIP,
+            )
+            assertTrue("gzip compress failed: $compress", compress is ConversionResult.Success)
+            val extract = ArchiveConverter(context).extract(
+                inputUri = pack,
+                outputDirectory = DocumentFile.fromFile(outputDir),
+                sourceName = "gz-out-$testId.gz",
+            )
+            assertTrue("gzip extract failed: $extract", extract is ConversionResult.Success)
+            val extracted = outputDir.listFiles()?.firstOrNull { it.name.startsWith("gz-out-") }
+            assertEquals("gzip payload", extracted!!.readText())
+        } finally {
+            runCatching { resolver.delete(input, null, null) }
+            runCatching { resolver.delete(pack, null, null) }
+            outputDir.deleteRecursively()
+        }
+    }
+
     private fun createTextFile(resolver: ContentResolver, name: String, content: String): Uri {
         val uri = createPendingDownload(resolver, name, "text/plain")
         resolver.openOutputStream(uri, "w")!!.use { it.write(content.toByteArray()) }

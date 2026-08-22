@@ -124,10 +124,11 @@ data class ArchiveCompressDraft(
             FileFormat.SEVEN_Z -> "OpenConvert_${documents.size}_files.7z"
             FileFormat.GZIP -> "${documents.first().name.substringBeforeLast('.')}.gz"
             FileFormat.BZIP2 -> "${documents.first().name.substringBeforeLast('.')}.bz2"
+            FileFormat.XZ -> "${documents.first().name.substringBeforeLast('.')}.xz"
             else -> "OpenConvert_archive.${targetFormat.preferredExtension}"
         }
 
-    val singleFileOnly: Boolean get() = targetFormat in setOf(FileFormat.GZIP, FileFormat.BZIP2)
+    val singleFileOnly: Boolean get() = targetFormat in setOf(FileFormat.GZIP, FileFormat.BZIP2, FileFormat.XZ)
 }
 
 data class ArchiveExtractDraft(

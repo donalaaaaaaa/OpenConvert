@@ -38,7 +38,7 @@
     <string name="home_tool_batch">批量转换</string>
     <string name="home_tool_batch_sub">一次转换多个文件</string>
     <string name="home_tool_archive">压缩包</string>
-    <string name="home_tool_archive_sub">ZIP · 7Z · TAR · GZIP · BZIP2</string>
+    <string name="home_tool_archive_sub">ZIP · 7Z · TAR · GZIP · BZIP2 · XZ</string>
     <string name="home_tool_office">Office 转换</string>
     <string name="home_tool_office_sub">DOCX · PPTX · XLSX → PDF</string>
     <string name="home_tool_office_basic">Office 版提供</string>
@@ -152,7 +152,7 @@
     <string name="cap_tool_watermark">文字水印</string>
     <string name="cap_tool_watermark_sub">斜向 / 居中 / 页脚半透明文字</string>
     <string name="cap_tool_archive_compress">压缩打包</string>
-    <string name="cap_tool_archive_compress_sub">ZIP · TAR · 7Z · GZIP · BZIP2</string>
+    <string name="cap_tool_archive_compress_sub">ZIP · TAR · 7Z · GZIP · BZIP2 · XZ</string>
     <string name="cap_tool_archive_extract">解压到文件夹</string>
     <string name="cap_tool_archive_extract_sub">还原压缩包内全部文件</string>
     <string name="cap_tool_convert">转换</string>
@@ -249,8 +249,8 @@
     <string name="archive_tool_compress">压缩文件</string>
     <string name="archive_tool_compress_sub">选择多个文件打包为 ZIP、TAR 或 7Z</string>
     <string name="archive_tool_extract">解压文件</string>
-    <string name="archive_tool_extract_sub">解压 ZIP / 7Z / TAR.GZ / TAR.BZ2 到文件夹</string>
-    <string name="archive_formats_hint">支持格式：ZIP、7Z、TAR、TAR.GZ、GZIP、BZIP2。</string>
+    <string name="archive_tool_extract_sub">解压 ZIP / 7Z / TAR / TAR.GZ / TAR.XZ / GZIP / BZIP2 / XZ 到文件夹</string>
+    <string name="archive_formats_hint">支持格式：ZIP、7Z、TAR、TAR.GZ、TAR.XZ、GZIP、BZIP2、XZ。</string>
     <string name="archive_empty_files">没有已选择的文件</string>
     <string name="archive_empty_pack">没有已选择的压缩包</string>
     <string name="archive_compress_sub">已选择 %1$d 个文件</string>

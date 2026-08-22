@@ -94,7 +94,7 @@ object FileCapabilityResolver {
         ConversionKind.PDF_CROP -> ToolAction(kind, "裁剪边距", "切除多余白边")
         ConversionKind.PDF_METADATA -> ToolAction(kind, "编辑元数据", "标题 / 作者 / 主题 / 关键词")
         ConversionKind.PDF_WATERMARK -> ToolAction(kind, "文字水印", "斜向 / 居中 / 页脚半透明文字")
-        ConversionKind.ARCHIVE_COMPRESS -> ToolAction(kind, "压缩打包", "ZIP · TAR · 7Z · GZIP · BZIP2")
+        ConversionKind.ARCHIVE_COMPRESS -> ToolAction(kind, "压缩打包", "ZIP · TAR · 7Z · GZIP · BZIP2 · XZ")
         ConversionKind.ARCHIVE_EXTRACT -> ToolAction(kind, "解压到文件夹", "还原压缩包内全部文件")
         ConversionKind.SINGLE, ConversionKind.BATCH ->
             ToolAction(kind, "转换", "标准格式转换")

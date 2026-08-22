@@ -17,6 +17,21 @@ class ArchiveFormatTest {
         assertEquals(FileFormat.TAR_GZ, FileFormat.fromFileName("BACKUP.TAR.GZ"))
         assertEquals(FileFormat.SEVEN_Z, FileFormat.fromFileName("backup.7z"))
         assertEquals(FileFormat.SEVEN_Z, FileFormat.fromFileName("BACKUP.7Z"))
+        assertEquals(FileFormat.XZ, FileFormat.fromFileName("file.xz"))
+        assertEquals(FileFormat.TAR_XZ, FileFormat.fromFileName("backup.tar.xz"))
+        assertEquals(FileFormat.TAR_XZ, FileFormat.fromFileName("backup.txz"))
+        assertEquals(FileFormat.TAR_XZ, FileFormat.fromFileName("BACKUP.TAR.XZ"))
+    }
+
+    @Test
+    fun recognizesXzMagicAndMime() {
+        val header = byteArrayOf(0xFD.toByte(), 0x37, 0x7A, 0x58, 0x5A, 0x00)
+        assertEquals(FileFormat.XZ, FileTypeDetector.fromMagicBytes(header, header.size))
+        assertEquals(FileFormat.XZ, FileTypeDetector.fromMimeType("application/x-xz"))
+        assertTrue(ConversionGraph.toolsFor(FileFormat.XZ).contains(ConversionKind.ARCHIVE_EXTRACT))
+        assertTrue(ConversionGraph.toolsFor(FileFormat.TAR).contains(ConversionKind.ARCHIVE_EXTRACT))
+        assertTrue(ConversionGraph.toolsFor(FileFormat.TAR_XZ).contains(ConversionKind.ARCHIVE_EXTRACT))
+        assertTrue(ConversionGraph.toolsFor(FileFormat.GZIP).contains(ConversionKind.ARCHIVE_EXTRACT))
     }
 
     @Test
@@ -46,5 +61,7 @@ class ArchiveFormatTest {
         assertEquals("photo.zip", suggestedOutputName("photo.jpg", FileFormat.ZIP))
         assertEquals("data.tar.gz", suggestedOutputName("data", FileFormat.TAR_GZ))
         assertEquals("file.bz2", suggestedOutputName("file.jpg", FileFormat.BZIP2))
+        assertEquals("notes.xz", suggestedOutputName("notes.txt", FileFormat.XZ))
+        assertEquals("backup.tar.xz", suggestedOutputName("backup", FileFormat.TAR_XZ))
     }
 }

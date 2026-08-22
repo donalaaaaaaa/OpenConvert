@@ -40,8 +40,10 @@ enum class FileFormat(
     ZIP("ZIP", FileCategory.ARCHIVE, setOf("zip"), "application/zip"),
     TAR("TAR", FileCategory.ARCHIVE, setOf("tar"), "application/x-tar"),
     TAR_GZ("TAR.GZ", FileCategory.ARCHIVE, setOf("tar.gz", "tgz"), "application/gzip"),
+    TAR_XZ("TAR.XZ", FileCategory.ARCHIVE, setOf("tar.xz", "txz"), "application/x-xz"),
     GZIP("GZIP", FileCategory.ARCHIVE, setOf("gz"), "application/gzip"),
     BZIP2("BZIP2", FileCategory.ARCHIVE, setOf("bz2"), "application/x-bzip2"),
+    XZ("XZ", FileCategory.ARCHIVE, setOf("xz"), "application/x-xz"),
     SEVEN_Z("7Z", FileCategory.ARCHIVE, setOf("7z"), "application/x-7z-compressed"),
     DOCX("DOCX", FileCategory.OFFICE, setOf("docx"), "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
     DOC("DOC", FileCategory.OFFICE, setOf("doc"), "application/msword"),
@@ -60,7 +62,7 @@ enum class FileFormat(
             val extension = lower.substringAfterLast('.', missingDelimiterValue = "")
             val doubleExtension = lower.substringAfterLast('.', missingDelimiterValue = "")
                 .let { single ->
-                    if (single == "gz" || single == "bz2") {
+                    if (single == "gz" || single == "bz2" || single == "xz") {
                         lower.substringBeforeLast('.').substringAfterLast('.', missingDelimiterValue = "")
                     } else {
                         ""

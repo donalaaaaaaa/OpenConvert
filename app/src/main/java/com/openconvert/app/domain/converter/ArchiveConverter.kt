@@ -29,12 +29,14 @@ import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream
+import org.apache.commons.compress.compressors.xz.XZCompressorInputStream
+import org.apache.commons.compress.compressors.xz.XZCompressorOutputStream
 
 /**
  * 压缩包引擎（Phase 7）：Apache Commons Compress。
  * - 多文件 → ZIP / TAR / 7Z
- * - 单文件 → GZIP / BZIP2
- * - ZIP / TAR.GZ / TAR.BZ2 / 7Z → 解压到目录
+ * - 单文件 → GZIP / BZIP2 / XZ
+ * - ZIP / TAR / TAR.GZ / TAR.BZ2 / TAR.XZ / 7Z / GZIP / BZIP2 / XZ → 解压
  * 全部流式处理，不整包载入内存。
  */
 class ArchiveConverter(
@@ -56,7 +58,7 @@ class ArchiveConverter(
         if (inputUris.isEmpty() || inputNames.size != inputUris.size) {
             return@withContext ConversionResult.Failure("没有可压缩的文件")
         }
-        if (targetFormat in setOf(FileFormat.GZIP, FileFormat.BZIP2) && inputUris.size > 1) {
+        if (targetFormat in setOf(FileFormat.GZIP, FileFormat.BZIP2, FileFormat.XZ) && inputUris.size > 1) {
             return@withContext ConversionResult.Failure("${targetFormat.displayName} 只支持单个文件压缩")
         }
         try {
@@ -69,6 +71,9 @@ class ArchiveConverter(
                 }
                 FileFormat.BZIP2 -> writeSingleStream(inputUris.first(), inputNames.first(), outputUri) {
                     BZip2CompressorOutputStream(it)
+                }
+                FileFormat.XZ -> writeSingleStream(inputUris.first(), inputNames.first(), outputUri) {
+                    XZCompressorOutputStream(it)
                 }
                 else -> return@withContext ConversionResult.Failure("不支持的压缩格式")
             }
@@ -88,7 +93,7 @@ class ArchiveConverter(
         }
     }
 
-    /** 解压 ZIP / TAR.GZ / TAR.BZ2 到输出目录。 */
+    /** 解压 ZIP / TAR / TAR.GZ / TAR.BZ2 / TAR.XZ / 7Z / GZIP / BZIP2 / XZ 到输出目录。 */
     suspend fun extract(
         inputUri: Uri,
         outputDirectory: DocumentFile,
@@ -99,9 +104,19 @@ class ArchiveConverter(
             when {
                 lower.endsWith(".zip") -> extractZip(inputUri, outputDirectory)
                 lower.endsWith(".7z") -> extractSevenZ(inputUri, outputDirectory)
-                lower.endsWith(".tar.gz") || lower.endsWith(".tgz") -> extractTar(inputUri, outputDirectory, gzip = true)
-                lower.endsWith(".tar.bz2") || lower.endsWith(".tbz2") -> extractTar(inputUri, outputDirectory, gzip = false)
-                else -> return@withContext ConversionResult.Failure("仅支持 ZIP / 7Z / TAR.GZ / TAR.BZ2 解压")
+                lower.endsWith(".tar.gz") || lower.endsWith(".tgz") ->
+                    extractTar(inputUri, outputDirectory, CompressKind.GZIP)
+                lower.endsWith(".tar.bz2") || lower.endsWith(".tbz2") ->
+                    extractTar(inputUri, outputDirectory, CompressKind.BZIP2)
+                lower.endsWith(".tar.xz") || lower.endsWith(".txz") ->
+                    extractTar(inputUri, outputDirectory, CompressKind.XZ)
+                lower.endsWith(".tar") -> extractTar(inputUri, outputDirectory, CompressKind.NONE)
+                lower.endsWith(".gz") -> extractSingle(inputUri, outputDirectory, sourceName, CompressKind.GZIP)
+                lower.endsWith(".bz2") -> extractSingle(inputUri, outputDirectory, sourceName, CompressKind.BZIP2)
+                lower.endsWith(".xz") -> extractSingle(inputUri, outputDirectory, sourceName, CompressKind.XZ)
+                else -> return@withContext ConversionResult.Failure(
+                    "仅支持 ZIP / 7Z / TAR / TAR.GZ / TAR.BZ2 / TAR.XZ / GZIP / BZIP2 / XZ 解压",
+                )
             }
             onProgress(100)
             ConversionResult.Success(
@@ -251,16 +266,10 @@ class ArchiveConverter(
         }
     }
 
-    private suspend fun extractTar(inputUri: Uri, directory: DocumentFile, gzip: Boolean) {
+    private suspend fun extractTar(inputUri: Uri, directory: DocumentFile, wrap: CompressKind) {
         resolver.openInputStream(inputUri)?.use { stream ->
-            val buffered = BufferedInputStream(stream)
-            val decompressed = if (gzip) {
-                GzipCompressorInputStream(buffered)
-            } else {
-                BZip2CompressorInputStream(buffered)
-            }
-            decompressed.use { decompressor ->
-                org.apache.commons.compress.archivers.tar.TarArchiveInputStream(decompressor).use { tar ->
+            wrapStream(BufferedInputStream(stream), wrap).use { decompressed ->
+                org.apache.commons.compress.archivers.tar.TarArchiveInputStream(decompressed).use { tar ->
                     var index = 0
                     while (true) {
                         currentCoroutineContext().ensureActive()
@@ -277,6 +286,34 @@ class ArchiveConverter(
                 }
             }
         } ?: throw FileNotFoundException("无法读取压缩包")
+    }
+
+    private suspend fun extractSingle(
+        inputUri: Uri,
+        directory: DocumentFile,
+        sourceName: String,
+        wrap: CompressKind,
+    ) {
+        val outName = sourceName
+            .substringAfterLast('/')
+            .removeSuffix(".gz")
+            .removeSuffix(".bz2")
+            .removeSuffix(".xz")
+            .ifBlank { "extracted" }
+        resolver.openInputStream(inputUri)?.use { stream ->
+            wrapStream(BufferedInputStream(stream), wrap).use { input ->
+                val target = directory.createFile(FileFormat.fromFileName(outName).mimeType, outName)
+                    ?: throw IOException("无法创建解压文件 $outName")
+                writeTo(target.uri, input)
+            }
+        } ?: throw FileNotFoundException("无法读取压缩文件")
+    }
+
+    private fun wrapStream(input: BufferedInputStream, wrap: CompressKind): java.io.InputStream = when (wrap) {
+        CompressKind.NONE -> input
+        CompressKind.GZIP -> GzipCompressorInputStream(input)
+        CompressKind.BZIP2 -> BZip2CompressorInputStream(input)
+        CompressKind.XZ -> XZCompressorInputStream(input)
     }
 
     /** 写入输出：content:// 走 ContentResolver，file:// 走 File（测试/缓存目录）。 */
@@ -298,4 +335,6 @@ class ArchiveConverter(
     private companion object {
         const val BUFFER_SIZE = 64 * 1024
     }
+
+    private enum class CompressKind { NONE, GZIP, BZIP2, XZ }
 }
