@@ -114,8 +114,8 @@ class OfficeConverter(
 
 /**
  * LibreOfficeKit 引擎门面：库加载探测 + 进程级单例初始化。
- * 正式路径为 Office Flavor 的 APK 内置库。files 目录 Office Pack 加载器仅保留为实验原型；
- * Android 16 上已知会在 soffice 线程初始化时触发 DeploymentException / SIGABRT。
+ * 只从 Office Flavor 的 APK 内置库加载。filesDir 动态 Pack 已确认在 Android 16
+ * 上会 SIGABRT，正式运行时不再探测、不再解压。
  */
 object OfficeEngine {
     private const val TAG = "OpenConvert.LOKit"
@@ -130,20 +130,17 @@ object OfficeEngine {
     val office: Office
         get() = checkNotNull(_office) { "LOKit 未初始化" }
 
-    /** 引擎库是否已打包/可加载。 */
+    /** 引擎库是否已打包/可加载。只看 APK nativeLibraryDir / System.loadLibrary。 */
     fun isAvailable(context: Context? = null): Boolean {
         if (loadState == STATE_OK) return true
         if (loadState == STATE_FAILED) return false
         synchronized(this) {
             if (loadState != STATE_UNTRIED) return loadState == STATE_OK
             loadState = try {
-                if (context != null && OfficePackManager.isInstalled(context)) {
-                    PackLibraryLoader(context).prepare()
-                }
                 LibreOfficeKit.initializeLibrary()
                 STATE_OK
             } catch (t: Throwable) {
-                Log.w(TAG, "LOKit 库不可用（Office Pack 未下载？）: $t")
+                Log.w(TAG, "LOKit 库不可用（当前安装包未内置 Office 引擎）: $t")
                 STATE_FAILED
             }
             return loadState == STATE_OK
@@ -156,37 +153,16 @@ object OfficeEngine {
         synchronized(this) {
             if (initialized) return
             val appContext = context.applicationContext
-            // 1. 先 unpack → 应用数据根目录（必须在库加载/init 之前）
-            //    复制三部分到 dataDir：unpack/（program+user+etc）、share/、program/。
-            //    注意：lo-bootstrap 的 zip 解析器只兼容 AGP 打包的 APK zip；
-            //    第三方生成的 pack zip 可能无法被 mmap 读取，因此资源全部落到 dataDir。
             val dataDir = File(appContext.applicationInfo.dataDir)
             dataDir.mkdirs()
             val marker = File(dataDir, ".lokit-unpacked-v4")
             if (!marker.exists()) {
-                val packAssets = OfficePackManager.assetsDir(appContext)
-                val packUnpack = File(packAssets, "unpack")
-                val copied = if (packUnpack.isDirectory) {
-                    copyFileDir(packUnpack, dataDir)
-                } else {
-                    copyAssetDir(appContext.assets, "unpack", dataDir)
-                }
-                val packShare = File(packAssets, "share")
-                if (packShare.isDirectory) {
-                    copyFileDir(packShare, File(dataDir, "share"))
-                } else {
-                    copyAssetDir(appContext.assets, "share", File(dataDir, "share"))
-                }
-                val packProgram = File(packAssets, "program")
-                if (packProgram.isDirectory) {
-                    copyFileDir(packProgram, File(dataDir, "program"))
-                } else {
-                    copyAssetDir(appContext.assets, "program", File(dataDir, "program"))
-                }
+                val copied = copyAssetDir(appContext.assets, "unpack", dataDir)
+                copyAssetDir(appContext.assets, "share", File(dataDir, "share"))
+                copyAssetDir(appContext.assets, "program", File(dataDir, "program"))
                 Log.i(TAG, "unpacked $copied files + share/program to ${dataDir.absolutePath}")
                 marker.writeText("1")
             }
-            // 2. 加载库并初始化
             if (!isAvailable(appContext)) throw IllegalStateException("LOKit 库不可用")
             LibreOfficeKit.putenv("SAL_LOG=+WARN+INFO")
             LibreOfficeKit.init(appContext)
@@ -198,7 +174,6 @@ object OfficeEngine {
         }
     }
 
-    /** 卸载 Office Pack 后重置状态。 */
     fun reset() {
         synchronized(this) {
             loadState = STATE_UNTRIED
@@ -226,64 +201,8 @@ object OfficeEngine {
         return count
     }
 
-    private fun copyFileDir(source: File, target: File): Int {
-        var count = 0
-        source.listFiles()?.forEach { child ->
-            val dest = File(target, child.name)
-            if (child.isDirectory) {
-                count += copyFileDir(child, dest)
-            } else {
-                dest.parentFile?.mkdirs()
-                child.copyTo(dest, overwrite = true)
-                count++
-            }
-        }
-        return count
-    }
-
     private const val STATE_UNTRIED = 0
     private const val STATE_OK = 1
     private const val STATE_FAILED = 2
 }
 
-/** 从 Office Pack 目录加载库（生产路径）。
- * 先 System.load(绝对路径) 预加载全部库；之后 LibreOfficeKit 静态块的
- * System.loadLibrary("nspr4") 等调用会发现同 soname 已加载而跳过。
- */
-private class PackLibraryLoader(private val context: Context) {
-    fun prepare() {
-        val libsDir = OfficePackManager.libsDir(context)
-        val abiDir = File(libsDir, android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64-v8a")
-        if (!abiDir.isDirectory) {
-            throw IllegalStateException("Office Pack 缺少 ${abiDir.name} 库目录")
-        }
-        // 复制到应用私有 native 目录（内存映射需要可读路径）
-        val dest = File(context.filesDir, "native")
-        dest.mkdirs()
-        val libs = abiDir.listFiles()?.filter { it.name.endsWith(".so") } ?: emptyList()
-        if (libs.isEmpty()) throw IllegalStateException("Office Pack 缺少 .so 文件")
-        libs.forEach { so ->
-            val target = File(dest, so.name)
-            if (!target.exists() || target.length() != so.length()) {
-                so.copyTo(target, overwrite = true)
-            }
-        }
-        // 按 NSS 链顺序预加载（必须保持顺序）
-        // 注意：libc++_shared.so 不预加载——若主 APK 已有 FFmpeg 的 libc++_shared，
-        // System.load 会因 soname 相同而跳过 pack 版，导致 LO 与 FFmpeg 的 libc++ ABI 混用。
-        // 这里依赖 LO 的 libc++ 需求与 FFmpeg 版兼容（NDK r2x 均提供 __ndk1 ABI）。
-        val order = listOf(
-            "libnspr4.so", "libplds4.so", "libplc4.so", "libnssutil3.so",
-            "libfreebl3.so", "libsqlite3.so", "libsoftokn3.so", "libnss3.so",
-            "libnssckbi.so", "libnssdbm3.so", "libsmime3.so", "libssl3.so",
-            "liblo-native-code.so",
-        )
-        order.forEach { name ->
-            val lib = File(dest, name)
-            if (lib.isFile) {
-                System.load(lib.absolutePath)
-            }
-        }
-        Log.i("OpenConvert.LOKit", "pack libs loaded from ${dest.absolutePath}")
-    }
-}

@@ -3,18 +3,23 @@
 # 用法：
 #   1. 复制为仓库根目录的 signing.properties（该文件已在 .gitignore 中，不会入库）
 #   2. 填入真实值
-#   3. ./gradlew.bat assembleRelease
+#   3. ./gradlew.bat assembleBasicRelease assembleOfficeRelease
+#
+# 当前正式轮换：下一版用 app/openconvert-release-v2.jks。
+# 旧 app/openconvert-release.jks 只用于给已安装的 v1.0.0 打补丁。
+# 详见 docs/signing-rotation.md。
 #
 # CI 环境改用环境变量（优先级低于本文件）：
 #   OPENCONVERT_STORE_PASSWORD
 #   OPENCONVERT_KEY_ALIAS
 #   OPENCONVERT_KEY_PASSWORD
+#   OPENCONVERT_KEYSTORE_BASE64   （工作流先解码成 jks）
 #
 # 三者缺一时 release 构建产出 UNSIGNED APK 并打印警告，
 # 绝不回落到硬编码口令。
 
-# keystore 路径，相对于仓库根目录。缺省 app/openconvert-release.jks
-storeFile=app/openconvert-release.jks
+# keystore 路径，相对于仓库根目录。
+storeFile=app/openconvert-release-v2.jks
 storePassword=CHANGE_ME
-keyAlias=CHANGE_ME
+keyAlias=openconvert
 keyPassword=CHANGE_ME

@@ -26,6 +26,9 @@ class LargeFileStabilityInstrumentedTest {
     @Test
     fun streams2Gb() = streamExact(2L * 1024 * 1024 * 1024, "2GB")
 
+    @Test
+    fun streams4Gb() = streamExact(4L * 1024 * 1024 * 1024, "4GB")
+
     private fun streamExact(size: Long, label: String) = runBlocking(Dispatchers.IO) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val usable = context.cacheDir.usableSpace

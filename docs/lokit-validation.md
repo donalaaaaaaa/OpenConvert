@@ -57,7 +57,9 @@ instrumentation 进程中，曾在第 31 项原生图像测试处因前序资源
 - **Office Pack 可选下载（动态加载）已知限制（Android 16 / PHY110）**：
   - 库从 `files/` 目录 `System.load` 后，LO 内部 soffice 线程初始化抛 `DeploymentException`（SIGABRT）
   - 同 .so 打包进 APK（`lib/`）时完全正常 → 判定为 linker namespace / 加载路径差异，非代码问题
-  - 已保留 `OfficePackManager`（zip 安装到 filesDir/office-pack）作为未来增强入口，但当前默认走内置 Flavor 方案
+  - 动态 `OfficePackManager`（zip → filesDir）已从正式运行时删除：Android 16 上会 SIGABRT。
+    Office 能力只通过 Office Flavor 内置库提供。`scripts/fetch-office-pack.ps1` 仍用于把
+    上游 APK 抽到 `app/src/office/`。
   - 若后续需要动态下载：优先研究 split APK（PackageInstaller）或与 FFmpeg 的 libc++_shared 兼容性
 
 2026-08-21 复验：双 Flavor 已重新成为正式构建边界；Basic APK 35.39 MiB 且不含任何 LOKit

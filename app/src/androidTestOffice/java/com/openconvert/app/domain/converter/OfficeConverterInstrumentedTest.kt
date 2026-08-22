@@ -24,9 +24,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Office Pack 可选下载端到端（真机）。
- * 前置：`adb push output/office-pack.zip /sdcard/Download/`
- * 覆盖：未安装→不可用；安装 pack → DOCX/PPTX/XLSX → PDF。
+ * Office Flavor 内置 LibreOfficeKit 端到端（真机）。
+ * 覆盖：DOCX/PPTX/XLSX → PDF，以及保真度素材矩阵。
  */
 @RunWith(AndroidJUnit4::class)
 class OfficeConverterInstrumentedTest {

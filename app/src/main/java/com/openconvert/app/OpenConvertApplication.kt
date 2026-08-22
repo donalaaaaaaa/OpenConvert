@@ -5,6 +5,7 @@ import com.openconvert.app.data.local.OpenConvertDatabase
 import com.openconvert.app.data.preferences.UserPreferences
 import com.openconvert.app.data.repository.ConversionHistoryRepository
 import com.openconvert.app.domain.work.ConversionRecovery
+import com.openconvert.app.domain.model.ConversionTask
 import com.openconvert.app.work.BatchScheduler
 import com.openconvert.app.work.ConversionNotifier
 import com.openconvert.app.work.ConversionScheduler
@@ -37,23 +38,31 @@ class OpenConvertApplication : Application() {
         applicationScope.launch {
             // 首次启动播种内置预设（计划书 §八）。空库才写，不覆盖用户调整。
             runCatching { presetStore.seedIfEmpty() }
-
-            val active = historyRepository.findActive()
-            // 暂停中的批量任务不参与孤儿恢复（它们的 work 被主动取消，等待恢复）。
-            val pausedBatchIds = database.batchJobDao()
-                .observeAll()
-                .let { flow -> flow.first() }
-                .filter { it.status == "PAUSED" }
-                .map { it.id }
-                .toSet()
-            val recoverable = active.filter { task ->
-                task.payload.batchId == null || task.payload.batchId !in pausedBatchIds
-            }
-            val orphans = ConversionRecovery.reconcile(
-                activeTasks = recoverable,
-                activeWorkIds = conversionScheduler.activeTaskIds(),
-            )
-            orphans.forEach { historyRepository.save(it) }
+            recoverOrphans()
         }
+    }
+
+    /**
+     * 把「Room 里还是 PENDING/RUNNING，但 WorkManager 已经没了」的任务标成失败。
+     * 系统杀进程、崩溃、用户强行停止之后，下次启动走这里。
+     * 暂停中的批量任务不参与（它们的 work 是被主动取消的）。
+     */
+    suspend fun recoverOrphans(): List<ConversionTask> {
+        val active = historyRepository.findActive()
+        val pausedBatchIds = database.batchJobDao()
+            .observeAll()
+            .let { flow -> flow.first() }
+            .filter { it.status == "PAUSED" }
+            .map { it.id }
+            .toSet()
+        val recoverable = active.filter { task ->
+            task.payload.batchId == null || task.payload.batchId !in pausedBatchIds
+        }
+        val orphans = ConversionRecovery.reconcile(
+            activeTasks = recoverable,
+            activeWorkIds = conversionScheduler.activeTaskIds(),
+        )
+        orphans.forEach { historyRepository.save(it) }
+        return orphans
     }
 }
