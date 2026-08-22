@@ -8,11 +8,13 @@ import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.FFmpegKitConfig
 import com.arthenica.ffmpegkit.FFmpegSession
 import com.arthenica.ffmpegkit.ReturnCode
+import com.openconvert.app.domain.engine.EngineType
 import com.openconvert.app.domain.model.ConversionResult
 import com.openconvert.app.domain.model.ConversionTask
 import com.openconvert.app.domain.model.FileCategory
 import com.openconvert.app.domain.model.FileFormat
 import com.openconvert.app.domain.model.canConvertLocallyTo
+import com.openconvert.app.domain.planner.ConversionPlan
 import com.openconvert.app.domain.work.BoundedIo
 import com.openconvert.app.domain.work.StorageGuard
 import java.io.File
@@ -40,7 +42,20 @@ class MediaConverter(
         inputFormat.category in setOf(FileCategory.AUDIO, FileCategory.VIDEO) &&
             inputFormat.canConvertLocallyTo(outputFormat)
 
-    override suspend fun convert(task: ConversionTask): ConversionResult = withContext(Dispatchers.IO) {
+    override suspend fun convert(task: ConversionTask): ConversionResult = convert(task, null, null)
+
+    /**
+     * 给 ConversionExecutor 的预检入口。Planner 与真正执行复用同一份编码事实，
+     * 避免 Planner 认为需要重编码、执行层却自行走了流拷贝（Benchmark 也会随之失真）。
+     */
+    internal suspend fun inspectForPlanning(task: ConversionTask): StreamCodecs =
+        withContext(Dispatchers.IO) { inspect(task) }
+
+    internal suspend fun convert(
+        task: ConversionTask,
+        executionPlan: ConversionPlan?,
+        preflightCodecs: StreamCodecs?,
+    ): ConversionResult = withContext(Dispatchers.IO) {
         val outputUri = task.outputUri?.let(Uri::parse)
             ?: return@withContext ConversionResult.Failure("没有选择输出文件")
         if (!supports(task.sourceFormat, task.targetFormat)) {
@@ -57,25 +72,24 @@ class MediaConverter(
                 throw IOException("无法创建音视频转换临时目录")
             }
             reportProgress(3)
-            if (task.targetFormat == FileFormat.WEBM) {
+            val codecs = preflightCodecs ?: inspect(task)
+            val durationMs = codecs.durationMs ?: 0L
+            reportProgress(15)
+            var plan = MediaEncodePlanner.plan(task.targetFormat, task.quality, task.resolution, codecs)
+            executionPlan?.encodeMode?.let { plannedMode ->
+                // bitrate 仍由媒体 Planner 按源文件计算；执行模式以统一 ConversionPlanner 为准。
+                if (plannedMode != plan.mode) plan = plan.copy(mode = plannedMode)
+            }
+
+            if (plan.mode == EncodeMode.LITR_VP8) {
                 when (val litr = LitrWebmEncoder(context, onProgress).convert(task)) {
                     is ConversionResult.Success -> return@withContext litr
                     ConversionResult.Cancelled -> return@withContext ConversionResult.Cancelled
                     is ConversionResult.Failure -> {
-                        // Fall through to FFmpeg VP8 only if MediaCodec cannot take this file.
+                        // MediaCodec 拒绝该文件时继续走 FFmpeg VP8 兜底。
                     }
                 }
             }
-
-            val durationMs = readDurationMs(Uri.parse(task.sourceUri))
-            val codecs = if (shouldProbe(task)) {
-                reportProgress(12)
-                probe(Uri.parse(task.sourceUri), task.fileSize, durationMs)
-            } else {
-                StreamCodecs(fileSize = task.fileSize, durationMs = durationMs)
-            }
-            reportProgress(15)
-            var plan = MediaEncodePlanner.plan(task.targetFormat, task.quality, task.resolution, codecs)
 
             // MP4 re-encode: Media3/MediaCodec is the primary engine; FFmpeg only as fallback.
             if (plan.mode == EncodeMode.HARDWARE_H264) {
@@ -90,7 +104,11 @@ class MediaConverter(
                 ) {
                     Media3Transcoder.Outcome.Success -> {
                         android.util.Log.i("OpenConvert", "engine=media3 result=success task=${task.id}")
-                        return@withContext finishOutput(outputFile, outputUri)
+                        return@withContext finishOutput(
+                            outputFile,
+                            outputUri,
+                            EngineType.MEDIA3_MEDIACODEC,
+                        )
                     }
                     Media3Transcoder.Outcome.Cancelled -> return@withContext ConversionResult.Cancelled
                     is Media3Transcoder.Outcome.Failure -> {
@@ -131,7 +149,7 @@ class MediaConverter(
             if (!outcome.success) {
                 throw IOException(outcome.errorMessage.ifBlank { "FFmpeg 编码失败" })
             }
-            finishOutput(outputFile, outputUri)
+            finishOutput(outputFile, outputUri, EngineType.FFMPEG_KIT)
         } catch (cancelled: CancellationException) {
             deleteIncompleteOutput(outputUri)
             throw cancelled
@@ -143,7 +161,21 @@ class MediaConverter(
         }
     }
 
-    private suspend fun finishOutput(outputFile: File, outputUri: Uri): ConversionResult {
+    private fun inspect(task: ConversionTask): StreamCodecs {
+        val sourceUri = Uri.parse(task.sourceUri)
+        val durationMs = readDurationMs(sourceUri)
+        return if (shouldProbe(task)) {
+            probe(sourceUri, task.fileSize, durationMs)
+        } else {
+            StreamCodecs(fileSize = task.fileSize, durationMs = durationMs)
+        }
+    }
+
+    private suspend fun finishOutput(
+        outputFile: File,
+        outputUri: Uri,
+        actualEngine: EngineType,
+    ): ConversionResult {
         if (!outputFile.isFile || outputFile.length() <= 0L) {
             throw IOException("转换完成但没有生成有效文件")
         }
@@ -153,7 +185,7 @@ class MediaConverter(
         } ?: throw FileNotFoundException("无法写入目标文件")
         val outputSize = outputFile.length()
         reportProgress(100)
-        return ConversionResult.Success(outputUri.toString(), outputSize)
+        return ConversionResult.Success(outputUri.toString(), outputSize, actualEngine)
     }
 
     private suspend fun execute(

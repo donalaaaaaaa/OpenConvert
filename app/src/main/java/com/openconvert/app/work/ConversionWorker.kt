@@ -80,6 +80,7 @@ class ConversionWorker(
                         status = ConversionStatus.COMPLETED,
                         completedAt = System.currentTimeMillis(),
                         outputName = result.outputName ?: task.outputName,
+                        actualEngine = result.actualEngine,
                         payload = task.payload.copy(outputUris = result.outputUris),
                     )
                     repo.save(done)

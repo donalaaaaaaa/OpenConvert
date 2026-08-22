@@ -30,10 +30,10 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Unit Tests
-        run: ./gradlew testDebugUnitTest --no-daemon --stacktrace
+        run: ./gradlew testBasicDebugUnitTest testOfficeDebugUnitTest --no-daemon --stacktrace
 
       - name: Build Debug & Release APK
-        run: ./gradlew assembleDebug assembleRelease --no-daemon --stacktrace
+        run: ./gradlew assembleBasicDebug assembleOfficeDebug assembleBasicRelease assembleOfficeRelease --no-daemon --stacktrace
 
       - name: Generate SHA256 Checksums
         run: |

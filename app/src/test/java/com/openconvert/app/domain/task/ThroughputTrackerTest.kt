@@ -1,5 +1,6 @@
 package com.openconvert.app.domain.task
 
+import com.openconvert.app.domain.engine.EngineType
 import com.openconvert.app.domain.model.ConversionPayload
 import com.openconvert.app.domain.model.ConversionStatus
 import com.openconvert.app.domain.model.ConversionTask
@@ -110,6 +111,7 @@ class TaskCardFactoryTest {
         createdAt: Long = 1_000,
         completedAt: Long? = null,
         errorMessage: String? = null,
+        actualEngine: EngineType? = null,
     ) = ConversionTask(
         id = "t",
         sourceUri = "content://x",
@@ -123,6 +125,7 @@ class TaskCardFactoryTest {
         createdAt = createdAt,
         completedAt = completedAt,
         errorMessage = errorMessage,
+        actualEngine = actualEngine,
         payload = ConversionPayload(),
     )
 
@@ -156,6 +159,19 @@ class TaskCardFactoryTest {
         assertTrue(card.sizeSummary!!.contains("18.4 MB"))
         assertTrue(card.sizeSummary!!.contains("7.1 MB"))
         assertEquals("耗时 13 秒", card.elapsedText)
+    }
+
+    @Test
+    fun `finished card shows the actual fallback engine`() {
+        val card = TaskCardFactory.create(
+            base(
+                ConversionStatus.COMPLETED,
+                completedAt = 2_000,
+                actualEngine = EngineType.FFMPEG_KIT,
+            ),
+            ThroughputEstimate.UNKNOWN,
+        )
+        assertEquals("引擎 · FFmpegKit", card.engineText)
     }
 
     @Test

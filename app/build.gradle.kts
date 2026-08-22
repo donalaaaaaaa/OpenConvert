@@ -35,10 +35,16 @@ val hasReleaseSigning = releaseKeystore.exists() &&
     releaseStorePassword != null &&
     releaseKeyAlias != null &&
     releaseKeyPassword != null
+val releaseInstrumentationEnabled =
+    providers.gradleProperty("openconvertTestBuildType").orNull == "release"
 
 android {
     namespace = "com.openconvert.app"
     compileSdk = 36
+
+    // 默认仍验证 debug；升级验收通过命令行切到 release，使测试 APK 可以直接
+    // 驱动同签名的 Basic / Office 正式安装包。
+    testBuildType = providers.gradleProperty("openconvertTestBuildType").orNull ?: "debug"
 
     defaultConfig {
         applicationId = "com.openconvert.app"
@@ -62,6 +68,22 @@ android {
         }
     }
 
+    // 阶段 09：把 170+ MiB 的 LibreOfficeKit 从默认发行包剥离。
+    // basic 是主应用轻量版；office 使用同一 applicationId / 签名，可作为原地升级包，
+    // 并从 src/office 打入 LOKit native 库与运行资源。
+    flavorDimensions += "edition"
+    productFlavors {
+        create("basic") {
+            dimension = "edition"
+            buildConfigField("boolean", "OFFICE_BUNDLED", "false")
+        }
+        create("office") {
+            dimension = "edition"
+            versionNameSuffix = "-office"
+            buildConfigField("boolean", "OFFICE_BUNDLED", "true")
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
@@ -70,6 +92,10 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            testProguardFiles("test-proguard-rules.pro")
+            if (releaseInstrumentationEnabled) {
+                proguardFile("release-instrumentation-rules.pro")
+            }
             signingConfig = if (hasReleaseSigning) {
                 signingConfigs.getByName("release")
             } else {

@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.net.Uri
 import androidx.exifinterface.media.ExifInterface
+import com.openconvert.app.domain.engine.EngineType
 import com.openconvert.app.domain.model.ConversionResult
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.pdmodel.PDPage
@@ -58,7 +59,7 @@ class ImagesToPdfConverter(
                 it.statSize.coerceAtLeast(0L)
             } ?: 0L
             reportProgress(100)
-            ConversionResult.Success(outputUri.toString(), outputSize)
+            ConversionResult.Success(outputUri.toString(), outputSize, EngineType.PDFBOX)
         } catch (cancelled: CancellationException) {
             deleteIncompleteOutput(outputUri)
             throw cancelled

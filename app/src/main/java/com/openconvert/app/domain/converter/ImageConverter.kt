@@ -9,6 +9,7 @@ import android.graphics.Matrix
 import android.net.Uri
 import android.os.Build
 import androidx.exifinterface.media.ExifInterface
+import com.openconvert.app.domain.engine.EngineType
 import com.openconvert.app.domain.model.ConversionResult
 import com.openconvert.app.domain.model.ConversionTask
 import com.openconvert.app.domain.model.FileCategory
@@ -91,7 +92,7 @@ class ImageConverter(
                 descriptor.statSize.coerceAtLeast(0L)
             } ?: 0L
             reportProgress(100)
-            ConversionResult.Success(outputUri.toString(), outputSize)
+            ConversionResult.Success(outputUri.toString(), outputSize, EngineType.BITMAP_FACTORY)
         } catch (cancelled: CancellationException) {
             deleteIncompleteOutput(outputUri)
             throw cancelled
@@ -205,7 +206,7 @@ class ImageConverter(
         } ?: throw FileNotFoundException("无法写入目标文件")
 
         reportProgress(100)
-        return ConversionResult.Success(outputUri.toString(), out.size.toLong())
+        return ConversionResult.Success(outputUri.toString(), out.size.toLong(), EngineType.LIBVIPS)
     }
 
     private suspend fun reportProgress(progress: Int) {

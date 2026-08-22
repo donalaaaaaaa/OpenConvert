@@ -3,6 +3,7 @@ package com.openconvert.app.domain.converter
 import android.content.Context
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
+import com.openconvert.app.domain.engine.EngineType
 import com.openconvert.app.domain.model.ConversionResult
 import com.openconvert.app.domain.model.FileFormat
 import java.io.BufferedInputStream
@@ -69,7 +70,11 @@ class ArchiveConverter(
             }
             onProgress(100)
             val size = resolver.openFileDescriptor(outputUri, "r")?.use { it.statSize } ?: 0L
-            ConversionResult.Success(outputUri.toString(), size.coerceAtLeast(0))
+            ConversionResult.Success(
+                outputUri.toString(),
+                size.coerceAtLeast(0),
+                EngineType.COMMONS_COMPRESS,
+            )
         } catch (cancelled: CancellationException) {
             runCatching { resolver.delete(outputUri, null, null) }
             ConversionResult.Cancelled
@@ -94,7 +99,11 @@ class ArchiveConverter(
                 else -> return@withContext ConversionResult.Failure("仅支持 ZIP / TAR.GZ / TAR.BZ2 解压")
             }
             onProgress(100)
-            ConversionResult.Success(outputDirectory.uri.toString(), 0L)
+            ConversionResult.Success(
+                outputDirectory.uri.toString(),
+                0L,
+                EngineType.COMMONS_COMPRESS,
+            )
         } catch (cancelled: CancellationException) {
             ConversionResult.Cancelled
         } catch (error: Throwable) {

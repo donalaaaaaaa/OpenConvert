@@ -6,11 +6,15 @@ import android.net.Uri
 import android.provider.MediaStore
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.openconvert.app.BuildConfig
+import com.openconvert.app.domain.engine.EngineType
 import com.openconvert.app.domain.model.ConversionResult
 import com.openconvert.app.domain.model.ConversionTask
 import com.openconvert.app.domain.model.FileFormat
 import com.openconvert.app.domain.model.QualityPreset
 import com.openconvert.app.domain.model.ResolutionPreset
+import com.tom_roush.pdfbox.pdmodel.PDDocument
+import com.tom_roush.pdfbox.text.PDFTextStripper
 import java.io.File
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
@@ -30,13 +34,62 @@ class OfficeConverterInstrumentedTest {
     @Test
     fun bundledEngineConvertsAllOfficeFormats() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
+        assertTrue("Office 变体必须声明内置引擎", BuildConfig.OFFICE_BUNDLED)
         assertTrue("内置 LibreOfficeKit 引擎应可用", OfficeEngine.isAvailable(context))
         convertAndVerify("office-test-doc.docx", FileFormat.DOCX)
         convertAndVerify("office-test-slide.pptx", FileFormat.PPTX)
         convertAndVerify("office-test-sheet.xlsx", FileFormat.XLSX)
     }
 
-    private suspend fun convertAndVerify(assetName: String, format: FileFormat) {
+    @Test
+    fun bundledEnginePreservesOfficeFidelityMatrix() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        assertTrue("Office 变体必须声明内置引擎", BuildConfig.OFFICE_BUNDLED)
+        assertTrue("内置 LibreOfficeKit 引擎应可用", OfficeEngine.isAvailable(context))
+
+        convertAndVerify(
+            assetName = "office-fidelity-doc.docx",
+            format = FileFormat.DOCX,
+            minimumPages = 2,
+            expectedMarkers = listOf(
+                "DOCX-中文-甲",
+                "DOCX-表格-合计",
+                "DOCX-HEADER",
+                "DOCX-FOOTER",
+                "DOCX-CJK-PASS",
+            ),
+        )
+        convertAndVerify(
+            assetName = "office-fidelity-slide.pptx",
+            format = FileFormat.PPTX,
+            minimumPages = 2,
+            expectedMarkers = listOf(
+                "PPTX-CJK-PASS",
+                "PPTX-第二页-乙",
+                "PPTX-TABLE-PASS",
+            ),
+        )
+        convertAndVerify(
+            assetName = "office-fidelity-sheet.xlsx",
+            format = FileFormat.XLSX,
+            minimumPages = 3,
+            expectedMarkers = listOf(
+                "XLSX-总览-甲",
+                "XLSX-华东-乙",
+                "XLSX-华南-丙",
+                "XLSX-FORMULA-PASS",
+                "XLSX-SHEETS-PASS",
+                "2,740,000",
+            ),
+        )
+    }
+
+    private suspend fun convertAndVerify(
+        assetName: String,
+        format: FileFormat,
+        minimumPages: Int = 1,
+        expectedMarkers: List<String> = emptyList(),
+    ) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val testContext = InstrumentationRegistry.getInstrumentation().context
         val resolver = context.contentResolver
@@ -64,6 +117,11 @@ class OfficeConverterInstrumentedTest {
             )
             val result = converter.convert(task)
             assertTrue("Expected success, got $result", result is ConversionResult.Success)
+            assertEquals(
+                "Office 成功结果必须报告实际引擎",
+                EngineType.LIBREOFFICE_KIT,
+                (result as ConversionResult.Success).actualEngine,
+            )
 
             resolver.openInputStream(output)!!.use { stream ->
                 val header = stream.readBytes().take(5)
@@ -71,6 +129,24 @@ class OfficeConverterInstrumentedTest {
             }
             val size = resolver.openFileDescriptor(output, "r")!!.use { it.statSize }
             assertTrue("PDF 应非空, size=$size", size > 0)
+
+            resolver.openInputStream(output)!!.use { stream ->
+                PDDocument.load(stream).use { document ->
+                    assertTrue(
+                        "$assetName 导出页数不足：${document.numberOfPages} < $minimumPages",
+                        document.numberOfPages >= minimumPages,
+                    )
+                    if (expectedMarkers.isNotEmpty()) {
+                        val text = PDFTextStripper().getText(document).withoutWhitespace()
+                        expectedMarkers.forEach { marker ->
+                            assertTrue(
+                                "$assetName 导出 PDF 缺少关键文本：$marker\n实际文本：${text.take(800)}",
+                                text.contains(marker.withoutWhitespace()),
+                            )
+                        }
+                    }
+                }
+            }
         } finally {
             runCatching { resolver.delete(input, null, null) }
             runCatching { resolver.delete(output, null, null) }
@@ -87,4 +163,6 @@ class OfficeConverterInstrumentedTest {
             },
         ),
     )
+
+    private fun String.withoutWhitespace(): String = replace(Regex("\\s+"), "")
 }

@@ -107,8 +107,8 @@ import androidx.navigation.compose.rememberNavController
 import com.openconvert.app.domain.model.ConversionStatus
 import com.openconvert.app.domain.model.ConversionKind
 import com.openconvert.app.domain.model.ConversionTask
-import com.openconvert.app.domain.converter.OfficeEngine
-import com.openconvert.app.domain.converter.OfficePackManager
+import com.openconvert.app.BuildConfig
+import com.openconvert.app.domain.benchmark.BenchmarkReportFormat
 import java.io.File
 import com.openconvert.app.domain.model.BatchJob
 import com.openconvert.app.domain.model.BatchJobStatus
@@ -298,7 +298,11 @@ fun OpenConvertApp(viewModel: MainViewModel = viewModel()) {
                     onPdfTools = { navController.navigate(PDF_TOOLS) },
                     onBatch = { navController.navigate(BATCH) },
                     onArchive = { navController.navigate(ARCHIVE) },
-                    onOffice = { navController.navigate(OFFICE_TOOLS) },
+                    onOffice = if (BuildConfig.OFFICE_BUNDLED) {
+                        { navController.navigate(OFFICE_TOOLS) }
+                    } else {
+                        null
+                    },
                     onSettings = { navController.navigate(SETTINGS) },
                     onReuse = { task ->
                         if (viewModel.reuseConversion(task)) navController.navigate(CONVERT)
@@ -333,14 +337,22 @@ fun OpenConvertApp(viewModel: MainViewModel = viewModel()) {
             composable(SETTINGS) {
                 val imageQuality by viewModel.imageQualityPreference.collectAsStateWithLifecycle()
                 val videoQuality by viewModel.videoQualityPreference.collectAsStateWithLifecycle()
+                val benchmarkRecordCount by viewModel.benchmarkRecordCount.collectAsStateWithLifecycle()
                 SettingsScreen(
                     imageQuality = imageQuality,
                     videoQuality = videoQuality,
+                    benchmarkRecordCount = benchmarkRecordCount,
                     onImageQuality = viewModel::setImageQualityPreference,
                     onVideoQuality = viewModel::setVideoQualityPreference,
                     onPrivacy = { navController.navigate(PRIVACY) },
-                    onOfficeTools = { navController.navigate(OFFICE_TOOLS) },
+                    onOfficeTools = if (BuildConfig.OFFICE_BUNDLED) {
+                        { navController.navigate(OFFICE_TOOLS) }
+                    } else {
+                        null
+                    },
                     onClearCache = viewModel::clearCache,
+                    onRefreshBenchmark = viewModel::refreshBenchmarkStats,
+                    onExportBenchmark = viewModel::exportBenchmarkReport,
                 )
             }
             composable(OFFICE_TOOLS) {
@@ -410,6 +422,7 @@ fun OpenConvertApp(viewModel: MainViewModel = viewModel()) {
             }
             composable(BATCH) {
                 val batchUiState by viewModel.batchUiState.collectAsStateWithLifecycle()
+                val batchPresets by viewModel.presets.collectAsStateWithLifecycle()
                 when (val state = batchUiState) {
                     BatchUiState.Idle -> BatchPickerScreen(
                         onBack = navController::popBackStack,
@@ -419,6 +432,12 @@ fun OpenConvertApp(viewModel: MainViewModel = viewModel()) {
                     )
                     is BatchUiState.Configuring -> BatchConfigureScreen(
                         draft = state.draft,
+                        presets = availableBatchPresets(
+                            sourceFormats = state.draft.documents.map { it.format },
+                            commonFormats = state.draft.commonFormats,
+                            presets = batchPresets,
+                        ),
+                        onApplyPreset = { viewModel.applyBatchPreset(it) },
                         onBack = {
                             viewModel.resetBatch()
                             navController.popBackStack()
@@ -952,7 +971,7 @@ private fun HomeScreen(
     onPdfTools: () -> Unit,
     onBatch: () -> Unit,
     onArchive: () -> Unit,
-    onOffice: () -> Unit,
+    onOffice: (() -> Unit)?,
     onSettings: () -> Unit,
     onReuse: (ConversionTask) -> Unit,
     onDelete: (ConversionTask) -> Unit,
@@ -1008,7 +1027,15 @@ private fun HomeScreen(
                         )
                     }
                     Text("选择文件", fontSize = 18.sp, fontWeight = FontWeight.Medium)
-                    Text("PDF · 图片 · 视频 · 音频 · Office", color = Muted, fontSize = 13.sp)
+                    Text(
+                        if (BuildConfig.OFFICE_BUNDLED) {
+                            "PDF · 图片 · 视频 · 音频 · Office"
+                        } else {
+                            "PDF · 图片 · 视频 · 音频"
+                        },
+                        color = Muted,
+                        fontSize = 13.sp,
+                    )
                 }
             }
         }
@@ -1068,7 +1095,11 @@ private fun HomeScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     ToolCard(
                         "Office 转换",
-                        "DOCX · PPTX · XLSX → PDF",
+                        if (BuildConfig.OFFICE_BUNDLED) {
+                            "DOCX · PPTX · XLSX → PDF"
+                        } else {
+                            "Office 版提供"
+                        },
                         Icons.AutoMirrored.Outlined.Article,
                         Modifier.fillMaxWidth(),
                         onClick = onOffice,
@@ -2774,6 +2805,9 @@ private fun HistoryActionSheet(
                 color = Muted,
                 fontSize = 13.sp,
             )
+            task.actualEngine?.let { engine ->
+                Text("实际引擎 · ${engine.displayName}", color = Muted, fontSize = 12.sp)
+            }
             Spacer(Modifier.height(8.dp))
             HistoryActionRow(Icons.AutoMirrored.Outlined.OpenInNew, "打开文件", enabled = outputs.isNotEmpty(), onClick = onOpen)
             HistoryActionRow(Icons.Outlined.Share, "分享", enabled = outputs.isNotEmpty(), onClick = onShare)
@@ -2812,37 +2846,33 @@ private fun HistoryActionRow(
 private fun SettingsScreen(
     imageQuality: QualityPreset,
     videoQuality: QualityPreset,
+    benchmarkRecordCount: Int,
     onImageQuality: (QualityPreset) -> Unit,
     onVideoQuality: (QualityPreset) -> Unit,
     onPrivacy: () -> Unit,
-    onOfficeTools: () -> Unit,
+    onOfficeTools: (() -> Unit)?,
     onClearCache: () -> Unit = {},
+    onRefreshBenchmark: () -> Unit = {},
+    onExportBenchmark: (Uri, BenchmarkReportFormat) -> Unit = { _, _ -> },
 ) {
     var picking by remember { mutableStateOf<String?>(null) }
+    var showBenchmarkExport by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    var officePackInstalled by remember {
-        mutableStateOf(OfficeEngine.isAvailable(context) || OfficePackManager.isInstalled(context))
-    }
-    var officeMessage by remember { mutableStateOf<String?>(null) }
-    val packPicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
+    val markdownExporter = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(BenchmarkReportFormat.MARKDOWN.mimeType),
     ) { uri ->
-        if (uri != null) {
-            val copied = File(context.cacheDir, "office-pack.zip")
-            runCatching {
-                context.contentResolver.openInputStream(uri)?.use { input ->
-                    copied.outputStream().use { output -> input.copyTo(output) }
-                }
-            }
-            val result = OfficePackManager.install(context, copied)
-            officePackInstalled = result.isSuccess && (OfficeEngine.isAvailable(context) || OfficePackManager.isInstalled(context))
-            officeMessage = if (officePackInstalled) {
-                "Office 支持包安装完成"
-            } else {
-                "安装失败：${result.exceptionOrNull()?.message ?: "包不完整"}"
-            }
-        }
+        uri?.let { onExportBenchmark(it, BenchmarkReportFormat.MARKDOWN) }
     }
+    val csvExporter = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(BenchmarkReportFormat.CSV.mimeType),
+    ) { uri ->
+        uri?.let { onExportBenchmark(it, BenchmarkReportFormat.CSV) }
+    }
+    val reportTimestamp = remember {
+        SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date())
+    }
+
+    LaunchedEffect(Unit) { onRefreshBenchmark() }
 
     LazyColumn(
         modifier = Modifier
@@ -2879,6 +2909,16 @@ private fun SettingsScreen(
                     "一键清理转换中间件与缩略图缓存",
                     onClick = onClearCache,
                 )
+                HorizontalDivider(color = Border)
+                SettingRow(
+                    "性能 Benchmark",
+                    if (benchmarkRecordCount > 0) "$benchmarkRecordCount 条 · 导出报告" else "暂无记录",
+                    onClick = if (benchmarkRecordCount > 0) {
+                        { showBenchmarkExport = true }
+                    } else {
+                        null
+                    },
+                )
             }
         }
         item { SectionTitle("Office 引擎") }
@@ -2886,7 +2926,11 @@ private fun SettingsScreen(
             SettingsGroup {
                 SettingRow(
                     "LibreOfficeKit 引擎",
-                    "已内置 · DOCX / PPTX / XLSX 离线转 PDF",
+                    if (BuildConfig.OFFICE_BUNDLED) {
+                        "已内置 · DOCX / PPTX / XLSX 离线转 PDF"
+                    } else {
+                        "轻量版未内置 · Office 版提供"
+                    },
                     onClick = onOfficeTools,
                 )
             }
@@ -2942,15 +2986,38 @@ private fun SettingsScreen(
             containerColor = MaterialTheme.colorScheme.background,
         )
     }
-    officeMessage?.let { message ->
+    if (showBenchmarkExport) {
         AlertDialog(
-            onDismissRequest = { officeMessage = null },
-            title = { Text("Office 支持包") },
-            text = { Text(message) },
-            confirmButton = {
-                TextButton(onClick = { officeMessage = null }) { Text("好", color = Ink) }
+            onDismissRequest = { showBenchmarkExport = false },
+            title = { Text("导出性能报告") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        "共 $benchmarkRecordCount 条记录。报告仅包含格式、体积和性能指标，不包含文件名或文件内容。",
+                        color = Muted,
+                        fontSize = 13.sp,
+                    )
+                    HistoryActionRow(
+                        icon = Icons.AutoMirrored.Outlined.Article,
+                        label = "Markdown 汇总报告",
+                        onClick = {
+                            showBenchmarkExport = false
+                            markdownExporter.launch("OpenConvert-Benchmark-$reportTimestamp.md")
+                        },
+                    )
+                    HistoryActionRow(
+                        icon = Icons.Outlined.Description,
+                        label = "CSV 原始明细",
+                        onClick = {
+                            showBenchmarkExport = false
+                            csvExporter.launch("OpenConvert-Benchmark-$reportTimestamp.csv")
+                        },
+                    )
+                }
             },
-            containerColor = MaterialTheme.colorScheme.background,
+            confirmButton = {
+                TextButton(onClick = { showBenchmarkExport = false }) { Text("取消") }
+            },
         )
     }
 }
@@ -3061,7 +3128,10 @@ private fun HistoryRow(
         Column(Modifier.weight(1f)) {
             Text(task.sourceName, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
-                "${task.sourceFormat.displayName} → ${task.targetFormat.displayName}",
+                buildString {
+                    append("${task.sourceFormat.displayName} → ${task.targetFormat.displayName}")
+                    task.actualEngine?.let { append(" · ${it.displayName}") }
+                },
                 color = Muted,
                 fontSize = 13.sp,
             )
@@ -3217,6 +3287,8 @@ private fun BatchPickerScreen(
 @Composable
 private fun BatchConfigureScreen(
     draft: BatchDraft,
+    presets: List<com.openconvert.app.domain.preset.Preset> = emptyList(),
+    onApplyPreset: (com.openconvert.app.domain.preset.Preset) -> Unit = {},
     onBack: () -> Unit,
     onTarget: (FileFormat) -> Unit,
     onQuality: (QualityPreset) -> Unit,
@@ -3245,6 +3317,18 @@ private fun BatchConfigureScreen(
                     "已选择 ${draft.documents.size} 个文件 · ${draft.documents.first().format.displayName} → ${draft.targetFormat.displayName}",
                     color = Muted,
                     fontSize = 14.sp,
+                )
+            }
+        }
+        // §8.3：批量应用预设 —— 选 50 张图 + 微信发送 → 全部自动处理。
+        if (presets.isNotEmpty()) {
+            item {
+                PresetStrip(
+                    presets = presets,
+                    appliedPresetId = draft.presetId,
+                    onApply = onApplyPreset,
+                    onSaveCurrent = {},
+                    showSaveAction = false,
                 )
             }
         }

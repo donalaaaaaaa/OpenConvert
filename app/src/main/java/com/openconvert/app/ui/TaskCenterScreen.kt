@@ -131,6 +131,7 @@ private fun TaskCard(
         ) {
             Text(card.title, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1)
             Text(card.route, color = Muted, fontSize = 12.sp)
+            card.engineText?.let { Text(it, color = Muted, fontSize = 12.sp) }
 
             if (bucket == TaskBucket.RUNNING || bucket == TaskBucket.PAUSED) {
                 ProgressBar(percent = card.progressPercent)

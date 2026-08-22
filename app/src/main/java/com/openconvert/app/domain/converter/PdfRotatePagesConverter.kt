@@ -2,6 +2,7 @@ package com.openconvert.app.domain.converter
 
 import android.content.Context
 import android.net.Uri
+import com.openconvert.app.domain.engine.EngineType
 import com.openconvert.app.domain.model.ConversionResult
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import java.io.FileNotFoundException
@@ -57,7 +58,11 @@ class PdfRotatePagesConverter(
             } ?: throw FileNotFoundException("无法读取 PDF")
             onProgress(100)
             val outputSize = resolver.openFileDescriptor(outputUri, "r")?.use { it.statSize } ?: 0L
-            ConversionResult.Success(outputUri.toString(), outputSize.coerceAtLeast(0))
+            ConversionResult.Success(
+                outputUri.toString(),
+                outputSize.coerceAtLeast(0),
+                EngineType.PDFBOX,
+            )
         } catch (cancelled: CancellationException) {
             runCatching { resolver.delete(outputUri, null, null) }
             ConversionResult.Cancelled

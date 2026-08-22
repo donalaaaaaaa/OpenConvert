@@ -12,7 +12,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * v5 → v6 迁移：conversion_presets 增加四列尺寸约束（计划书 §8.1）。
+ * v5 → 最新迁移：预设尺寸约束与任务实际引擎列均可无损升级。
  *
  * 不用 Room 的 MigrationTestHelper：它在本工程会因 room-testing 与
  * kotlinx-serialization 版本不匹配抛 AbstractMethodError
@@ -23,12 +23,12 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class PresetMigrationTest {
 
-    private val dbName = "migration-v5-to-v6.db"
+    private val dbName = "migration-v5-to-latest.db"
 
     private fun context() = InstrumentationRegistry.getInstrumentation().targetContext
 
     @Test
-    fun migrate5To6AddsSizeColumnsAndKeepsRows() = runBlocking {
+    fun migrate5ToLatestAddsColumnsAndKeepsRows() = runBlocking {
         val dbFile = context().getDatabasePath(dbName)
         dbFile.parentFile?.mkdirs()
         dbFile.delete()
@@ -80,6 +80,17 @@ class PresetMigrationTest {
                         'ORIGINAL', 0, 1, 1, 111)
                 """.trimIndent(),
             )
+            legacy.execSQL(
+                """
+                INSERT INTO conversion_tasks
+                (id, sourceUri, sourceName, sourceFormat, targetFormat, outputUri,
+                 fileSize, outputSize, quality, resolution, progress, status,
+                 createdAt, completedAt, kind, payloadJson, errorMessage, outputName, batchId)
+                VALUES ('legacy-task', 'content://legacy', 'legacy.png', 'PNG', 'JPG', NULL,
+                        1024, NULL, 'BALANCED', 'ORIGINAL', 0, 'PENDING',
+                        111, NULL, 'SINGLE', NULL, NULL, NULL, NULL)
+                """.trimIndent(),
+            )
             legacy.version = 5
         }
 
@@ -101,6 +112,10 @@ class PresetMigrationTest {
             val updated = db.presetDao().getById("legacy")!!
             assertEquals(1920, updated.longestEdgePx)
             assertEquals("1:1", updated.cropAspect)
+
+            val migratedTask = db.conversionDao().getById("legacy-task")
+            assertNotNull("升级后原任务必须还在", migratedTask)
+            assertTrue("旧任务没有实际引擎，升级后应为 NULL", migratedTask!!.actualEngine == null)
         } finally {
             db.close()
             context().getDatabasePath(dbName).delete()

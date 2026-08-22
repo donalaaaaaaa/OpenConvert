@@ -9,6 +9,7 @@ import android.provider.MediaStore
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.openconvert.app.OpenConvertApplication
+import com.openconvert.app.domain.engine.EngineType
 import com.openconvert.app.domain.model.ConversionStatus
 import com.openconvert.app.domain.model.ConversionTask
 import com.openconvert.app.domain.model.FileFormat
@@ -94,6 +95,10 @@ class ConversionWorkerInstrumentedTest {
             assertEquals(ConversionStatus.COMPLETED, final!!.status)
             assertEquals(100, final.progress)
             assertNotNull(final.outputUri)
+            assertTrue(
+                "Worker 必须持久化实际图像引擎",
+                final.actualEngine in setOf(EngineType.LIBVIPS, EngineType.BITMAP_FACTORY),
+            )
 
             val decoded = resolver.openInputStream(Uri.parse(final.outputUri!!))!!.use {
                 BitmapFactory.decodeStream(it)

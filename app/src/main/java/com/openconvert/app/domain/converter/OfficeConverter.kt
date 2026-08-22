@@ -2,6 +2,7 @@ package com.openconvert.app.domain.converter
 
 import android.content.Context
 import android.util.Log
+import com.openconvert.app.domain.engine.EngineType
 import com.openconvert.app.domain.model.ConversionResult
 import com.openconvert.app.domain.model.ConversionTask
 import com.openconvert.app.domain.model.FileCategory
@@ -17,11 +18,10 @@ import org.libreoffice.kit.LibreOfficeKit
 import org.libreoffice.kit.Office
 
 /**
- * Office → PDF 转换器（LibreOfficeKit，可选下载包）。
+ * Office → PDF 转换器（LibreOfficeKit，Office 发行版内置）。
  *
  * 引擎可用性：`OfficeEngine.isAvailable()`——首次调用尝试加载
- * `liblo-native-code.so` 与 NSS 配套库；库不存在（Office Pack 未下载）
- * 时返回 false，调用方给出"需要下载 Office 支持包"的提示。
+ * `liblo-native-code.so` 与 NSS 配套库；轻量版未打包这些文件，因此返回 false。
  *
  * 初始化序列（真机验证，见 docs/lokit-validation.md）：
  * 1. 将 assets/unpack 复制到 applicationInfo.dataDir
@@ -49,7 +49,7 @@ class OfficeConverter(
         }
         if (!OfficeEngine.isAvailable(context)) {
             return@withContext ConversionResult.Failure(
-                "Office 转换引擎不可用，请检查运行环境",
+                "当前安装包未内置 Office 转换引擎，请安装 Office 版",
             )
         }
         try {
@@ -96,7 +96,7 @@ class OfficeConverter(
             } ?: throw java.io.FileNotFoundException("无法写入目标文件")
             val outputSize = pdfFile.length()
             reportProgress(100)
-            ConversionResult.Success(outputUri.toString(), outputSize)
+            ConversionResult.Success(outputUri.toString(), outputSize, EngineType.LIBREOFFICE_KIT)
         } catch (cancelled: CancellationException) {
             runCatching { context.contentResolver.delete(outputUri, null, null) }
             throw cancelled
@@ -114,7 +114,8 @@ class OfficeConverter(
 
 /**
  * LibreOfficeKit 引擎门面：库加载探测 + 进程级单例初始化。
- * 库来源优先级：APK 内置（开发/验证）→ Office Pack 下载目录（生产）。
+ * 正式路径为 Office Flavor 的 APK 内置库。files 目录 Office Pack 加载器仅保留为实验原型；
+ * Android 16 上已知会在 soffice 线程初始化时触发 DeploymentException / SIGABRT。
  */
 object OfficeEngine {
     private const val TAG = "OpenConvert.LOKit"

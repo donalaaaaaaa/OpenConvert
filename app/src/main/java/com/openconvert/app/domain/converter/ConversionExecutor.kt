@@ -2,10 +2,16 @@ package com.openconvert.app.domain.converter
 
 import android.content.Context
 import android.net.Uri
+import com.openconvert.app.domain.benchmark.BenchmarkCollector
+import com.openconvert.app.domain.benchmark.BenchmarkRecord
+import com.openconvert.app.domain.benchmark.measurePeakMemory
+import com.openconvert.app.domain.engine.EngineType
 import com.openconvert.app.domain.model.ConversionKind
 import com.openconvert.app.domain.model.ConversionResult
 import com.openconvert.app.domain.model.ConversionTask
+import com.openconvert.app.domain.model.FileCategory
 import com.openconvert.app.domain.model.suggestedOutputName
+import com.openconvert.app.domain.planner.ConversionPlan
 import com.openconvert.app.domain.planner.ConversionPlanner
 import com.openconvert.app.domain.planner.DeviceHardwareFacts
 import com.openconvert.app.domain.planner.PlanRejection
@@ -14,6 +20,7 @@ import com.openconvert.app.domain.planner.PlanRequest
 import com.openconvert.app.domain.planner.PlanResult
 import com.openconvert.app.domain.planner.RuntimeFacts
 import com.openconvert.app.domain.work.StorageGuard
+import kotlinx.coroutines.CancellationException
 
 sealed interface ExecutionResult {
     data class Success(
@@ -21,6 +28,7 @@ sealed interface ExecutionResult {
         val outputUris: List<String>,
         val outputSize: Long,
         val outputName: String?,
+        val actualEngine: EngineType? = null,
     ) : ExecutionResult
 
     data class Failure(val message: String) : ExecutionResult
@@ -29,22 +37,91 @@ sealed interface ExecutionResult {
 
 class ConversionExecutor(private val context: Context) {
     private val resolver = context.contentResolver
+    private val mediaConverter = MediaConverter(context)
     private val registry = ConverterRegistry(
         listOf(
             ImageConverter(resolver),
-            MediaConverter(context),
+            mediaConverter,
             OfficeConverter(context),
         ),
     )
+
+    /**
+     * 写一条 §11.1 指标。失败任务也记——排查性能回归时"哪些组合会失败"
+     * 与"多快"同等重要。采集本身绝不能影响转换结果，故整体吞掉异常。
+     */
+    private fun recordBenchmark(
+        collector: BenchmarkCollector,
+        task: ConversionTask,
+        result: ExecutionResult,
+        engine: com.openconvert.app.domain.engine.EngineType?,
+        streamCopy: Boolean,
+        hardware: Boolean,
+        startedAt: Long,
+        peakMemory: Long,
+    ) {
+        runCatching {
+            val success = result as? ExecutionResult.Success
+            collector.record(
+                BenchmarkRecord(
+                    taskId = task.id,
+                    inputFormat = task.sourceFormat,
+                    outputFormat = task.targetFormat,
+                    inputBytes = task.fileSize,
+                    outputBytes = success?.outputSize ?: 0L,
+                    elapsedMillis = System.currentTimeMillis() - startedAt,
+                    engine = success?.actualEngine ?: engine,
+                    streamCopy = streamCopy,
+                    hardwareEncode = hardware,
+                    peakMemoryBytes = peakMemory,
+                    succeeded = success != null,
+                ),
+            )
+        }
+    }
 
     suspend fun execute(
         task: ConversionTask,
         onProgress: suspend (Int) -> Unit,
     ): ExecutionResult {
+        // §11.1 指标采集：引擎/流拷贝来自 Planner，耗时与峰值内存在这里量。
+        var plannedEngine: com.openconvert.app.domain.engine.EngineType? = null
+        var plannedStreamCopy = false
+        var plannedHardware = false
+        var plannedConversion: ConversionPlan? = null
+        var plannedCodecs: StreamCodecs? = null
+        val collector = BenchmarkCollector(context)
+        val startedAt = System.currentTimeMillis()
+        val baselineMemory = collector.sampleMemory()
+
+        fun finishSingle(result: ExecutionResult, peakMemory: Long = baselineMemory): ExecutionResult {
+            recordBenchmark(
+                collector = collector,
+                task = task,
+                result = result,
+                engine = plannedEngine,
+                streamCopy = plannedStreamCopy,
+                hardware = plannedHardware,
+                startedAt = startedAt,
+                peakMemory = peakMemory,
+            )
+            return result
+        }
+
         // SINGLE 流程走 Planner：能力校验 + 空间预检 + 引擎/并发决策一次完成，
         // 拒绝时返回带具体数字的原因（计划书 §5、§7.3）。
         // 工具类 kind（PDF/归档/多文件）的输入形态不同，仍用 StorageGuard 直接预检。
         if (task.kind == ConversionKind.SINGLE) {
+            if (task.sourceFormat.category in setOf(FileCategory.AUDIO, FileCategory.VIDEO)) {
+                plannedCodecs = try {
+                    mediaConverter.inspectForPlanning(task)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Throwable) {
+                    // 探测失败不等同于输入必坏；允许媒体引擎按未知编码走保守重编码路径。
+                    null
+                }
+            }
             val planResult = ConversionPlanner.plan(
                 PlanRequest(
                     input = task.sourceFormat,
@@ -52,22 +129,34 @@ class ConversionExecutor(private val context: Context) {
                     inputBytes = task.fileSize,
                     quality = task.quality,
                     resolution = task.resolution,
+                    codecs = plannedCodecs,
                     hardware = DeviceHardwareFacts(),
                     runtime = RuntimeFacts(usableScratchBytes = context.cacheDir.usableSpace),
                     copiesInputToCache = true,
                 ),
             )
             when (planResult) {
-                is PlanResult.Rejected -> return ExecutionResult.Failure(
-                    PlanRejectionMessages.describe(planResult.rejection),
+                is PlanResult.Rejected -> return finishSingle(
+                    ExecutionResult.Failure(
+                        PlanRejectionMessages.describe(planResult.rejection),
+                    ),
                 )
-                is PlanResult.Ready -> android.util.Log.i(
-                    "OpenConvert",
-                    "planner task=${task.id} engine=${planResult.plan.primaryEngine} " +
-                        "fallback=${planResult.plan.fallbackEngine} mode=${planResult.plan.encodeMode} " +
-                        "streamCopy=${planResult.plan.isStreamCopy} slot=${planResult.plan.concurrency} " +
-                        "reason=${planResult.plan.reason}",
-                )
+                is PlanResult.Ready -> {
+                    plannedConversion = planResult.plan
+                    plannedEngine = planResult.plan.primaryEngine
+                    plannedStreamCopy = planResult.plan.isStreamCopy
+                    plannedHardware = planResult.plan.encodeMode in setOf(
+                        EncodeMode.HARDWARE_H264,
+                        EncodeMode.LITR_VP8,
+                    )
+                    android.util.Log.i(
+                        "OpenConvert",
+                        "planner task=${task.id} engine=${planResult.plan.primaryEngine} " +
+                            "fallback=${planResult.plan.fallbackEngine} mode=${planResult.plan.encodeMode} " +
+                            "streamCopy=${planResult.plan.isStreamCopy} slot=${planResult.plan.concurrency} " +
+                            "reason=${planResult.plan.reason}",
+                    )
+                }
             }
         } else {
             val required = StorageGuard.requiredScratchBytes(
@@ -90,11 +179,24 @@ class ConversionExecutor(private val context: Context) {
             ConversionKind.SINGLE -> {
                 val outputUri = task.outputUri?.let { Uri.parse(it) }
                     ?: createBatchOutput(task)
-                    ?: return ExecutionResult.Failure("没有选择输出文件")
+                    ?: return finishSingle(ExecutionResult.Failure("没有选择输出文件"))
                 val withOutput = task.copy(outputUri = outputUri.toString())
-                mapResult(
-                    registry.convert(withOutput),
-                    fallbackName = task.outputName,
+                val measured = measurePeakMemory(
+                    initialBytes = baselineMemory,
+                    sample = collector::sampleMemory,
+                ) {
+                    registry.convert(
+                        task = withOutput,
+                        plan = plannedConversion,
+                        codecs = plannedCodecs,
+                    )
+                }
+                finishSingle(
+                    mapResult(
+                        measured.value,
+                        fallbackName = task.outputName,
+                    ),
+                    peakMemory = measured.peakBytes,
                 )
             }
 
@@ -254,6 +356,7 @@ class ConversionExecutor(private val context: Context) {
                     outputUris = listOf(outputUri.toString()),
                     outputSize = res.outputSizeBytes,
                     outputName = task.outputName ?: res.message,
+                    actualEngine = EngineType.PDFBOX,
                 )
             }
 
@@ -282,6 +385,7 @@ class ConversionExecutor(private val context: Context) {
                     outputUris = listOf(outputUri.toString()),
                     outputSize = size,
                     outputName = task.outputName,
+                    actualEngine = EngineType.PDFBOX,
                 )
             }
 
@@ -310,6 +414,7 @@ class ConversionExecutor(private val context: Context) {
                     outputUris = listOf(outputUri.toString()),
                     outputSize = size,
                     outputName = task.outputName,
+                    actualEngine = EngineType.PDFBOX,
                 )
             }
 
@@ -336,6 +441,7 @@ class ConversionExecutor(private val context: Context) {
                     outputUris = listOf(outputUri.toString()),
                     outputSize = size,
                     outputName = task.outputName,
+                    actualEngine = EngineType.PDFBOX,
                 )
             }
 
@@ -359,6 +465,7 @@ class ConversionExecutor(private val context: Context) {
                     outputUris = listOf(outputUri.toString()),
                     outputSize = size,
                     outputName = task.outputName,
+                    actualEngine = EngineType.PDFBOX,
                 )
             }
         }
@@ -382,6 +489,7 @@ class ConversionExecutor(private val context: Context) {
             outputUris = listOf(result.outputUri),
             outputSize = result.outputSize,
             outputName = fallbackName,
+            actualEngine = result.actualEngine,
         )
         is ConversionResult.Failure -> ExecutionResult.Failure(result.message)
         ConversionResult.Cancelled -> ExecutionResult.Cancelled
@@ -393,6 +501,7 @@ class ConversionExecutor(private val context: Context) {
             outputUris = result.outputUris,
             outputSize = result.outputSize,
             outputName = fallbackName ?: "${result.outputUris.size} 个文件",
+            actualEngine = EngineType.PDFBOX,
         )
         is PdfBatchResult.Failure -> ExecutionResult.Failure(result.message)
         PdfBatchResult.Cancelled -> ExecutionResult.Cancelled

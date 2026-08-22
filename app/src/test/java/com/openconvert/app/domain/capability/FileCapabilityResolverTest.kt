@@ -1,5 +1,6 @@
 package com.openconvert.app.domain.capability
 
+import com.openconvert.app.BuildConfig
 import com.openconvert.app.domain.model.ConversionKind
 import com.openconvert.app.domain.model.FileFormat
 import org.junit.Assert.assertEquals
@@ -58,8 +59,19 @@ class FileCapabilityResolverTest {
     @Test
     fun `office documents export to pdf only`() {
         val caps = FileCapabilityResolver.resolve(FileFormat.DOCX)
-        assertEquals(listOf(FileFormat.PDF), caps.convertTargets)
+        assertEquals(
+            if (BuildConfig.OFFICE_BUNDLED) listOf(FileFormat.PDF) else emptyList(),
+            caps.convertTargets,
+        )
         assertEquals("导出为", caps.convertSectionTitle)
+    }
+
+    @Test
+    fun `office conversion follows the current edition`() {
+        assertEquals(
+            BuildConfig.OFFICE_BUNDLED,
+            FileCapabilityResolver.canConvertInEdition(FileFormat.DOCX, FileFormat.PDF),
+        )
     }
 
     @Test

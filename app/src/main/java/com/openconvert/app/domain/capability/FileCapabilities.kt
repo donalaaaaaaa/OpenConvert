@@ -1,5 +1,6 @@
 package com.openconvert.app.domain.capability
 
+import com.openconvert.app.BuildConfig
 import com.openconvert.app.domain.model.ConversionGraph
 import com.openconvert.app.domain.model.ConversionKind
 import com.openconvert.app.domain.model.FileCategory
@@ -64,9 +65,21 @@ object FileCapabilityResolver {
 
     fun resolve(format: FileFormat): FileCapabilities = FileCapabilities(
         format = format,
-        convertTargets = ConversionGraph.targetsFor(format),
+        convertTargets = targetsForEdition(format),
         tools = ConversionGraph.toolsFor(format).map(::describe),
     )
+
+    /** 当前发行版真正可执行的单文件转换能力。 */
+    fun canConvertInEdition(input: FileFormat, output: FileFormat): Boolean =
+        ConversionGraph.canConvert(input, output) &&
+            (input.category != FileCategory.OFFICE || BuildConfig.OFFICE_BUNDLED)
+
+    fun targetsForEdition(format: FileFormat): List<FileFormat> =
+        if (format.category == FileCategory.OFFICE && !BuildConfig.OFFICE_BUNDLED) {
+            emptyList()
+        } else {
+            ConversionGraph.targetsFor(format)
+        }
 
     private fun describe(kind: ConversionKind): ToolAction = when (kind) {
         ConversionKind.IMAGES_TO_PDF -> ToolAction(kind, "合成 PDF", "多张图片合并为一个 PDF")

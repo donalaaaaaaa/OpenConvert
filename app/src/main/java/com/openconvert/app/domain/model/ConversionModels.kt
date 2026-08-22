@@ -1,5 +1,7 @@
 package com.openconvert.app.domain.model
 
+import com.openconvert.app.domain.engine.EngineType
+
 enum class ConversionStatus {
     PENDING,
     RUNNING,
@@ -46,10 +48,15 @@ data class ConversionTask(
     val payload: ConversionPayload = ConversionPayload(),
     val errorMessage: String? = null,
     val outputName: String? = null,
+    val actualEngine: EngineType? = null,
 )
 
 sealed interface ConversionResult {
-    data class Success(val outputUri: String, val outputSize: Long) : ConversionResult
+    data class Success(
+        val outputUri: String,
+        val outputSize: Long,
+        val actualEngine: EngineType? = null,
+    ) : ConversionResult
     data class Failure(val message: String, val cause: Throwable? = null) : ConversionResult
     data object Cancelled : ConversionResult
 }

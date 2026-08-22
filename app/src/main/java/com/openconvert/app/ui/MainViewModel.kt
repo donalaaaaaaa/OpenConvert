@@ -11,6 +11,7 @@ import com.openconvert.app.data.saf.SelectedDocument
 import com.openconvert.app.data.saf.readSelectedDocument
 import com.openconvert.app.domain.converter.flattenPdfPages
 import com.openconvert.app.domain.converter.parsePdfPageRanges
+import com.openconvert.app.domain.capability.FileCapabilityResolver
 import com.openconvert.app.domain.model.BatchJob
 import com.openconvert.app.domain.model.BatchJobStatus
 import com.openconvert.app.domain.model.BatchSettings
@@ -24,8 +25,6 @@ import com.openconvert.app.domain.model.FileCategory
 import com.openconvert.app.domain.model.FileFormat
 import com.openconvert.app.domain.model.QualityPreset
 import com.openconvert.app.domain.model.ResolutionPreset
-import com.openconvert.app.domain.model.availableTargets
-import com.openconvert.app.domain.model.canConvertLocallyTo
 import com.openconvert.app.domain.model.suggestedOutputName
 import java.util.UUID
 import kotlinx.coroutines.Job
@@ -58,7 +57,7 @@ data class ConversionDraft(
         get() = suggestedOutputName(document.name, targetFormat)
 
     val engineAvailable: Boolean
-        get() = document.format.canConvertLocallyTo(targetFormat)
+        get() = FileCapabilityResolver.canConvertInEdition(document.format, targetFormat)
 }
 
 data class ImagesToPdfDraft(val documents: List<SelectedDocument>) {
@@ -160,19 +159,43 @@ data class BatchDraft(
     val targetFormat: FileFormat,
     val quality: QualityPreset = QualityPreset.BALANCED,
     val resolution: ResolutionPreset = ResolutionPreset.ORIGINAL,
+    /** 已应用的预设（§8.3 批量应用）；null = 手动设置。 */
+    val presetId: String? = null,
+    val longestEdgePx: Int? = null,
+    val fixedWidthPx: Int? = null,
+    val fixedHeightPx: Int? = null,
+    val cropAspect: String = "free",
+    val stripMetadata: Boolean = false,
 ) {
     val commonFormats: List<FileFormat>
         get() {
             val categories = documents.map { it.format.category }.distinct()
             if (categories.size != 1) return emptyList()
             return documents
-                .map { it.format.availableTargets().toSet() }
+                .map { FileCapabilityResolver.targetsForEdition(it.format).toSet() }
                 .reduce { acc, next -> acc.intersect(next) }
                 .sortedBy { it.displayName }
         }
 
     val engineAvailable: Boolean
         get() = targetFormat in commonFormats
+}
+
+/**
+ * 批量页只展示与输入类别一致、且所有输入都可到达其目标格式的预设。
+ * 视频本身也能提取 MP3；若只按目标格式筛选，会把“音频 MP3”预设错放到视频批量页。
+ */
+internal fun availableBatchPresets(
+    sourceFormats: List<FileFormat>,
+    commonFormats: Collection<FileFormat>,
+    presets: List<com.openconvert.app.domain.preset.Preset>,
+): List<com.openconvert.app.domain.preset.Preset> {
+    val categories = sourceFormats.map { it.category }.distinct()
+    if (categories.size != 1) return emptyList()
+    val category = categories.single()
+    return presets.filter { preset ->
+        preset.category == category && preset.targetFormat in commonFormats
+    }
 }
 
 sealed interface ConversionUiState {
@@ -276,6 +299,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _cacheStats = MutableStateFlow<com.openconvert.app.domain.cache.CacheStats?>(null)
     val cacheStats: StateFlow<com.openconvert.app.domain.cache.CacheStats?> = _cacheStats.asStateFlow()
 
+    private val benchmarkExporter =
+        com.openconvert.app.domain.benchmark.BenchmarkReportExporter(application)
+    private val _benchmarkRecordCount = MutableStateFlow(0)
+    val benchmarkRecordCount: StateFlow<Int> = _benchmarkRecordCount.asStateFlow()
+
     val history = app.historyRepository.history.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -367,8 +395,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 return false
             }
 
-        val capabilities = com.openconvert.app.domain.capability.FileCapabilityResolver
-            .resolve(document.format)
+        val capabilities = FileCapabilityResolver.resolve(document.format)
         if (!capabilities.hasAnything) {
             _message.value = if (document.format == FileFormat.UNKNOWN) {
                 "暂不支持此文件格式"
@@ -386,8 +413,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** 从能力面板里选定一个转换目标，进入转换配置页。 */
     fun chooseConvertTarget(format: FileFormat): Boolean {
         val document = _pickedFile.value ?: return false
-        if (!ConversionGraph.canConvert(document.format, format)) {
-            _message.value = "暂不支持 ${document.format.displayName} → ${format.displayName}"
+        if (!FileCapabilityResolver.canConvertInEdition(document.format, format)) {
+            _message.value = if (document.format.category == FileCategory.OFFICE) {
+                "当前为轻量版，Office 转换需要安装 Office 版"
+            } else {
+                "暂不支持 ${document.format.displayName} → ${format.displayName}"
+            }
             return false
         }
         _draft.value = ConversionDraft(document, format, defaultQualityFor(document.format))
@@ -416,11 +447,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return false
         }
 
-        val firstTarget = document.format.availableTargets().firstOrNull()
+        val firstTarget = FileCapabilityResolver.targetsForEdition(document.format).firstOrNull()
         if (firstTarget == null) {
             // 有工具能力但没有一进一出的转换边（典型：PDF）——引导到对应工具页，
             // 而不是笼统地说「不支持」。
-            _message.value = if (com.openconvert.app.domain.model.ConversionGraph.toolsFor(document.format).size > 1) {
+            _message.value = if (document.format.category == FileCategory.OFFICE) {
+                "当前为轻量版，Office 转换需要安装 Office 版"
+            } else if (com.openconvert.app.domain.model.ConversionGraph.toolsFor(document.format).size > 1) {
                 "${document.format.displayName} 请在工具页处理"
             } else {
                 "暂不支持 ${document.format.displayName} 转换"
@@ -1163,6 +1196,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** 设置页进入时刷新；Benchmark 使用轻量 JSONL，不值得为计数常驻文件观察器。 */
+    fun refreshBenchmarkStats() {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            _benchmarkRecordCount.value = benchmarkExporter.recordCount()
+        }
+    }
+
+    fun exportBenchmarkReport(
+        outputUri: Uri,
+        format: com.openconvert.app.domain.benchmark.BenchmarkReportFormat,
+    ) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            benchmarkExporter.export(outputUri, format).fold(
+                onSuccess = { exported ->
+                    val label = when (exported.format) {
+                        com.openconvert.app.domain.benchmark.BenchmarkReportFormat.MARKDOWN -> "Markdown"
+                        com.openconvert.app.domain.benchmark.BenchmarkReportFormat.CSV -> "CSV"
+                    }
+                    _message.value = "已导出 $label 报告（${exported.recordCount} 条记录）"
+                },
+                onFailure = { error ->
+                    _message.value = error.message ?: "Benchmark 报告导出失败"
+                },
+            )
+        }
+    }
+
     fun onFilesToCompressPicked(uris: List<Uri>): Boolean {
         val uniqueUris = uris.distinct()
         if (uniqueUris.isEmpty()) return false
@@ -1305,7 +1365,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         val draft = BatchDraft(
             documents = documents,
-            targetFormat = documents.first().format.availableTargets().firstOrNull()
+            targetFormat = FileCapabilityResolver.targetsForEdition(documents.first().format).firstOrNull()
                 ?: return false.also { _message.value = "暂不支持 ${documents.first().format.displayName} 批量转换" },
         )
         if (draft.commonFormats.isEmpty()) {
@@ -1334,6 +1394,50 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val current = _batchDraft.value ?: return
         _batchDraft.value = current.copy(resolution = resolution)
         _batchUiState.value = BatchUiState.Configuring(current.copy(resolution = resolution))
+    }
+
+    /**
+     * 批量应用预设（计划书 §8.3）：选 50 张图 + 微信发送预设 → 全部自动处理。
+     *
+     * 预设的目标格式必须是**所有**输入文件的共同可达格式，否则部分文件会失败；
+     * 因此这里用 commonFormats 校验，而不是逐个文件判断。
+     */
+    fun applyBatchPreset(preset: com.openconvert.app.domain.preset.Preset): Boolean {
+        val current = _batchDraft.value ?: return false
+        if (preset !in availableBatchPresets(
+                sourceFormats = current.documents.map { it.format },
+                commonFormats = current.commonFormats,
+                presets = listOf(preset),
+            )
+        ) {
+            _message.value =
+                "「${preset.name}」不适用于所选全部文件"
+            return false
+        }
+        val updated = current.copy(
+            targetFormat = preset.targetFormat,
+            quality = preset.quality,
+            resolution = preset.resolution,
+            presetId = preset.id,
+            longestEdgePx = preset.longestEdgePx,
+            fixedWidthPx = preset.fixedWidthPx,
+            fixedHeightPx = preset.fixedHeightPx,
+            cropAspect = preset.cropAspect,
+            stripMetadata = preset.stripMetadata,
+        )
+        _batchDraft.value = updated
+        _batchUiState.value = BatchUiState.Configuring(updated)
+        return true
+    }
+
+    /** 当前批量草稿可用的预设：类别一致且目标格式为全体共同可达。 */
+    fun presetsForBatch(): List<com.openconvert.app.domain.preset.Preset> {
+        val draft = _batchDraft.value ?: return emptyList()
+        return availableBatchPresets(
+            sourceFormats = draft.documents.map { it.format },
+            commonFormats = draft.commonFormats,
+            presets = presets.value,
+        )
     }
 
     fun startBatch(outputTreeUri: Uri) {
@@ -1380,6 +1484,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 payload = com.openconvert.app.domain.model.ConversionPayload(
                     batchId = batchId,
                     outputTreeUri = outputTreeUri.toString(),
+                    // §8.3：预设的尺寸约束随每个子任务下传，否则批量应用只改格式不改尺寸。
+                    presetId = draft.presetId,
+                    longestEdgePx = draft.longestEdgePx,
+                    fixedWidthPx = draft.fixedWidthPx,
+                    fixedHeightPx = draft.fixedHeightPx,
+                    cropAspect = draft.cropAspect,
+                    stripMetadata = draft.stripMetadata,
                 ),
                 outputName = suggestedOutputName(document.name, draft.targetFormat),
             )
@@ -1498,11 +1609,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _message.value = "暂不支持此文件格式"
             return false
         }
-        val target = document.format.availableTargets().let { targets ->
+        val target = FileCapabilityResolver.targetsForEdition(document.format).let { targets ->
             if (task.targetFormat in targets) task.targetFormat else targets.firstOrNull()
         }
         if (target == null) {
-            _message.value = "暂不支持 ${document.format.displayName} 转换"
+            _message.value = if (document.format.category == FileCategory.OFFICE) {
+                "当前为轻量版，Office 转换记录需要安装 Office 版才能重试"
+            } else {
+                "暂不支持 ${document.format.displayName} 转换"
+            }
             return false
         }
         _draft.value = ConversionDraft(

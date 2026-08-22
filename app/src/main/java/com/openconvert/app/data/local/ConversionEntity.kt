@@ -2,6 +2,7 @@ package com.openconvert.app.data.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.openconvert.app.domain.engine.EngineType
 import com.openconvert.app.domain.model.ConversionKind
 import com.openconvert.app.domain.model.ConversionPayloadCodec
 import com.openconvert.app.domain.model.ConversionStatus
@@ -31,6 +32,7 @@ data class ConversionEntity(
     val errorMessage: String?,
     val outputName: String?,
     val batchId: String? = null,
+    val actualEngine: String? = null,
 )
 
 fun ConversionEntity.toDomain() = ConversionTask(
@@ -52,6 +54,9 @@ fun ConversionEntity.toDomain() = ConversionTask(
     payload = ConversionPayloadCodec.decode(payloadJson),
     errorMessage = errorMessage,
     outputName = outputName,
+    actualEngine = actualEngine?.let { stored ->
+        runCatching { EngineType.valueOf(stored) }.getOrNull()
+    },
 )
 
 fun ConversionTask.toEntity() = ConversionEntity(
@@ -74,4 +79,5 @@ fun ConversionTask.toEntity() = ConversionEntity(
     errorMessage = errorMessage,
     outputName = outputName,
     batchId = payload.batchId,
+    actualEngine = actualEngine?.name,
 )

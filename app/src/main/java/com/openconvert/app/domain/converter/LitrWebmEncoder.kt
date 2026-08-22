@@ -9,6 +9,7 @@ import com.linkedin.android.litr.MediaTransformer
 import com.linkedin.android.litr.TransformationListener
 import com.linkedin.android.litr.TransformationOptions
 import com.linkedin.android.litr.analytics.TrackTransformationInfo
+import com.openconvert.app.domain.engine.EngineType
 import com.openconvert.app.domain.model.ConversionResult
 import com.openconvert.app.domain.model.ConversionTask
 import kotlin.coroutines.coroutineContext
@@ -62,7 +63,13 @@ class LitrWebmEncoder(
 
                     override fun onCompleted(id: String, infos: List<TrackTransformationInfo>?) {
                         if (continuation.isActive) {
-                            continuation.resume(ConversionResult.Success(outputUri.toString(), outputSize(outputUri)))
+                            continuation.resume(
+                                ConversionResult.Success(
+                                    outputUri.toString(),
+                                    outputSize(outputUri),
+                                    EngineType.LITR,
+                                ),
+                            )
                         }
                     }
 

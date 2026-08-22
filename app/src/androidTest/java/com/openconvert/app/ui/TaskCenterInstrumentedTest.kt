@@ -3,6 +3,7 @@ package com.openconvert.app.ui
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.openconvert.app.OpenConvertApplication
+import com.openconvert.app.domain.engine.EngineType
 import com.openconvert.app.domain.model.ConversionStatus
 import com.openconvert.app.domain.model.ConversionTask
 import com.openconvert.app.domain.model.FileFormat
@@ -33,6 +34,7 @@ class TaskCenterInstrumentedTest {
         errorMessage: String? = null,
         outputSize: Long? = null,
         completedAt: Long? = null,
+        actualEngine: EngineType? = null,
     ) = ConversionTask(
         id = "tc-${UUID.randomUUID()}",
         sourceUri = "content://test/src",
@@ -46,6 +48,7 @@ class TaskCenterInstrumentedTest {
         errorMessage = errorMessage,
         createdAt = System.currentTimeMillis() - 13_000,
         completedAt = completedAt,
+        actualEngine = actualEngine,
     )
 
     @Test
@@ -99,6 +102,7 @@ class TaskCenterInstrumentedTest {
             progress = 100,
             outputSize = 7L * 1024 * 1024,
             completedAt = System.currentTimeMillis(),
+            actualEngine = EngineType.FFMPEG_KIT,
         )
         try {
             app.historyRepository.save(t)
@@ -108,6 +112,7 @@ class TaskCenterInstrumentedTest {
             assertNotNull(card.sizeSummary)
             assertTrue(card.sizeSummary!!.contains("输入"))
             assertNotNull("应显示耗时", card.elapsedText)
+            assertEquals("引擎 · FFmpegKit", card.engineText)
             // 完成后不再显示瞬时速度。
             assertEquals(null, card.speedText)
         } finally {

@@ -26,6 +26,7 @@ data class TaskCardModel(
     val remainingText: String?,
     val sizeSummary: String?,
     val elapsedText: String?,
+    val engineText: String?,
     val error: ErrorPresentation?,
 ) {
     val id: String get() = task.id
@@ -48,6 +49,7 @@ object TaskCardFactory {
             },
             sizeSummary = sizeSummary(task),
             elapsedText = elapsedText(task),
+            engineText = task.actualEngine?.let { "引擎 · ${it.displayName}" },
             error = if (task.status == ConversionStatus.FAILED) {
                 ErrorPresenter.fromStoredMessage(
                     message = task.errorMessage,

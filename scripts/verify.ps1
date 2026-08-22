@@ -37,7 +37,7 @@ try {
 
     Push-Location $buildRoot
     try {
-        & .\gradlew.bat testDebugUnitTest assembleDebug --no-daemon
+        & .\gradlew.bat testBasicDebugUnitTest assembleBasicDebug assembleOfficeDebug --no-daemon
         if ($LASTEXITCODE -ne 0) {
             throw "Gradle verification failed with exit code $LASTEXITCODE."
         }

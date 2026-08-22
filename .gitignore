@@ -27,6 +27,8 @@ native/out/
 # Release artifacts (attach to GitHub Releases, not the repo)
 *.apk
 *.aab
+*.apks
+*.idsig
 
 # Hermes working files
 .hermes/
@@ -37,8 +39,7 @@ native/out/
 # Test/verification artifacts
 output/
 
-# LibreOfficeKit large native libs (fetched via scripts/fetch-office-pack.ps1)
-app/src/office/jniLibs/
+# Re-fetchable Office Pack test fixture. Production Office Flavor libraries are tracked via Git LFS.
 app/src/androidTest/assets/office-pack.zip
 
 # Office verification scratch project

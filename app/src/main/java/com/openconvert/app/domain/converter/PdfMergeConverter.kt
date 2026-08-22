@@ -2,6 +2,7 @@ package com.openconvert.app.domain.converter
 
 import android.content.Context
 import android.net.Uri
+import com.openconvert.app.domain.engine.EngineType
 import com.openconvert.app.domain.model.ConversionResult
 import com.tom_roush.pdfbox.io.MemoryUsageSetting
 import com.tom_roush.pdfbox.multipdf.PDFMergerUtility
@@ -45,7 +46,7 @@ class PdfMergeConverter(
             }
             onProgress(100)
             val size = resolver.openFileDescriptor(outputUri, "r")?.use { it.statSize } ?: 0L
-            ConversionResult.Success(outputUri.toString(), size.coerceAtLeast(0))
+            ConversionResult.Success(outputUri.toString(), size.coerceAtLeast(0), EngineType.PDFBOX)
         } catch (cancelled: CancellationException) {
             runCatching { resolver.delete(outputUri, null, null) }
             ConversionResult.Cancelled

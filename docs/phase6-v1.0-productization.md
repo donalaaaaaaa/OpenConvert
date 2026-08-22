@@ -117,6 +117,10 @@ Kotlin DSL 坑：`build.gradle.kts` 顶部需显式 `import java.util.Properties
 
 ## 下一步（未做）
 
+> 2026-08-20 后续进展：阶段 01 异常输入真机用例、阶段 03、阶段 04、阶段 05
+> 主流程以及阶段 08 指标采集已继续推进；当前状态与验证结果见
+> `docs/phase7-benchmark-and-batch-presets.md`，以下清单保留为本轮结束时的历史快照。
+
 - 阶段 01 剩余：用 `TestAssetFactory` 写异常场景 instrumented 用例（空 / 损坏 / 错扩展名 / 超大）
 - 阶段 03 首页 UI 2.0：文件驱动入口，数据源已就绪（`ConversionGraph.toolsFor`）
 - 阶段 04 任务中心 2.0：按状态分组、速度 / 剩余时间 / 引擎名展示。

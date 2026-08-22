@@ -8,12 +8,12 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 
 /**
- * Office Pack 可选下载管理器（计划书 §六十二：Office 作为大型可选模块）。
+ * Office Pack 动态加载实验原型（计划书 §六十二：Office 作为大型可选模块）。
  *
  * 设计：
- * - 基础 APK **不包含** LibreOfficeKit 库与资源（保持 ~35MB）
- * - 用户在设置页下载 Office Pack（zip 包：lib/ 下的 .so + assets/ 下的资源）
- * - 下载后解压到 `filesDir/office-pack/`，运行时通过 [OfficeEngine] 动态加载
+ * 正式发行采用 basic / office 双 Flavor：basic 不含 LOKit，office 从 `src/office`
+ * 内置完整引擎。此管理器不接 UI；Android 16 从 files 目录加载后存在
+ * DeploymentException / SIGABRT，只有解决 linker namespace 后才能重新启用。
  *
  * 产物结构（office-pack.zip）：
  * ```

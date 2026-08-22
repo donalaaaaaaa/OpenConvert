@@ -1,138 +1,197 @@
 # OpenConvert
 
-OpenConvert 是一款专为 Android 打造的**完全本地、高隐私、高性能万能文件转换中心**。
+完全本地的 Android 文件转换中心。
 
-> **核心原则：Your files never leave your device.** （你的文件始终留在设备本地，0 上传、0 云端依赖、不申请联网权限）。
+> **Your files never leave your device.**
+>
+> Manifest 不声明 `INTERNET`。没有账号，没有上传，没有云端队列。
 
----
+<p align="center">
+  <img src="docs/screenshots/01-home.png" width="180" alt="首页：选择文件与常用工具" />
+  <img src="docs/screenshots/02-convert.png" width="180" alt="转换配置：目标格式与质量" />
+  <img src="docs/screenshots/03-pdf-tools.png" width="180" alt="PDF 工具箱" />
+  <img src="docs/screenshots/05-complete.png" width="180" alt="转换完成：体积对比与打开/分享" />
+</p>
 
-## 🌟 核心功能一览
-
-### 1. 图片转换与高级编辑
-- **格式支持**：JPG, PNG, WEBP, AVIF, HEIC, GIF, BMP, TIFF
-- **引擎架构**：`libvips 8.18.5` (C/SIMD 原生加速) + `BitmapFactory` 智能兜底
-- **高级能力**：
-  - 分辨率缩放（25% / 50% / 75% / 原始 / 自定义宽高）
-  - 比例裁剪（自由 / 1:1 / 4:3 / 3:2 / 16:9 / 9:16）
-  - 旋转翻转（90° / 180° / 270° / 水平翻转 / 垂直翻转）
-  - 隐私保护：EXIF / GPS / 全元数据擦除模式
-
-### 2. 视频与音频硬件转码
-- **视频格式**：MP4, MOV, MKV, WEBM, AVI
-- **音频格式**：MP3, AAC, WAV, FLAC, M4A, OGG, OPUS
-- **引擎架构**：Android `Media3 Transformer / MediaCodec` 硬件加速 + `LiTr` + `FFmpegKit` 兜底
-- **智能特性**：同编码智能直拷 (`-c:a copy` / `-c:v copy`)、视频音频提取、硬件 H.264 / VP8 编码
-
-### 3. PDF 工业级工具箱
-- **图片 ↔ PDF**：多图合并生成 PDF（支持拖拽排序、边距调整、A4/Letter/自适应方向）、PDF 提取为高清图片序列
-- **PDF 操作**：
-  - PDF 多文件合并（拖拽排序）
-  - PDF 自定义拆分（单页 / 范围拆分）
-  - PDF 页面删除（可视化勾选删除）
-  - PDF 页面旋转（90° / 180° / 270°）
-
-### 4. 压缩与归档工具
-- **格式支持**：ZIP, TAR, TAR.GZ, GZIP, BZIP2
-- **核心能力**：多文件打包压缩、多级压缩比调节、全格式本地解压还原
-
-### 5. Office 离线转换
-- **格式支持**：DOCX, DOC, PPTX, PPT, XLSX, XLS → 高保真 PDF
-- **内置引擎**：完整内置 `LibreOfficeKit` 离线渲染核心，开箱即用，无需额外下载解压
-
-### 6. 批量并发转换系统
-- 一键选取多达数百个文件进行批量转换
-- 动态并发调度闸门（小文件并发 / 大文件串行 / 视频控流），彻底规避 OOM 与发热过载
-- 支持暂停、继续与批量取消
+<p align="center">
+  <a href="https://github.com/donalaaaaaaa/OpenConvert/releases">下载 Release</a>
+  ·
+  <a href="docs/install.md">安装说明</a>
+  ·
+  <a href="docs/known-issues.md">已知问题</a>
+  ·
+  <a href="release_notes.md">更新日志</a>
+</p>
 
 ---
 
-## 📊 支持格式矩阵
+## 选哪个包
 
-| 类别 | 输入格式 | 输出格式 | 核心引擎 |
+| Edition | 内容 | Release APK | 给谁 |
+|---|---|---:|---|
+| **Basic** | 图片、音视频、PDF、压缩包 | 35.39 MiB | 默认选择 |
+| **Office** | Basic + DOCX/DOC/PPTX/PPT/XLSX/XLS → PDF | 105.29 MiB | 需要离线 Office |
+
+两个包同一 `applicationId`、同一签名。Basic 可以原地覆盖升级到 Office，历史、预设和 SAF 授权会保留。详见 [安装说明](docs/install.md)。
+
+---
+
+## 能做什么
+
+### 图片
+
+JPG / PNG / WEBP / AVIF / HEIC / GIF / BMP / TIFF 读入；输出 JPG / PNG / WEBP。
+
+- 缩放、比例裁剪、旋转、翻转
+- 擦除 EXIF / GPS / 元数据
+- 引擎：`libvips 8.18.5`，`BitmapFactory` 兜底
+
+### 音视频
+
+视频：MP4、MOV、MKV、WEBM、AVI  
+音频：MP3、AAC、WAV、FLAC、M4A、OGG、OPUS
+
+- Media3 Transformer / MediaCodec 硬编优先
+- 同编码流拷贝（不重编码）
+- 视频抽音轨
+- LiTr VP8、FFmpegKit 兜底
+
+### PDF
+
+- 多图生成 PDF、PDF 导出图片
+- 合并、按范围拆分
+- 页面管理：缩略图、拖拽重排、旋转、删除导出
+- 三档压缩（300 / 200 / 150 DPI）
+- AES 128/256 加密与已知密码解密
+- 边距裁剪、元数据编辑
+
+### Office（仅 Office Edition）
+
+DOCX / DOC / PPTX / PPT / XLSX / XLS → PDF，内置 LibreOfficeKit，不另下资源包。
+
+### 压缩包
+
+ZIP、TAR、TAR.GZ、GZIP、BZIP2：打包、多级压缩比、解压。
+
+### 任务与预设
+
+- 文件驱动首页：选完文件再看能做什么
+- 批量、暂停、继续、取消；大文件串行、视频控流
+- 12 个内置预设（微信图、头像、隐私分享、720P/1080P、无损母带等），可自定义
+- ConversionPlanner 按能力图、编码、硬件、空间和并发槽位选路径
+- 任务中心按运行 / 等待 / 暂停 / 失败 / 完成分组，展示引擎、耗时和结构化错误
+
+---
+
+## 支持格式
+
+| 类别 | 输入 | 输出 | 引擎 |
 |---|---|---|---|
-| **图片** | JPG, PNG, WEBP, AVIF, HEIC, GIF, BMP, TIFF | JPG, PNG, WEBP, PDF | `libvips 8.18.5` (JNI) + `BitmapFactory` |
-| **视频** | MP4, MOV, MKV, WEBM, AVI | MP4, WEBM, MP3, AAC, WAV, FLAC, M4A, OGG, OPUS | `Media3` (MediaCodec 硬件) + `LiTr` + `FFmpegKit` |
-| **音频** | MP3, AAC, WAV, FLAC, M4A, OGG, OPUS | MP3, AAC, WAV, FLAC, M4A, OGG, OPUS | `FFmpegKit` + 同编码直拷流提取 |
-| **PDF** | PDF, 多张图片 | PDF, JPG, PNG, WEBP | `PdfBox-Android` + `PdfRenderer` |
-| **文档** | DOCX, DOC, PPTX, PPT, XLSX, XLS | PDF | `LibreOfficeKit` 离线 Native 引擎 |
-| **压缩包** | 文件/文件夹, ZIP, TAR, GZ, BZ2 | ZIP, TAR, TAR.GZ, GZIP, BZIP2, 解压目录 | `Apache Commons Compress` |
+| 图片 | JPG, PNG, WEBP, AVIF, HEIC, GIF, BMP, TIFF | JPG, PNG, WEBP | libvips + BitmapFactory |
+| 视频 | MP4, MOV, MKV, WEBM, AVI | MP4, WEBM，以及音频格式 | Media3 / LiTr / FFmpegKit |
+| 音频 | MP3, AAC, WAV, FLAC, M4A, OGG, OPUS | 同左互转 | FFmpegKit + 流拷贝 |
+| PDF | PDF、多张图片 | PDF、JPG、PNG | PdfBox-Android + PdfRenderer |
+| 文档 | DOCX, DOC, PPTX, PPT, XLSX, XLS | PDF | LibreOfficeKit（Office Edition） |
+| 压缩包 | 文件/目录, ZIP, TAR, GZ, BZ2 | ZIP, TAR, TAR.GZ, GZIP, BZIP2, 解压目录 | Commons Compress |
+
+AVIF / HEIC / GIF / BMP / TIFF 是只读输入，不能作为图片输出格式。
 
 ---
 
-## 🏛️ 技术架构
+## 架构
 
-```text
-                     OpenConvert
-                          │
-                          ▼
-                   FileTypeDetector (MIME / Ext / Magic Bytes)
-                          │
-                          ▼
-                   ConversionGraph (能力路由与合法校验)
-                          │
-                          ▼
-                  ConverterRegistry
-                          │
-        ┌─────────────────┼──────────────────┐
-        │                 │                  │
-        ▼                 ▼                  ▼
-  ImageConverter     VideoConverter      PdfConverter
-        │                 │                  │
-        ▼                 ▼                  ▼
-    libvips          Media3/Codec        PdfBox/Renderer
-        │                 │
-        ▼                 ▼
-   BitmapFactory        FFmpeg
-                          │
-              ┌───────────┴───────────┐
-              ▼                       ▼
-        AudioConverter         OfficeConverter
-              │                       │
-           FFmpegKit            LibreOfficeKit
+```mermaid
+flowchart TD
+    pick[SAF 选文件] --> detect[FileTypeDetector<br/>MIME / 扩展名 / Magic]
+    detect --> graph[ConversionGraph<br/>转换边 + 工具边]
+    graph --> planner[ConversionPlanner]
+    planner --> hw[HardwareFacts]
+    planner --> space[StorageGuard]
+    planner --> exec[ConversionExecutor]
+    exec --> registry[ConverterRegistry]
+    registry --> image[ImageConverter]
+    registry --> media[MediaConverter]
+    registry --> pdf[Pdf converters]
+    registry --> office[OfficeConverter]
+    registry --> archive[ArchiveConverter]
+    image --> vips[libvips JNI]
+    image --> bmp[BitmapFactory]
+    media --> m3[Media3 / MediaCodec]
+    media --> litr[LiTr VP8]
+    media --> ffmpeg[FFmpegKit]
+    pdf --> pdfbox[PdfBox-Android]
+    office --> lokit[LibreOfficeKit]
+    archive --> compress[Commons Compress]
+    exec --> wm[WorkManager + Room]
+    wm --> bench[BenchmarkCollector]
+    wm --> ui[任务中心 / 历史]
 ```
 
----
-
-## 🔒 隐私与系统安全
-
-- **零网络依赖**：应用 Manifest 中**不申请 `INTERNET` 权限**，从系统底层彻底杜绝任何网络上传。
-- **存储保护 (`StorageGuard`)**：转换前根据文件体积与临时空间需求进行 2 倍安全空间预检，空间不足提前拦截。
-- **大文件保护 (`BoundedIo`)**：流式分块拷贝与内存受限加载，100MB ~ 4GB 大文件稳定运行不 OOM。
-- **孤儿任务恢复 (`ConversionRecovery`)**：系统杀进程或异常关机后，重启应用自动同步 Room 状态并清理残余缓存。
+生产路径会先探测真实音视频编码，把同一份 `StreamCodecs` 和 `ConversionPlan` 交给执行器。Benchmark 记录引擎、是否流拷贝、硬编、峰值内存和压缩率。
 
 ---
 
-## 🛠️ 构建与测试
+## Benchmark 与体积
 
-### 环境要求
-- JDK 17
-- Android SDK 36 (Build-Tools 36.0.0)
-- NDK 27+ (用于 C/JNI 模块)
+设置页可导出 Markdown 汇总或带 BOM 的 CSV。采集在设备本地，不会上传。
 
-### 快速命令
+| 指标 | Basic | Office |
+|---|---:|---:|
+| Release APK | 35.39 MiB | 105.29 MiB |
+| Release AAB | 65.29 MiB | 135.20 MiB |
+| PHY110 估算下载 | 34.74 MiB | 103.60 MiB |
+| PHY110 即时 code | 107.23 MiB | 353.99 MiB |
+| 解压 native | 44.56 MiB | 221.15 MiB |
+
+Office 体积几乎全部来自 `liblo-native-code.so`（未压缩约 171 MiB）。完整拆分见 [`docs/apk-size-baseline-2026-08-20.md`](docs/apk-size-baseline-2026-08-20.md)。
+
+PHY110 / Android 16 上：Office 全量 instrumented **61/61**，Basic → Office 覆盖升级后 DOCX/PPTX/XLSX → PDF 通过。
+
+---
+
+## 隐私
+
+- 不申请 `INTERNET`
+- `allowBackup=false`，不走系统云备份
+- 输入输出只走 SAF，不扫整盘
+- 转换前按约 2 倍体积预检可用空间
+- 大文件走流式拷贝，避免一次性读进内存
+
+---
+
+## 构建
+
+环境：JDK 17、Android SDK 36、NDK 27+（只在重编 JNI 时需要）。
 
 ```powershell
-# 1. 运行全套单元测试
-.\gradlew.bat testDebugUnitTest
+# 单元测试（两个 Edition）
+.\gradlew.bat testBasicDebugUnitTest testOfficeDebugUnitTest
 
-# 2. 构建 Release 签名安装包（启用 R8 混淆 + 资源缩减 + arm64-v8a ABI Split）
-.\gradlew.bat assembleRelease
+# 签名 Release APK / AAB
+.\gradlew.bat assembleBasicRelease assembleOfficeRelease
+.\gradlew.bat bundleBasicRelease bundleOfficeRelease
 
-# 3. 连接 Android 真机运行全套自动化测试
-.\gradlew.bat connectedDebugAndroidTest
+# 已连接真机时跑 instrumented
+.\gradlew.bat connectedOfficeDebugAndroidTest
 ```
 
-### 📱 真机验证指标
-在 **OnePlus PHY110 (Android 16)** 真机上实测通过：
-- **27/27 全套自动化用例 100% 通过**（包含真实 DOCX/PPTX/XLSX 转 PDF、图片裁剪/旋转/去元数据、PDF 合并/删除/旋转、音视频硬件编码与大文件稳定性）。
+签名凭据放在已 gitignore 的 `signing.properties`，或使用 `OPENCONVERT_STORE_PASSWORD` / `_KEY_ALIAS` / `_KEY_PASSWORD`。模板见 `signing.properties.example`。缺凭据时产出 unsigned 包。
+
+发布产物不要提交进仓库，挂到 GitHub Releases。当前打好的包与校验和在发行说明里。
+
+更细的阶段记录：
+
+- [阶段 06 产品化](docs/phase6-v1.0-productization.md)
+- [阶段 07 Benchmark / 预设](docs/phase7-benchmark-and-batch-presets.md)
+- [阶段 08 双 Edition](docs/phase8-office-editions.md)
+- [阶段 11 覆盖升级](docs/phase11-edition-upgrade.md)
+- [阶段 12 Release 收尾](docs/phase12-release.md)
 
 ---
 
-## 📄 开源协议说明
+## 许可证
 
-- 本项目开源核心遵循 **Apache License 2.0**
-- `LibreOfficeKit` 遵循 **MPL-2.0**
-- `libvips` 遵循 **LGPL-2.1+**
-- `FFmpegKit` 遵循 **LGPL-3.0+**
-
-
+- 本项目：**Apache License 2.0**（见 [LICENSE](LICENSE)）
+- LibreOfficeKit：MPL-2.0
+- libvips：LGPL-2.1+
+- FFmpegKit：LGPL-3.0+

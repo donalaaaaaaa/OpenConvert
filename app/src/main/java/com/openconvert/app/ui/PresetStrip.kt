@@ -38,6 +38,8 @@ fun PresetStrip(
     appliedPresetId: String?,
     onApply: (Preset) -> Unit,
     onSaveCurrent: () -> Unit,
+    /** 批量页没有"存为预设"入口（草稿是多文件共享配置）。 */
+    showSaveAction: Boolean = true,
 ) {
     if (presets.isEmpty()) return
 
@@ -48,12 +50,14 @@ fun PresetStrip(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("预设", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Muted)
-            Text(
-                "存为预设",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.clickable(onClick = onSaveCurrent),
-            )
+            if (showSaveAction) {
+                Text(
+                    "存为预设",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.clickable(onClick = onSaveCurrent),
+                )
+            }
         }
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(10.dp),

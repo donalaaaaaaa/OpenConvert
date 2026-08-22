@@ -4,6 +4,7 @@ import com.openconvert.app.domain.model.ConversionGraph
 import com.openconvert.app.domain.model.ConversionResult
 import com.openconvert.app.domain.model.ConversionTask
 import com.openconvert.app.domain.model.FileFormat
+import com.openconvert.app.domain.planner.ConversionPlan
 
 /**
  * 转换引擎统一注册表（计划书 §三十三）。
@@ -31,7 +32,11 @@ class ConverterRegistry(
     fun engines(): List<Converter> = converters
 
     /** 统一转换入口：Success / Fallback / Failed / Cancelled 语义，带引擎与耗时日志。 */
-    suspend fun convert(task: ConversionTask): ConversionResult {
+    suspend fun convert(
+        task: ConversionTask,
+        plan: ConversionPlan? = null,
+        codecs: StreamCodecs? = null,
+    ): ConversionResult {
         val startedAt = System.currentTimeMillis()
         val converter = index[task.sourceFormat to task.targetFormat]
             ?: return ConversionResult.Failure(
@@ -41,7 +46,13 @@ class ConverterRegistry(
             "engine=${converter.engineName()} input=${task.sourceFormat} target=${task.targetFormat} " +
                 "task=${task.id} started",
         )
-        val result = converter.convert(task)
+        // MediaConverter 需要消费 Planner 的编码模式与同一次预检拿到的编码事实；
+        // 其他 Converter 没有额外执行参数，继续走统一接口。
+        val result = if (converter is MediaConverter) {
+            converter.convert(task, plan, codecs)
+        } else {
+            converter.convert(task)
+        }
         val elapsed = System.currentTimeMillis() - startedAt
         val status = when (result) {
             is ConversionResult.Success -> "Success"
@@ -49,7 +60,8 @@ class ConverterRegistry(
             ConversionResult.Cancelled -> "Cancelled"
         }
         logger(
-            "engine=${converter.engineName()} input=${task.sourceFormat} target=${task.targetFormat} " +
+            "engine=${(result as? ConversionResult.Success)?.actualEngine?.name ?: converter.engineName()} " +
+                "input=${task.sourceFormat} target=${task.targetFormat} " +
                 "task=${task.id} result=$status elapsed=${elapsed}ms",
         )
         return result
