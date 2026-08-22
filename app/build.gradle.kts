@@ -64,7 +64,9 @@ android {
                 "com.openconvert.app.ui.StringsCatalogInstrumentedTest",
                 "com.openconvert.app.ui.AccessibilitySemanticsInstrumentedTest",
                 "com.openconvert.app.ui.FileDrivenFlowInstrumentedTest",
+                "com.openconvert.app.ui.TaskCenterInstrumentedTest",
                 "com.openconvert.app.domain.converter.ArchiveConverterInstrumentedTest",
+                "com.openconvert.app.domain.converter.OfficePackIsolationInstrumentedTest",
                 "com.openconvert.app.domain.work.ConversionRecoveryInstrumentedTest",
                 "com.openconvert.app.data.PresetStoreInstrumentedTest",
             ).joinToString(",")
