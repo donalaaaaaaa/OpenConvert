@@ -91,6 +91,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -108,6 +109,7 @@ import com.openconvert.app.domain.model.ConversionStatus
 import com.openconvert.app.domain.model.ConversionKind
 import com.openconvert.app.domain.model.ConversionTask
 import com.openconvert.app.BuildConfig
+import com.openconvert.app.R
 import com.openconvert.app.domain.benchmark.BenchmarkReportFormat
 import java.io.File
 import com.openconvert.app.domain.model.BatchJob
@@ -145,19 +147,19 @@ internal fun ArchiveToolsScreen(
     ) {
         item {
             IconButton(onClick = onBack, modifier = Modifier.size(44.dp)) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "返回")
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.action_back))
             }
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("压缩包", fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
-                Text("打包与解压都在本地完成", color = Muted, fontSize = 14.sp)
+                Text(stringResource(R.string.archive_hub_title), fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.archive_hub_sub), color = Muted, fontSize = 14.sp)
             }
         }
         item {
             ToolCard(
-                "压缩文件",
-                "选择多个文件打包为 ZIP 或 TAR",
+                stringResource(R.string.archive_tool_compress),
+                stringResource(R.string.archive_tool_compress_sub),
                 Icons.Outlined.Folder,
                 Modifier.fillMaxWidth(),
                 onClick = { compressPicker.launch(arrayOf("*/*")) },
@@ -165,8 +167,8 @@ internal fun ArchiveToolsScreen(
         }
         item {
             ToolCard(
-                "解压文件",
-                "解压 ZIP / TAR.GZ / TAR.BZ2 到文件夹",
+                stringResource(R.string.archive_tool_extract),
+                stringResource(R.string.archive_tool_extract_sub),
                 Icons.Outlined.Folder,
                 Modifier.fillMaxWidth(),
                 onClick = { extractPicker.launch(arrayOf("application/zip", "application/gzip", "application/x-tar", "application/x-bzip2")) },
@@ -174,7 +176,7 @@ internal fun ArchiveToolsScreen(
         }
         item {
             Text(
-                "支持格式：ZIP、TAR、TAR.GZ、GZIP、BZIP2。",
+                stringResource(R.string.archive_formats_hint),
                 color = Muted,
                 fontSize = 13.sp,
             )
@@ -192,7 +194,7 @@ internal fun ArchiveCompressScreen(
 ) {
     if (draft == null || draft.documents.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("没有已选择的文件", color = Muted)
+            Text(stringResource(R.string.archive_empty_files), color = Muted)
         }
         return
     }
@@ -207,13 +209,13 @@ internal fun ArchiveCompressScreen(
     ) {
         item {
             IconButton(onClick = onBack, modifier = Modifier.size(44.dp)) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "返回")
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.action_back))
             }
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("压缩文件", fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
-                Text("已选择 ${draft.documents.size} 个文件", color = Muted, fontSize = 14.sp)
+                Text(stringResource(R.string.archive_tool_compress), fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.archive_compress_sub, draft.documents.size), color = Muted, fontSize = 14.sp)
             }
         }
         itemsIndexed(draft.documents, key = { _, document -> document.uri.toString() }) { index, document ->
@@ -262,7 +264,7 @@ internal fun ArchiveCompressScreen(
         }
         item {
             PrimaryPdfButton(
-                "选择位置并压缩",
+                stringResource(R.string.archive_action_compress),
                 onClick = { createDocument.launch(draft.suggestedOutputName) },
             )
         }
@@ -278,7 +280,7 @@ internal fun ArchiveExtractScreen(
 ) {
     if (draft == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("没有已选择的压缩包", color = Muted)
+            Text(stringResource(R.string.archive_empty_pack), color = Muted)
         }
         return
     }
@@ -286,23 +288,23 @@ internal fun ArchiveExtractScreen(
         uri?.let(onStart)
     }
     PdfConfigurationScaffold(
-        title = "解压文件",
-        subtitle = "选择保存解压文件的文件夹",
+        title = stringResource(R.string.archive_tool_extract),
+        subtitle = stringResource(R.string.archive_extract_sub),
         onBack = onBack,
     ) {
         item {
-            FileCard(draft.document.name, "压缩包 · ${formatFileSize(draft.document.sizeBytes)}")
+            FileCard(draft.document.name, stringResource(R.string.archive_file_card, formatFileSize(draft.document.sizeBytes)))
         }
         item {
             Text(
-                "解压后文件将保存到所选文件夹中。",
+                stringResource(R.string.archive_extract_hint),
                 color = Muted,
                 fontSize = 13.sp,
             )
         }
         item {
             PrimaryPdfButton(
-                "选择文件夹并解压",
+                stringResource(R.string.archive_action_extract),
                 onClick = { folderPicker.launch(null) },
             )
         }
@@ -326,7 +328,7 @@ internal fun OfficeToolsScreen(
     ) {
         item {
             IconButton(onClick = onBack, modifier = Modifier.size(44.dp)) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "返回")
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.action_back))
             }
         }
         item {

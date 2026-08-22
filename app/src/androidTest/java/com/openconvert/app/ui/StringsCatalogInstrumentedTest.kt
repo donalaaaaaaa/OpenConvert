@@ -7,6 +7,8 @@ import com.openconvert.app.domain.capability.FileCapabilityResolver
 import com.openconvert.app.domain.error.ConversionError
 import com.openconvert.app.domain.error.ErrorPresenter
 import com.openconvert.app.domain.model.FileFormat
+import com.openconvert.app.domain.planner.PlanRejection
+import com.openconvert.app.domain.planner.PlanRejectionMessages
 import com.openconvert.app.domain.preset.PresetRepository
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -27,6 +29,9 @@ class StringsCatalogInstrumentedTest {
         assertEquals("PDF 工具箱", ctx.getString(R.string.pdf_tools_title))
         assertEquals("正在转换", ctx.getString(R.string.conversion_running))
         assertEquals("文件不会离开您的设备", ctx.getString(R.string.privacy_hint))
+        assertEquals("没有已选择的 PDF", ctx.getString(R.string.pdf_empty_selection))
+        assertEquals("选择保存位置并加水印", ctx.getString(R.string.pdf_action_watermark))
+        assertEquals("3 页 · 可导出全部或指定页面", ctx.getString(R.string.pdf_pages_export_sub, 3))
     }
 
     @Test
@@ -68,6 +73,27 @@ class StringsCatalogInstrumentedTest {
             assertEquals(preset.name, ctx.getString(nameRes!!))
             assertEquals(preset.description, ctx.getString(descRes!!))
         }
+    }
+
+    @Test
+    fun formattedErrorDetailsMatchPresenter() {
+        val required = PlanRejectionMessages.formatBytes((2.1 * 1024 * 1024 * 1024).toLong())
+        val available = PlanRejectionMessages.formatBytes((1.3 * 1024 * 1024 * 1024).toLong())
+        val presented = ErrorPresenter.fromRejection(
+            PlanRejection.InsufficientSpace(
+                requiredBytes = (2.1 * 1024 * 1024 * 1024).toLong(),
+                availableBytes = (1.3 * 1024 * 1024 * 1024).toLong(),
+            ),
+        )
+        assertEquals(ctx.getString(R.string.error_storage_detail, required, available), presented.detail)
+
+        val route = ErrorPresenter.fromRejection(
+            PlanRejection.UnsupportedRoute("HEIC", "PDF"),
+        )
+        assertEquals(
+            ctx.getString(R.string.error_unsupported_route, "HEIC", "PDF"),
+            route.title,
+        )
     }
 
     @Test

@@ -316,21 +316,21 @@ internal fun PdfToImagesScreen(
     onRanges: (String) -> Unit,
     onStart: (Uri) -> Unit,
 ) {
-    if (draft == null) return EmptyPdfSelection("没有已选择的 PDF")
+    if (draft == null) return EmptyPdfSelection(stringResource(R.string.pdf_empty_selection))
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let(onStart)
     }
     PdfConfigurationScaffold(
-        title = "PDF 转图片",
-        subtitle = "${draft.pageCount} 页 · 可导出全部或指定页面",
+        title = stringResource(R.string.pdf_tool_pdf_to_images),
+        subtitle = stringResource(R.string.pdf_pages_export_sub, draft.pageCount),
         onBack = onBack,
     ) {
         item {
-            FileCard(draft.document.name, "PDF · ${draft.pageCount} 页 · ${formatFileSize(draft.document.sizeBytes)}")
+            FileCard(draft.document.name, stringResource(R.string.pdf_file_card, draft.pageCount, formatFileSize(draft.document.sizeBytes)))
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                FieldLabel("输出格式")
+                FieldLabel(stringResource(R.string.pdf_label_output_format))
                 listOf(FileFormat.PNG, FileFormat.JPG).forEach { format ->
                     Row(
                         modifier = Modifier.fillMaxWidth().clickable { onTarget(format) }.padding(vertical = 3.dp),
@@ -340,7 +340,7 @@ internal fun PdfToImagesScreen(
                         Column {
                             Text(format.displayName, fontWeight = FontWeight.Medium)
                             Text(
-                                if (format == FileFormat.PNG) "无损，文件通常更大" else "高质量，文件通常更小",
+                                if (format == FileFormat.PNG) stringResource(R.string.pdf_format_png_hint) else stringResource(R.string.pdf_format_jpg_hint),
                                 color = Muted,
                                 fontSize = 12.sp,
                             )
@@ -364,7 +364,7 @@ internal fun PdfToImagesScreen(
         }
         item {
             PrimaryPdfButton(
-                "选择文件夹并导出图片",
+                stringResource(R.string.pdf_action_export_images),
                 onClick = { folderPicker.launch(null) },
             )
         }
@@ -380,13 +380,13 @@ internal fun PdfMergeScreen(
     onRemove: (Int) -> Unit,
     onStart: (Uri) -> Unit,
 ) {
-    if (draft == null || draft.documents.isEmpty()) return EmptyPdfSelection("没有已选择的 PDF")
+    if (draft == null || draft.documents.isEmpty()) return EmptyPdfSelection(stringResource(R.string.pdf_empty_selection))
     val createDocument = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument(FileFormat.PDF.mimeType),
     ) { uri -> uri?.let(onStart) }
     PdfConfigurationScaffold(
-        title = "PDF 合并",
-        subtitle = "已选择 ${draft.documents.size} 个 PDF · 按下方顺序合并",
+        title = stringResource(R.string.pdf_tool_merge),
+        subtitle = stringResource(R.string.pdf_pages_merge_sub, draft.documents.size),
         onBack = onBack,
     ) {
         itemsIndexed(draft.documents, key = { _, item -> item.uri.toString() }) { index, document ->
@@ -406,7 +406,7 @@ internal fun PdfMergeScreen(
         }
         item {
             PrimaryPdfButton(
-                "选择位置并合并 PDF",
+                stringResource(R.string.pdf_action_merge),
                 onClick = {
                     createDocument.launch(draft.suggestedOutputName)
                 },
@@ -423,17 +423,17 @@ internal fun PdfSplitScreen(
     onRanges: (String) -> Unit,
     onStart: (Uri) -> Unit,
 ) {
-    if (draft == null) return EmptyPdfSelection("没有已选择的 PDF")
+    if (draft == null) return EmptyPdfSelection(stringResource(R.string.pdf_empty_selection))
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let(onStart)
     }
     PdfConfigurationScaffold(
-        title = "PDF 拆分",
-        subtitle = "${draft.pageCount} 页 · 每个逗号分隔的范围生成一个 PDF",
+        title = stringResource(R.string.pdf_tool_split),
+        subtitle = stringResource(R.string.pdf_pages_split_sub, draft.pageCount),
         onBack = onBack,
     ) {
         item {
-            FileCard(draft.document.name, "PDF · ${draft.pageCount} 页 · ${formatFileSize(draft.document.sizeBytes)}")
+            FileCard(draft.document.name, stringResource(R.string.pdf_file_card, draft.pageCount, formatFileSize(draft.document.sizeBytes)))
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -453,7 +453,7 @@ internal fun PdfSplitScreen(
         }
         item {
             PrimaryPdfButton(
-                "选择文件夹并拆分 PDF",
+                stringResource(R.string.pdf_action_split),
                 onClick = { folderPicker.launch(null) },
             )
         }
@@ -468,18 +468,18 @@ internal fun PdfDeletePagesScreen(
     onTogglePage: (Int) -> Unit,
     onStart: (Uri) -> Unit,
 ) {
-    if (draft == null) return EmptyPdfSelection("没有已选择的 PDF")
+    if (draft == null) return EmptyPdfSelection(stringResource(R.string.pdf_empty_selection))
     val createDocument = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument(FileFormat.PDF.mimeType),
     ) { uri -> uri?.let(onStart) }
 
     PdfConfigurationScaffold(
-        title = "PDF 删除页面",
-        subtitle = "${draft.pageCount} 页 · 点击选择要删除的页面",
+        title = stringResource(R.string.pdf_tool_delete),
+        subtitle = stringResource(R.string.pdf_pages_delete_sub, draft.pageCount),
         onBack = onBack,
     ) {
         item {
-            FileCard(draft.document.name, "PDF · ${draft.pageCount} 页 · ${formatFileSize(draft.document.sizeBytes)}")
+            FileCard(draft.document.name, stringResource(R.string.pdf_file_card, draft.pageCount, formatFileSize(draft.document.sizeBytes)))
         }
         item {
             Text("删除后剩余 ${draft.remaining} 页", color = Muted, fontSize = 13.sp)
@@ -518,7 +518,7 @@ internal fun PdfDeletePagesScreen(
         }
         item {
             PrimaryPdfButton(
-                "选择位置并生成新 PDF",
+                stringResource(R.string.pdf_action_delete),
                 onClick = {
                     createDocument.launch(
                         "${draft.document.name.substringBeforeLast('.')}_删除页面.pdf",
@@ -539,18 +539,18 @@ internal fun PdfRotatePagesScreen(
     onRanges: (String) -> Unit,
     onStart: (Uri) -> Unit,
 ) {
-    if (draft == null) return EmptyPdfSelection("没有已选择的 PDF")
+    if (draft == null) return EmptyPdfSelection(stringResource(R.string.pdf_empty_selection))
     val createDocument = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument(FileFormat.PDF.mimeType),
     ) { uri -> uri?.let(onStart) }
 
     PdfConfigurationScaffold(
-        title = "PDF 旋转",
-        subtitle = "${draft.pageCount} 页 · 可旋转全部或指定页面",
+        title = stringResource(R.string.pdf_tool_rotate),
+        subtitle = stringResource(R.string.pdf_pages_rotate_sub, draft.pageCount),
         onBack = onBack,
     ) {
         item {
-            FileCard(draft.document.name, "PDF · ${draft.pageCount} 页 · ${formatFileSize(draft.document.sizeBytes)}")
+            FileCard(draft.document.name, stringResource(R.string.pdf_file_card, draft.pageCount, formatFileSize(draft.document.sizeBytes)))
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -581,7 +581,7 @@ internal fun PdfRotatePagesScreen(
         }
         item {
             PrimaryPdfButton(
-                "选择位置并旋转 PDF",
+                stringResource(R.string.pdf_action_rotate),
                 onClick = {
                     createDocument.launch("${draft.document.name.substringBeforeLast('.')}_旋转${draft.degrees}.pdf")
                 },
@@ -598,14 +598,14 @@ internal fun PdfCompressScreen(
     onPreset: (com.openconvert.app.domain.converter.PdfCompressPreset) -> Unit,
     onStart: (Uri) -> Unit,
 ) {
-    if (draft == null) return EmptyPdfSelection("没有已选择的 PDF")
+    if (draft == null) return EmptyPdfSelection(stringResource(R.string.pdf_empty_selection))
     val createDocument = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument(FileFormat.PDF.mimeType),
     ) { uri -> uri?.let(onStart) }
 
     PdfConfigurationScaffold(
-        title = "PDF 智能压缩",
-        subtitle = "优化内置图像流与降采样，大幅节省空间",
+        title = stringResource(R.string.pdf_tool_compress),
+        subtitle = stringResource(R.string.pdf_compress_sub),
         onBack = onBack,
     ) {
         item {
@@ -638,7 +638,7 @@ internal fun PdfCompressScreen(
         }
         item {
             PrimaryPdfButton(
-                "选择保存位置并开始压缩",
+                stringResource(R.string.pdf_action_compress),
                 onClick = {
                     createDocument.launch("${draft.document.name.substringBeforeLast('.')}_compressed.pdf")
                 },
@@ -655,14 +655,14 @@ internal fun PdfSecurityScreen(
     onPasswordChange: (String) -> Unit,
     onStart: (Uri) -> Unit,
 ) {
-    if (draft == null) return EmptyPdfSelection("没有已选择的 PDF")
+    if (draft == null) return EmptyPdfSelection(stringResource(R.string.pdf_empty_selection))
     val createDocument = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument(FileFormat.PDF.mimeType),
     ) { uri -> uri?.let(onStart) }
 
     PdfConfigurationScaffold(
-        title = if (draft.isEncrypt) "PDF 加密保护" else "PDF 解密",
-        subtitle = if (draft.isEncrypt) "设置打开密码与保护策略" else "验证已知密码并导出未加密副本",
+        title = stringResource(if (draft.isEncrypt) R.string.pdf_encrypt_title else R.string.pdf_decrypt_title),
+        subtitle = stringResource(if (draft.isEncrypt) R.string.pdf_encrypt_sub else R.string.pdf_decrypt_sub),
         onBack = onBack,
     ) {
         item {
@@ -683,7 +683,7 @@ internal fun PdfSecurityScreen(
         }
         item {
             PrimaryPdfButton(
-                if (draft.isEncrypt) "保存加密 PDF" else "导出解密副本",
+                if (draft.isEncrypt) stringResource(R.string.pdf_action_encrypt) else stringResource(R.string.pdf_action_decrypt),
                 onClick = {
                     val suffix = if (draft.isEncrypt) "_protected" else "_unlocked"
                     createDocument.launch("${draft.document.name.substringBeforeLast('.')}$suffix.pdf")
@@ -702,7 +702,7 @@ internal fun PdfCropScreen(
     onMarginChange: (Float, Float, Float, Float) -> Unit,
     onStart: (Uri) -> Unit,
 ) {
-    if (draft == null) return EmptyPdfSelection("没有已选择的 PDF")
+    if (draft == null) return EmptyPdfSelection(stringResource(R.string.pdf_empty_selection))
     val createDocument = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument(FileFormat.PDF.mimeType),
     ) { uri -> uri?.let(onStart) }
@@ -713,12 +713,12 @@ internal fun PdfCropScreen(
     var bottom by remember { mutableStateOf(draft.bottomPt) }
 
     PdfConfigurationScaffold(
-        title = "PDF 边距裁剪",
-        subtitle = "调整页面四周裁切边距（单位：Point）",
+        title = stringResource(R.string.pdf_tool_crop),
+        subtitle = stringResource(R.string.pdf_crop_sub),
         onBack = onBack,
     ) {
         item {
-            FileCard(draft.document.name, "PDF · ${draft.pageCount} 页 · ${formatFileSize(draft.document.sizeBytes)}")
+            FileCard(draft.document.name, stringResource(R.string.pdf_file_card, draft.pageCount, formatFileSize(draft.document.sizeBytes)))
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -769,7 +769,7 @@ internal fun PdfCropScreen(
         }
         item {
             PrimaryPdfButton(
-                "选择保存位置并裁剪 PDF",
+                stringResource(R.string.pdf_action_crop),
                 onClick = {
                     createDocument.launch("${draft.document.name.substringBeforeLast('.')}_cropped.pdf")
                 },
@@ -786,7 +786,7 @@ internal fun PdfWatermarkScreen(
     onChange: (String, Float, com.openconvert.app.domain.converter.PdfWatermarkPosition) -> Unit,
     onStart: (Uri) -> Unit,
 ) {
-    if (draft == null) return EmptyPdfSelection("没有已选择的 PDF")
+    if (draft == null) return EmptyPdfSelection(stringResource(R.string.pdf_empty_selection))
     val createDocument = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument(FileFormat.PDF.mimeType),
     ) { uri -> uri?.let(onStart) }
@@ -795,12 +795,12 @@ internal fun PdfWatermarkScreen(
     var position by remember { mutableStateOf(draft.position) }
 
     PdfConfigurationScaffold(
-        title = "PDF 文字水印",
-        subtitle = "离线写入每一页，默认半透明斜向居中",
+        title = stringResource(R.string.pdf_tool_watermark),
+        subtitle = stringResource(R.string.pdf_watermark_sub),
         onBack = onBack,
     ) {
         item {
-            FileCard(draft.document.name, "PDF · ${draft.pageCount} 页 · ${formatFileSize(draft.document.sizeBytes)}")
+            FileCard(draft.document.name, stringResource(R.string.pdf_file_card, draft.pageCount, formatFileSize(draft.document.sizeBytes)))
         }
         item {
             OutlinedTextField(
@@ -856,7 +856,7 @@ internal fun PdfWatermarkScreen(
         }
         item {
             PrimaryPdfButton(
-                "选择保存位置并加水印",
+                stringResource(R.string.pdf_action_watermark),
                 onClick = {
                     if (text.trim().isEmpty()) return@PrimaryPdfButton
                     createDocument.launch("${draft.document.name.substringBeforeLast('.')}_watermark.pdf")
@@ -873,7 +873,7 @@ internal fun PdfMetadataScreen(
     onBack: () -> Unit,
     onSave: (String, String, String, String, Uri) -> Unit,
 ) {
-    if (draft == null) return EmptyPdfSelection("没有已选择的 PDF")
+    if (draft == null) return EmptyPdfSelection(stringResource(R.string.pdf_empty_selection))
     var title by remember { mutableStateOf(draft.metadata.title) }
     var author by remember { mutableStateOf(draft.metadata.author) }
     var subject by remember { mutableStateOf(draft.metadata.subject) }
@@ -884,8 +884,8 @@ internal fun PdfMetadataScreen(
     ) { uri -> uri?.let { onSave(title, author, subject, keywords, it) } }
 
     PdfConfigurationScaffold(
-        title = "PDF 元数据管理",
-        subtitle = "查看与修改文档属性信息",
+        title = stringResource(R.string.pdf_metadata_title),
+        subtitle = stringResource(R.string.pdf_metadata_sub),
         onBack = onBack,
     ) {
         item {
@@ -925,7 +925,7 @@ internal fun PdfMetadataScreen(
         }
         item {
             PrimaryPdfButton(
-                "保存并导出 PDF",
+                stringResource(R.string.pdf_action_metadata),
                 onClick = {
                     createDocument.launch("${draft.document.name.substringBeforeLast('.')}_meta.pdf")
                 },
@@ -944,7 +944,7 @@ internal fun PdfPageManagerScreen(
     onDelete: (Set<String>) -> Unit,
     onStart: (Uri) -> Unit,
 ) {
-    if (draft == null) return EmptyPdfSelection("没有已选择的 PDF")
+    if (draft == null) return EmptyPdfSelection(stringResource(R.string.pdf_empty_selection))
     val createDocument = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument(FileFormat.PDF.mimeType),
     ) { uri -> uri?.let(onStart) }
@@ -952,8 +952,8 @@ internal fun PdfPageManagerScreen(
     var selectedIds by remember { mutableStateOf(setOf<String>()) }
 
     PdfConfigurationScaffold(
-        title = "PDF 页面管理器",
-        subtitle = "共 ${draft.pages.size} 页 · 支持拖拽重排、旋转与批量删除",
+        title = stringResource(R.string.pdf_tool_pages),
+        subtitle = stringResource(R.string.pdf_pages_manager_sub, draft.pages.size),
         onBack = onBack,
     ) {
         item {
@@ -1019,7 +1019,7 @@ internal fun PdfPageManagerScreen(
         }
         item {
             PrimaryPdfButton(
-                "选择保存位置并导出新 PDF",
+                stringResource(R.string.pdf_action_pages),
                 onClick = {
                     createDocument.launch("${draft.document.name.substringBeforeLast('.')}_reordered.pdf")
                 },
@@ -1040,7 +1040,7 @@ internal fun ImagesToPdfScreen(
 ) {
     if (draft == null || draft.documents.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("没有已选择的图片", color = Muted)
+            Text(stringResource(R.string.pdf_images_empty), color = Muted)
         }
         return
     }
@@ -1055,13 +1055,13 @@ internal fun ImagesToPdfScreen(
     ) {
         item {
             IconButton(onClick = onBack, modifier = Modifier.size(44.dp)) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "返回")
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.action_back))
             }
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("图片转 PDF", fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
-                Text("已选择 ${draft.documents.size} 张图片 · 每张图片生成一页", color = Muted, fontSize = 14.sp)
+                Text(stringResource(R.string.pdf_tool_images_to_pdf), fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.pdf_images_sub, draft.documents.size), color = Muted, fontSize = 14.sp)
             }
         }
         itemsIndexed(draft.documents, key = { _, document -> document.uri.toString() }) { index, document ->
@@ -1116,7 +1116,7 @@ internal fun ImagesToPdfScreen(
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Ink),
             ) {
-                Text("选择位置并生成 PDF", fontSize = 16.sp)
+                Text(stringResource(R.string.pdf_action_images), fontSize = 16.sp)
             }
         }
         item {
