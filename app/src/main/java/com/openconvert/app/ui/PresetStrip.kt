@@ -55,7 +55,9 @@ fun PresetStrip(
                     "存为预设",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
-                    modifier = Modifier.clickable(onClick = onSaveCurrent),
+                    modifier = Modifier
+                        .clickable(onClick = onSaveCurrent)
+                        .actionSemantics("存为预设"),
                 )
             }
         }
@@ -76,8 +78,21 @@ fun PresetStrip(
 
 @Composable
 private fun PresetChip(preset: Preset, selected: Boolean, onClick: () -> Unit) {
+    val detail = listOfNotNull(
+        preset.targetFormat.displayName,
+        preset.sizeSummary,
+    ).joinToString(" · ")
     Surface(
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .actionSemantics(
+                AccessibilityCopy.preset(
+                    name = preset.name,
+                    detail = detail,
+                    selected = selected,
+                ),
+                selected = selected,
+            ),
         shape = RoundedCornerShape(12.dp),
         color = if (selected) Ink else SurfaceSoft,
         border = BorderStroke(1.dp, if (selected) Ink else Border),
@@ -92,10 +107,6 @@ private fun PresetChip(preset: Preset, selected: Boolean, onClick: () -> Unit) {
                 fontWeight = FontWeight.Medium,
                 color = if (selected) MaterialTheme.colorScheme.onPrimary else Ink,
             )
-            val detail = listOfNotNull(
-                preset.targetFormat.displayName,
-                preset.sizeSummary,
-            ).joinToString(" · ")
             Text(
                 detail,
                 fontSize = 11.sp,

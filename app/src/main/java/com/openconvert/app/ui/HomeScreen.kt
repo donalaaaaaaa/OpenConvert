@@ -169,7 +169,16 @@ internal fun HomeScreen(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { picker.launch(arrayOf("*/*")) },
+                    .clickable { picker.launch(arrayOf("*/*")) }
+                    .actionSemantics(
+                        AccessibilityCopy.pickFile(
+                            if (BuildConfig.OFFICE_BUNDLED) {
+                                "PDF、图片、视频、音频、Office"
+                            } else {
+                                "PDF、图片、视频、音频"
+                            },
+                        ),
+                    ),
                 shape = RoundedCornerShape(16.dp),
                 color = SurfaceSoft,
                 border = BorderStroke(1.dp, Border),

@@ -129,7 +129,9 @@ fun FileCapabilitySheet(
 @Composable
 private fun FormatChip(format: FileFormat, onClick: () -> Unit) {
     Surface(
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .actionSemantics(AccessibilityCopy.convertTo(format.displayName)),
         shape = MaterialTheme.shapes.medium,
         color = Ink,
     ) {
@@ -148,7 +150,8 @@ private fun ToolRow(action: ToolAction, onClick: () -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
+            .actionSemantics(AccessibilityCopy.tool(action.label, action.description)),
         shape = MaterialTheme.shapes.medium,
         color = SurfaceSoft,
         border = BorderStroke(1.dp, Border),

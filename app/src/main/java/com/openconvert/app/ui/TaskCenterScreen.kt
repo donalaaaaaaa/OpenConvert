@@ -23,6 +23,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -114,13 +116,23 @@ private fun TaskCard(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable {
-                when (bucket) {
-                    TaskBucket.COMPLETED -> onOpen()
-                    TaskBucket.FAILED -> onRetry()
-                    else -> Unit
-                }
-            },
+            .then(
+                if (bucket == TaskBucket.COMPLETED || bucket == TaskBucket.FAILED) {
+                    Modifier
+                        .clickable {
+                            when (bucket) {
+                                TaskBucket.COMPLETED -> onOpen()
+                                TaskBucket.FAILED -> onRetry()
+                                else -> Unit
+                            }
+                        }
+                        .actionSemantics(AccessibilityCopy.taskCard(card, bucket))
+                } else {
+                    Modifier.semantics(mergeDescendants = true) {
+                        contentDescription = AccessibilityCopy.taskCard(card, bucket)
+                    }
+                },
+            ),
         shape = RoundedCornerShape(14.dp),
         color = SurfaceSoft,
         border = BorderStroke(1.dp, Border),
@@ -147,6 +159,7 @@ private fun TaskCard(
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier
                             .clickable(onClick = onCancel)
+                            .actionSemantics("取消转换")
                             .padding(top = 2.dp),
                     )
                 }

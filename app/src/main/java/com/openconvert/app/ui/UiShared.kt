@@ -198,7 +198,15 @@ internal fun ToolCard(
     onClick: (() -> Unit)? = null,
 ) {
     Card(
-        modifier = modifier.then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+        modifier = modifier.then(
+            if (onClick != null) {
+                Modifier
+                    .clickable(onClick = onClick)
+                    .actionSemantics(AccessibilityCopy.tool(title, subtitle))
+            } else {
+                Modifier
+            },
+        ),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceSoft),
         border = BorderStroke(1.dp, Border),
@@ -354,6 +362,7 @@ internal fun HistoryRow(
                 },
                 onLongClick = onLongPress,
             )
+            .actionSemantics(AccessibilityCopy.history(task), state = historyStatus(task))
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -408,7 +417,15 @@ internal fun SettingRow(title: String, value: String, onClick: (() -> Unit)? = n
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(
+                if (onClick != null) {
+                    Modifier
+                        .clickable(onClick = onClick)
+                        .actionSemantics(AccessibilityCopy.setting(title, value))
+                } else {
+                    Modifier
+                },
+            )
             .padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,

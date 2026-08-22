@@ -471,7 +471,14 @@ internal fun ConversionProgressScreen(task: ConversionTask, onCancel: () -> Unit
             trackColor = SurfaceSoft,
         )
         Spacer(Modifier.height(12.dp))
-        Text("${task.progress}%", fontSize = 22.sp, fontWeight = FontWeight.Medium)
+        Text(
+            "${task.progress}%",
+            modifier = Modifier.liveProgressSemantics(
+                AccessibilityCopy.progress(task.progress, task.bytesProcessed, task.bytesTotal),
+            ),
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Medium,
+        )
         if (task.bytesTotal > 0L && task.bytesProcessed > 0L) {
             Text(
                 "${com.openconvert.app.domain.task.TaskCardFactory.formatSize(task.bytesProcessed)} / ${com.openconvert.app.domain.task.TaskCardFactory.formatSize(task.bytesTotal)}",
@@ -509,7 +516,7 @@ internal fun ConversionCompleteScreen(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {
-            Icon(Icons.Outlined.CheckCircleOutline, contentDescription = null, modifier = Modifier.size(58.dp))
+            Icon(Icons.Outlined.CheckCircleOutline, contentDescription = "转换完成", modifier = Modifier.size(58.dp))
         }
         item {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -596,7 +603,7 @@ internal fun ConversionFailedScreen(message: String, onRetry: () -> Unit, onBack
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(Icons.Outlined.ErrorOutline, contentDescription = null, modifier = Modifier.size(52.dp))
+        Icon(Icons.Outlined.ErrorOutline, contentDescription = "转换失败", modifier = Modifier.size(52.dp))
         Spacer(Modifier.height(18.dp))
         Text("转换失败", fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
