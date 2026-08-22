@@ -14,6 +14,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -27,6 +28,11 @@ class TaskCenterInstrumentedTest {
     private val app: OpenConvertApplication
         get() = InstrumentationRegistry.getInstrumentation()
             .targetContext.applicationContext as OpenConvertApplication
+
+    @Before
+    fun drainStartupRecovery() {
+        runBlocking { app.recoverOrphans() }
+    }
 
     private fun task(
         status: ConversionStatus,
@@ -53,7 +59,7 @@ class TaskCenterInstrumentedTest {
 
     @Test
     fun runningTaskAppearsInRunningGroupWithProgress() = runBlocking {
-        val vm = MainViewModel(app)
+        val vm = TaskCenterViewModel(app)
         val t = task(ConversionStatus.RUNNING, progress = 82)
         try {
             app.historyRepository.save(t)
@@ -74,7 +80,7 @@ class TaskCenterInstrumentedTest {
 
     @Test
     fun failedTaskCardCarriesAReadableReasonAndSuggestion() = runBlocking {
-        val vm = MainViewModel(app)
+        val vm = TaskCenterViewModel(app)
         val t = task(
             ConversionStatus.FAILED,
             errorMessage = "存储空间不足，请清理后再试",
@@ -96,7 +102,7 @@ class TaskCenterInstrumentedTest {
 
     @Test
     fun completedTaskShowsSizeSummaryAndElapsed() = runBlocking {
-        val vm = MainViewModel(app)
+        val vm = TaskCenterViewModel(app)
         val t = task(
             ConversionStatus.COMPLETED,
             progress = 100,
@@ -122,7 +128,7 @@ class TaskCenterInstrumentedTest {
 
     @Test
     fun everyGroupedTaskHasARenderableCard() = runBlocking {
-        val vm = MainViewModel(app)
+        val vm = TaskCenterViewModel(app)
         val tasks = listOf(
             task(ConversionStatus.RUNNING, progress = 10),
             task(ConversionStatus.PENDING),
@@ -147,7 +153,7 @@ class TaskCenterInstrumentedTest {
         }
     }
 
-    private suspend fun awaitCard(vm: MainViewModel, taskId: String, timeoutMs: Long = 5_000) {
+    private suspend fun awaitCard(vm: TaskCenterViewModel, taskId: String, timeoutMs: Long = 5_000) {
         val deadline = System.currentTimeMillis() + timeoutMs
         while (System.currentTimeMillis() < deadline) {
             if (vm.taskCards.value.containsKey(taskId)) return

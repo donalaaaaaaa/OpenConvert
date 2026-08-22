@@ -15,6 +15,7 @@ import com.openconvert.app.domain.model.FileCategory
 import com.openconvert.app.domain.model.FileFormat
 import com.openconvert.app.domain.model.canConvertLocallyTo
 import com.openconvert.app.domain.planner.ConversionPlan
+import com.openconvert.app.domain.device.PersistentCodecBlacklist
 import com.openconvert.app.domain.work.BoundedIo
 import com.openconvert.app.domain.work.StorageGuard
 import java.io.File
@@ -82,41 +83,60 @@ class MediaConverter(
             }
 
             if (plan.mode == EncodeMode.LITR_VP8) {
-                when (val litr = LitrWebmEncoder(context, onProgress).convert(task)) {
-                    is ConversionResult.Success -> return@withContext litr
-                    ConversionResult.Cancelled -> return@withContext ConversionResult.Cancelled
-                    is ConversionResult.Failure -> {
-                        // MediaCodec 拒绝该文件时继续走 FFmpeg VP8 兜底。
+                val skipVp8 = PersistentCodecBlacklist.get(context)
+                    .shouldSkipHardware(android.os.Build.MANUFACTURER, android.os.Build.MODEL, "vp8")
+                if (!skipVp8) {
+                    when (val litr = LitrWebmEncoder(context, onProgress).convert(task)) {
+                        is ConversionResult.Success -> return@withContext litr
+                        ConversionResult.Cancelled -> return@withContext ConversionResult.Cancelled
+                        is ConversionResult.Failure -> {
+                            PersistentCodecBlacklist.get(context).record(
+                                android.os.Build.MANUFACTURER,
+                                android.os.Build.MODEL,
+                                "vp8",
+                            )
+                        }
                     }
                 }
             }
 
             // MP4 re-encode: Media3/MediaCodec is the primary engine; FFmpeg only as fallback.
             if (plan.mode == EncodeMode.HARDWARE_H264) {
-                android.util.Log.i("OpenConvert", "engine=media3 task=${task.id}")
-                when (
-                    val media3 = Media3Transcoder(context, onProgress).transcode(
-                        sourceUri = Uri.parse(task.sourceUri),
-                        outputFile = outputFile,
-                        videoBitrateBps = Media3Transcoder.parseBitrateBps(plan.videoBitrate),
-                        resolution = task.resolution,
-                    )
-                ) {
-                    Media3Transcoder.Outcome.Success -> {
-                        android.util.Log.i("OpenConvert", "engine=media3 result=success task=${task.id}")
-                        return@withContext finishOutput(
-                            outputFile,
-                            outputUri,
-                            EngineType.MEDIA3_MEDIACODEC,
+                val skipH264 = PersistentCodecBlacklist.get(context)
+                    .shouldSkipHardware(android.os.Build.MANUFACTURER, android.os.Build.MODEL, "h264")
+                if (!skipH264) {
+                    android.util.Log.i("OpenConvert", "engine=media3 task=${task.id}")
+                    when (
+                        val media3 = Media3Transcoder(context, onProgress).transcode(
+                            sourceUri = Uri.parse(task.sourceUri),
+                            outputFile = outputFile,
+                            videoBitrateBps = Media3Transcoder.parseBitrateBps(plan.videoBitrate),
+                            resolution = task.resolution,
                         )
+                    ) {
+                        Media3Transcoder.Outcome.Success -> {
+                            android.util.Log.i("OpenConvert", "engine=media3 result=success task=${task.id}")
+                            return@withContext finishOutput(
+                                outputFile,
+                                outputUri,
+                                EngineType.MEDIA3_MEDIACODEC,
+                            )
+                        }
+                        Media3Transcoder.Outcome.Cancelled -> return@withContext ConversionResult.Cancelled
+                        is Media3Transcoder.Outcome.Failure -> {
+                            PersistentCodecBlacklist.get(context).record(
+                                android.os.Build.MANUFACTURER,
+                                android.os.Build.MODEL,
+                                "h264",
+                            )
+                            android.util.Log.w(
+                                "OpenConvert",
+                                "engine=media3 result=fallback reason=${media3.message} task=${task.id}",
+                            )
+                        }
                     }
-                    Media3Transcoder.Outcome.Cancelled -> return@withContext ConversionResult.Cancelled
-                    is Media3Transcoder.Outcome.Failure -> {
-                        android.util.Log.w(
-                            "OpenConvert",
-                            "engine=media3 result=fallback reason=${media3.message} task=${task.id}",
-                        )
-                    }
+                } else {
+                    android.util.Log.i("OpenConvert", "engine=media3 skipped blacklist task=${task.id}")
                 }
             }
 
