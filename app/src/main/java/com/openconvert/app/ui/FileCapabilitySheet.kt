@@ -18,7 +18,9 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.openconvert.app.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.openconvert.app.data.saf.SelectedDocument
@@ -83,7 +85,7 @@ fun FileCapabilitySheet(
             if (capabilities.convertTargets.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        capabilities.convertSectionTitle,
+                        stringResource(capabilities.convertSectionTitleRes),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
                         color = Muted,
@@ -102,8 +104,7 @@ fun FileCapabilitySheet(
             // 图片的编辑能力是 SINGLE 转换的参数，不是独立 kind——作为提示展示。
             if (document.format.category == FileCategory.IMAGE) {
                 Text(
-                    "选定格式后可继续设置：" +
-                        FileCapabilityResolver.IMAGE_EDIT_HINTS.joinToString(" · "),
+                    stringResource(R.string.cap_image_edit_hints),
                     color = Muted,
                     fontSize = 12.sp,
                 )
@@ -112,7 +113,7 @@ fun FileCapabilitySheet(
             if (capabilities.tools.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        capabilities.toolSectionTitle,
+                        stringResource(capabilities.toolSectionTitleRes),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
                         color = Muted,
@@ -151,7 +152,10 @@ private fun ToolRow(action: ToolAction, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .actionSemantics(AccessibilityCopy.tool(action.label, action.description)),
+            .actionSemantics(AccessibilityCopy.tool(
+                stringResource(ToolCopy.labelRes(action.kind)),
+                stringResource(ToolCopy.descriptionRes(action.kind)),
+            )),
         shape = MaterialTheme.shapes.medium,
         color = SurfaceSoft,
         border = BorderStroke(1.dp, Border),
@@ -162,8 +166,8 @@ private fun ToolRow(action: ToolAction, onClick: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(action.label, fontSize = 15.sp, fontWeight = FontWeight.Medium)
-                Text(action.description, color = Muted, fontSize = 12.sp)
+                Text(stringResource(ToolCopy.labelRes(action.kind)), fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Text(stringResource(ToolCopy.descriptionRes(action.kind)), color = Muted, fontSize = 12.sp)
             }
         }
     }

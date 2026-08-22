@@ -17,7 +17,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.openconvert.app.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.openconvert.app.domain.preset.Preset
@@ -49,15 +51,15 @@ fun PresetStrip(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("预设", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Muted)
+            Text(stringResource(R.string.presets_title), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Muted)
             if (showSaveAction) {
                 Text(
-                    "存为预设",
+                    stringResource(R.string.presets_save),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier
                         .clickable(onClick = onSaveCurrent)
-                        .actionSemantics("存为预设"),
+                        .actionSemantics(stringResource(R.string.presets_save)),
                 )
             }
         }
@@ -78,6 +80,8 @@ fun PresetStrip(
 
 @Composable
 private fun PresetChip(preset: Preset, selected: Boolean, onClick: () -> Unit) {
+    val nameRes = if (preset.isBuiltIn) PresetCopy.nameRes(preset.id) else null
+    val name = if (nameRes != null) stringResource(nameRes) else preset.name
     val detail = listOfNotNull(
         preset.targetFormat.displayName,
         preset.sizeSummary,
@@ -87,7 +91,7 @@ private fun PresetChip(preset: Preset, selected: Boolean, onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .actionSemantics(
                 AccessibilityCopy.preset(
-                    name = preset.name,
+                    name = name,
                     detail = detail,
                     selected = selected,
                 ),
@@ -102,7 +106,7 @@ private fun PresetChip(preset: Preset, selected: Boolean, onClick: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
-                preset.name,
+                name,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = if (selected) MaterialTheme.colorScheme.onPrimary else Ink,

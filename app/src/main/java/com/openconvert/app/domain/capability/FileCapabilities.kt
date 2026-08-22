@@ -1,6 +1,7 @@
 package com.openconvert.app.domain.capability
 
 import com.openconvert.app.BuildConfig
+import com.openconvert.app.R
 import com.openconvert.app.domain.model.ConversionGraph
 import com.openconvert.app.domain.model.ConversionKind
 import com.openconvert.app.domain.model.FileCategory
@@ -29,22 +30,21 @@ data class FileCapabilities(
     val hasAnything: Boolean get() = convertTargets.isNotEmpty() || tools.isNotEmpty()
 
     /** 分区标题，UI 直接用。 */
-    val convertSectionTitle: String
+    val convertSectionTitleRes: Int
         get() = when (format.category) {
-            FileCategory.IMAGE -> "转换为"
-            FileCategory.AUDIO -> "转换音频格式"
-            FileCategory.VIDEO -> "转换 / 提取"
-            FileCategory.OFFICE -> "导出为"
-            FileCategory.ARCHIVE -> "转换压缩格式"
-            else -> "转换为"
+            FileCategory.AUDIO -> R.string.cap_convert_audio
+            FileCategory.VIDEO -> R.string.cap_convert_video
+            FileCategory.OFFICE -> R.string.cap_convert_office
+            FileCategory.ARCHIVE -> R.string.cap_convert_archive
+            else -> R.string.cap_convert_image
         }
 
-    val toolSectionTitle: String
+    val toolSectionTitleRes: Int
         get() = when (format.category) {
-            FileCategory.IMAGE -> "图片工具"
-            FileCategory.PDF -> "PDF 工具"
-            FileCategory.ARCHIVE -> "压缩包工具"
-            else -> "其他操作"
+            FileCategory.IMAGE -> R.string.cap_tools_image
+            FileCategory.PDF -> R.string.cap_tools_pdf
+            FileCategory.ARCHIVE -> R.string.cap_tools_archive
+            else -> R.string.cap_tools_other
         }
 }
 

@@ -1,6 +1,7 @@
 package com.openconvert.app.domain.capability
 
 import com.openconvert.app.BuildConfig
+import com.openconvert.app.R
 import com.openconvert.app.domain.model.ConversionKind
 import com.openconvert.app.domain.model.FileFormat
 import org.junit.Assert.assertEquals
@@ -22,8 +23,8 @@ class FileCapabilityResolverTest {
             caps.convertTargets,
         )
         assertTrue(caps.tools.any { it.kind == ConversionKind.IMAGES_TO_PDF })
-        assertEquals("转换为", caps.convertSectionTitle)
-        assertEquals("图片工具", caps.toolSectionTitle)
+        assertEquals(R.string.cap_convert_image, caps.convertSectionTitleRes)
+        assertEquals(R.string.cap_tools_image, caps.toolSectionTitleRes)
         assertTrue(caps.hasAnything)
     }
 
@@ -40,7 +41,7 @@ class FileCapabilityResolverTest {
     fun `pdf shows the full tool suite and no convert targets`() {
         val caps = FileCapabilityResolver.resolve(FileFormat.PDF)
         assertTrue("PDF 没有一进一出的转换边", caps.convertTargets.isEmpty())
-        assertEquals("PDF 工具", caps.toolSectionTitle)
+        assertEquals(R.string.cap_tools_pdf, caps.toolSectionTitleRes)
 
         val kinds = caps.tools.map { it.kind }
         listOf(
@@ -64,7 +65,7 @@ class FileCapabilityResolverTest {
             if (BuildConfig.OFFICE_BUNDLED) listOf(FileFormat.PDF) else emptyList(),
             caps.convertTargets,
         )
-        assertEquals("导出为", caps.convertSectionTitle)
+        assertEquals(R.string.cap_convert_office, caps.convertSectionTitleRes)
     }
 
     @Test
@@ -80,7 +81,7 @@ class FileCapabilityResolverTest {
         val caps = FileCapabilityResolver.resolve(FileFormat.MKV)
         assertTrue(caps.convertTargets.contains(FileFormat.MP4))
         assertTrue("视频应能提取音轨", caps.convertTargets.contains(FileFormat.MP3))
-        assertEquals("转换 / 提取", caps.convertSectionTitle)
+        assertEquals(R.string.cap_convert_video, caps.convertSectionTitleRes)
     }
 
     @Test
