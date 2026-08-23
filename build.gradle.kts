@@ -10,7 +10,7 @@ plugins {
 val bundletool by configurations.creating
 
 dependencies {
-    add(bundletool.name, "com.android.tools.build:bundletool:1.18.1")
+    add(bundletool.name, "com.android.tools.build:bundletool:1.18.3")
     // bundletool 的 get-device-spec 路径会进入 Kotlin 编写的 sdklib；其发布 POM
     // 未传递声明 stdlib，显式补齐以避免 kotlin.jvm.internal.Intrinsics 缺失。
     add(bundletool.name, "org.jetbrains.kotlin:kotlin-stdlib:2.2.21")
