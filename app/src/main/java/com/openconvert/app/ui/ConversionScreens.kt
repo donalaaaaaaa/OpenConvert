@@ -520,6 +520,7 @@ internal fun ConversionCompleteScreen(
     onDone: () -> Unit,
 ) {
     val context = LocalContext.current
+    val shareChooserTitle = stringResource(R.string.convert_share_chooser)
     val parsedOutputUris = outputUris.map(Uri::parse)
     val outputUri = parsedOutputUris.firstOrNull()
     val outputSize = task.outputSize ?: 0L
@@ -593,7 +594,7 @@ internal fun ConversionCompleteScreen(
                                 }
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             }
-                            context.startActivity(Intent.createChooser(share, context.getString(R.string.convert_share_chooser)))
+                            context.startActivity(Intent.createChooser(share, shareChooserTitle))
                         }
                     },
                     modifier = Modifier.weight(1f),

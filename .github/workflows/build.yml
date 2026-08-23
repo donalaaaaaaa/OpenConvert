@@ -14,6 +14,10 @@ on:
         default: false
         type: boolean
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -42,6 +46,9 @@ jobs:
 
       - name: Unit tests
         run: ./gradlew testBasicDebugUnitTest testOfficeDebugUnitTest --no-daemon --stacktrace
+
+      - name: Lint
+        run: ./gradlew :app:lintBasicDebug :app:lintOfficeDebug --no-daemon --stacktrace
 
       - name: Require release secrets
         if: startsWith(github.ref, 'refs/tags/v')
@@ -103,7 +110,7 @@ jobs:
   publish-release:
     name: Publish GitHub Release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build-and-test]
+    needs: [build-and-test, emulator-smoke]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -149,10 +156,23 @@ jobs:
               --notes-file artifacts/output-release/RELEASE_NOTES.md
           fi
 
+  # PR: API 34 only. main / tag / dispatch: 31 + 34 + 36.
+  # Hosted AVD is x86_64 — Java/Room/Compose smoke, no arm64 native convert.
   emulator-smoke:
-    name: x86_64 emulator smoke
+    name: x86_64 smoke (API ${{ matrix.api-level }})
+    if: ${{ github.event_name != 'pull_request' || matrix.api-level == 34 }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api-level: 31
+            target: google_apis
+          - api-level: 34
+            target: default
+          - api-level: 36
+            target: google_apis
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -176,7 +196,8 @@ jobs:
       - name: Instrumented smoke (no native convert)
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
-          api-level: 34
+          api-level: ${{ matrix.api-level }}
+          target: ${{ matrix.target }}
           arch: x86_64
           profile: pixel_6
           force-avd-creation: false
@@ -184,6 +205,8 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: ./gradlew connectedBasicDebugAndroidTest -PopenconvertEmulatorAbi=x86_64 -PopenconvertCiSmoke=true --no-daemon --stacktrace
 
+  # Manual only. Suites: Office instrumented (default here),
+  # Large File / Force Stop / Native convert stay on the device scripts.
   device-tests:
     name: Device instrumentation
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_device_tests }}
