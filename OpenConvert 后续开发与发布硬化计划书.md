@@ -126,7 +126,7 @@ Office = 1201
 
 - Basic APK versionCode > 旧版 — 已验：Release 清单 `1100` / `1.1.0`
 - Office APK versionCode > Basic — 已验：Release 清单 `1101` / `1.1.0-office`
-- Basic 可直接升级 Office — versionCode 已拉开；真机覆盖等 Phase 14 定证后验
+- Basic 可直接升级 Office — PHY110 debug：`100` office → `1100` basic → `1101` office，均未加 `-r` 即 Success。发布证覆盖仍取决于证书（v1.1 用 v2，已装 1.0 不能覆盖）
 - Tag 与 APK versionName 一致 — CI 已接线（错 tag 会红）；未打 `v1.1.0`
 - CI 自动检测版本不一致 — `:app:verifyOpenConvertVersion`
 - 不再依赖 adb 进行普通升级 — 安装器侧已具备条件；1.0.0→1.1.0 还取决于签名（Phase 14）
@@ -159,99 +159,21 @@ Keystore / 私钥本身泄露
 
 ## 14.1 检查 Git 历史
 
-检查以下文件是否曾经真正进入 Git：
+**状态：已接。** 见 `docs/signing-audit.md`。
 
-```text
-*.jks
-*.keystore
-openconvert-release.jks
-```
-
-建议执行：
-
-```bash
-git log --all --full-history -- "*.jks"
-git log --all --full-history -- "*.keystore"
-```
-
-以及：
-
-```bash
-git rev-list --objects --all
-```
-
-搜索：
-
-```text
-openconvert-release
-```
+`git log --all --full-history -- '*.jks' '*.keystore'` 与 `git rev-list --objects --all` 均无 jks。`signing.properties` 从未入库。口令曾硬编码在 `8718db1` 的 `app/build.gradle.kts`，`751305d` 已外置。
 
 ## 14.2 检查 GitHub Release
 
-确认旧 `.jks` 从未出现在：
-
-- GitHub Release
-- Actions Artifact
-- Issue
-- PR
-- Wiki
-- LFS
-- 下载资源
+**状态：已接。** `v1.0.0` 只有 APK/AAB/`SHA256SUMS.txt`。Actions 产物名只有 `OpenConvert-APKs`。Issue/PR/LFS 无 jks。wiki git 不存在。
 
 ## 14.3 决策
 
-### 情况 A
-
-如果：
-
-```text
-只有密码泄露
-```
-
-但：
-
-```text
-Keystore 从未公开
-```
-
-那么：
-
-- 可以考虑继续使用旧证书
-- 修改 Keystore 密码
-- 删除旧密码
-- 保留已有用户无缝升级能力
-
-### 情况 B
-
-如果：
-
-```text
-Keystore 文件也曾公开
-```
-
-则：
-
-- 立即废弃旧证
-- v1.1 使用 v2 Keystore
-- 文档明确提示签名迁移
-- 已安装 v1.0 用户需要卸载重装
+**情况 A（证据）+ 操作上走 v2。** jks 从未公开，本可留旧证做无缝覆盖。审计中本机旧 jks 改口令后无法打开，v1.1.0 使用 v2 证 `887ce064…b8a5`。已装 v1.0.0 需卸载重装。
 
 ## 验收标准
 
-形成：
-
-```text
-docs/signing-audit.md
-```
-
-记录：
-
-- 历史检查结果
-- 是否发现 JKS
-- 是否发现私钥泄露
-- 最终采用哪个证书
-- 新证书 SHA-256
-- CI 使用哪个证书
+`docs/signing-audit.md` 已写：历史检查、未见 jks 入库、口令曾泄露、采用 v2、两证 SHA-256、CI 用 v2。
 
 ---
 

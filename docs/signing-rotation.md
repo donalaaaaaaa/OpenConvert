@@ -1,15 +1,17 @@
 # 签名轮换（v1.0.0 → 下一版）
 
-## 为什么换
+审计结论见 `docs/signing-audit.md`。口令进过 git 历史，但 **jks 从未入库/上架**（情况 A）。本机旧 jks 在审计中改口令后无法再打开，**v1.1.0 使用 v2 证书**。
 
-旧 `app/openconvert-release.jks` 的口令曾进入 git 历史，必须视为泄露。
-v1.0.0 仍用该证书发布，这样已经安装的用户可以覆盖升级。
+已装 v1.0.0 的用户不能被 v1.1 覆盖，需卸载重装（本地历史会丢）。
 
-**下一正式版必须使用新 keystore**，并且：
+## 证书
 
-- `versionCode` ≥ 1100（v1.1.0：Basic 1100 / Office 1101，系统安装器才允许覆盖 1.0.0）
-- 已装旧证应用**不能**被新证 APK 覆盖，用户需卸载重装（会丢掉本地历史）
-- 仓库只保留 `signing.properties.example`，真实口令和 jks 永不入库
+| 版本 | 证书 SHA-256 |
+|---|---|
+| v1.0.0（旧证） | `65776a273239fa049ffadcf95dc0f8a70d890d787c2370707a9b0c19b2f1d6ee` |
+| v1.1.0 起（v2） | `887ce064a82998c27978c373d8405dcee12d36deb36bc9e837c27fe957c5b8a5` |
+
+`versionCode`：Basic 1100 / Office 1101。仓库只保留 `signing.properties.example`，真实口令和 jks 永不入库。
 
 ## 本地文件（均已 gitignore）
 
