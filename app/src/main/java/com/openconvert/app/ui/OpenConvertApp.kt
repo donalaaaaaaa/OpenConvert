@@ -290,6 +290,7 @@ fun OpenConvertApp(
                     onImageQuality = viewModel::setImageQualityPreference,
                     onVideoQuality = viewModel::setVideoQualityPreference,
                     onPrivacy = { navController.navigate(PRIVACY) },
+                    onLicenses = { navController.navigate(LICENSES) },
                     onOfficeTools = if (BuildConfig.OFFICE_BUNDLED) {
                         { navController.navigate(OFFICE_TOOLS) }
                     } else {
@@ -366,6 +367,9 @@ fun OpenConvertApp(
             }
             composable(PRIVACY) {
                 PrivacyScreen(onBack = navController::popBackStack)
+            }
+            composable(LICENSES) {
+                LicensesScreen(onBack = navController::popBackStack)
             }
             composable(BATCH) {
                 val batchUiState by viewModel.batchUiState.collectAsStateWithLifecycle()

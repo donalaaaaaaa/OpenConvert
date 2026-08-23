@@ -170,6 +170,8 @@ android {
     }
 
     packaging {
+        // Only drop the colliding short stubs shipped by older AndroidX AARs.
+        // Do not exclude META-INF/NOTICE, META-INF/LICENSE*, or assets/THIRD_PARTY_NOTICES.md.
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
         jniLibs {
             useLegacyPackaging = true

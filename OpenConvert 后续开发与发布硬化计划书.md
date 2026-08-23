@@ -391,6 +391,8 @@ Zip Slip
 
 **P1**
 
+**状态：已接。** `THIRD_PARTY_NOTICES.md` 列出发行包组件、版本、许可证和 LGPL/MPL 源码地址。设置 → 关于 → 开源许可证 读 APK 内 `assets/THIRD_PARTY_NOTICES.md`。`packaging.resources.excludes` 只去掉冲突的 `AL2.0`/`LGPL2.1` 残片，不排除 `NOTICE`/`LICENSE*`。
+
 新增：
 
 ```text
@@ -855,7 +857,7 @@ v1.1.0
 - [x] 重名压缩包测试通过
 - [x] SHA256SUMS 自动生成
 - [x] Release Notes 自动生成
-- [ ] THIRD_PARTY_NOTICES 完成
+- [x] THIRD_PARTY_NOTICES 完成
 - [ ] README 当前体积数据正确
 
 达到以上状态后：

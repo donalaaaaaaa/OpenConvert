@@ -29,9 +29,22 @@ class StringsCatalogInstrumentedTest {
         assertEquals("PDF 工具箱", ctx.getString(R.string.pdf_tools_title))
         assertEquals("正在转换", ctx.getString(R.string.conversion_running))
         assertEquals("文件不会离开您的设备", ctx.getString(R.string.privacy_hint))
+        assertEquals("开源许可证", ctx.getString(R.string.settings_licenses))
         assertEquals("没有已选择的 PDF", ctx.getString(R.string.pdf_empty_selection))
         assertEquals("选择保存位置并加水印", ctx.getString(R.string.pdf_action_watermark))
         assertEquals("3 页 · 可导出全部或指定页面", ctx.getString(R.string.pdf_pages_export_sub, 3))
+    }
+
+    @Test
+    fun thirdPartyNoticesAssetIsReadable() {
+        val text = ctx.assets.open("THIRD_PARTY_NOTICES.md").bufferedReader().use { it.readText() }
+        assertTrue(text.contains("libvips"))
+        assertTrue(text.contains("LibreOfficeKit"))
+        assertTrue(text.contains("FFmpegKit"))
+        assertTrue(text.contains("Commons Compress"))
+        assertTrue(text.contains("LiTr"))
+        assertTrue(text.contains("PdfBox"))
+        assertTrue(text.contains("META-INF/NOTICE"))
     }
 
     @Test

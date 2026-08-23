@@ -324,6 +324,7 @@ internal fun SettingsScreen(
     onImageQuality: (QualityPreset) -> Unit,
     onVideoQuality: (QualityPreset) -> Unit,
     onPrivacy: () -> Unit,
+    onLicenses: () -> Unit,
     onOfficeTools: (() -> Unit)?,
     onClearCache: () -> Unit = {},
     onRefreshBenchmark: () -> Unit = {},
@@ -446,6 +447,8 @@ internal fun SettingsScreen(
             SettingsGroup {
                 SettingRow(stringResource(R.string.settings_privacy), stringResource(R.string.settings_privacy_value), onClick = onPrivacy)
                 HorizontalDivider(color = Border)
+                SettingRow(stringResource(R.string.settings_licenses), stringResource(R.string.settings_licenses_value), onClick = onLicenses)
+                HorizontalDivider(color = Border)
                 SettingRow(stringResource(R.string.app_name), stringResource(R.string.app_version_label))
             }
         }
@@ -562,6 +565,40 @@ internal fun PrivacyScreen(onBack: () -> Unit) {
                 HorizontalDivider(color = Border)
                 PrivacyFact("本地处理")
             }
+        }
+    }
+}
+
+@Composable
+internal fun LicensesScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    val body = remember {
+        runCatching {
+            context.assets.open("THIRD_PARTY_NOTICES.md").bufferedReader().use { it.readText() }
+        }.getOrDefault("")
+    }
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding(),
+        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        item {
+            IconButton(onClick = onBack, modifier = Modifier.size(44.dp)) {
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.action_back))
+            }
+        }
+        item {
+            Text(stringResource(R.string.licenses_title), fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+        }
+        item {
+            Text(
+                text = body.ifBlank { stringResource(R.string.licenses_missing) },
+                color = Muted,
+                fontSize = 13.sp,
+                lineHeight = 20.sp,
+            )
         }
     }
 }

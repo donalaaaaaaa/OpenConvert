@@ -193,6 +193,5 @@ PHY110 / Android 16 上：Office 全量 instrumented **61/61**，Basic → Offic
 ## 许可证
 
 - 本项目：**Apache License 2.0**（见 [LICENSE](LICENSE)）
-- LibreOfficeKit：MPL-2.0
-- libvips：LGPL-2.1+
-- FFmpegKit：LGPL-3.0+
+- 第三方组件、版本、LGPL/MPL 源码地址：[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+- 应用内：设置 → 关于 → 开源许可证

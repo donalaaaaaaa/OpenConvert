@@ -73,6 +73,10 @@
     <string name="settings_section_about">关于</string>
     <string name="settings_privacy">隐私</string>
     <string name="settings_privacy_value">无网络权限 · 本地处理</string>
+    <string name="settings_licenses">开源许可证</string>
+    <string name="settings_licenses_value">第三方组件与源码地址</string>
+    <string name="licenses_title">开源许可证</string>
+    <string name="licenses_missing">找不到第三方许可证文本</string>
 
     <string name="tasks_title">任务中心</string>
     <string name="tasks_empty_title">暂无任务</string>
