@@ -87,29 +87,29 @@ Phase 18～20 可继续进入：
 
 ```text
 gradle.properties
-OPENCONVERT_VERSION_NAME=1.1.0
-OPENCONVERT_VERSION_CODE=1100
+OPENCONVERT_VERSION_NAME=1.2.0
+OPENCONVERT_VERSION_CODE=1200
 ```
 
 对应：
 
 ```text
 Basic
-versionCode = 1100
-versionName = 1.1.0
+versionCode = 1200
+versionName = 1.2.0
 
 Office
-versionCode = 1101
-versionName = 1.1.0-office
+versionCode = 1201
+versionName = 1.2.0-office
 ```
 
 未来：
 
 ```text
-1.2.0
+1.3.0
 
-Basic  = 1200
-Office = 1201
+Basic  = 1300
+Office = 1301
 ```
 
 ## 13.2 Gradle 改造
@@ -791,18 +791,22 @@ v1.1.0
 
 **Open Source & International**
 
+**状态：内容已接，列车已切到 `1.2.0` / `1200`。未打 tag。**
+
 包含：
 
-- English UI
-- README_EN
-- SECURITY.md
-- CONTRIBUTING.md
-- Issue Templates
-- PR Template
-- Dependabot
-- API 31 / 34 / 36 CI
-- LFS 优化
-- 更多跨设备测试
+- English UI — 已接
+- README_EN — 已接
+- SECURITY.md — 已接
+- CONTRIBUTING.md — 已接
+- Issue Templates — 已接
+- PR Template — 已接
+- Dependabot — 已接
+- API 31 / 34 / 36 CI — 已接
+- LFS 优化 — 已接
+- 更多跨设备测试 — 不做（没有第二台真机；4GB 视频按产品决定不管）
+
+CI 绿后打 `v1.2.0`。同 v2 证，已装 1.1.0 可覆盖。
 
 ---
 
