@@ -50,7 +50,7 @@ SHA-256  65776a273239fa049ffadcf95dc0f8a70d890d787c2370707a9b0c19b2f1d6ee
 adb install -r OpenConvert-v1.0.0-office-arm64-v8a.apk
 ```
 
-注意：v1.0.0 两个 Edition 的 `versionCode` 都是 `100`。系统「打开 APK」安装器在 versionCode 不升高时可能拒绝覆盖；侧载升级请用 `adb install -r`，或先卸载再装（卸载会丢掉本地历史）。下一版 `1.1.0` 起 Basic=`1100`、Office=`1101`，图形安装器可直接覆盖升级。
+注意：v1.0.0 两个 Edition 的 `versionCode` 都是 `100`。系统「打开 APK」安装器在 versionCode 不升高时可能拒绝覆盖；侧载升级请用 `adb install -r`，或先卸载再装（卸载会丢掉本地历史）。下一版 `1.1.0` 起 Basic=`1100`、Office=`1101`，图形安装器可直接覆盖升级。体积和哈希以对应 GitHub Release 的 `BUILD_INFO.txt` / `SHA256SUMS.txt` 为准，不要抄本页 1.0 数字。
 
 不支持把 Office 降回 Basic 并继续转换 Office 文档。轻量版会隐藏 Office → PDF，并对历史 Office 任务给出「需要安装 Office 版」。
 

@@ -35,7 +35,7 @@ jobs:
           cache: gradle
 
       - name: Grant execute permission for gradlew
-        run: chmod +x gradlew scripts/verify-release-artifacts.sh
+        run: chmod +x gradlew scripts/verify-release-artifacts.sh scripts/package-release.sh
 
       - name: Verify version scheme
         run: ./gradlew :app:verifyOpenConvertVersion --no-daemon --stacktrace
@@ -72,25 +72,22 @@ jobs:
             ./gradlew assembleBasicDebug assembleOfficeDebug assembleBasicRelease assembleOfficeRelease --no-daemon --stacktrace
           fi
 
-      - name: Package checksums
+      - name: Package release notes and checksums
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          mkdir -p output-release
-          find app/build/outputs/apk -type f -name '*-release.apk' ! -name '*unsigned*' -exec cp {} output-release/ \;
-          find app/build/outputs/bundle -type f -name '*.aab' -exec cp {} output-release/ \;
-          cd output-release
-          test -n "$(ls -A)"
-          sha256sum * > SHA256SUMS.txt
-          cat SHA256SUMS.txt
+          ./scripts/package-release.sh --out output-release --tag "${GITHUB_REF_NAME}" --require-aab
+          cat output-release/BUILD_INFO.txt
+          test -s output-release/RELEASE_NOTES.md
+          test -s output-release/SHA256SUMS.txt
 
       - name: Verify release artifacts
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          BASIC=$(find app/build/outputs/apk/basic/release -type f -name '*-release.apk' ! -name '*unsigned*' | head -1)
-          OFFICE=$(find app/build/outputs/apk/office/release -type f -name '*-release.apk' ! -name '*unsigned*' | head -1)
-          if [ -z "$BASIC" ] || [ -z "$OFFICE" ]; then
-            echo "missing signed release APKs" >&2
-            find app/build/outputs/apk -name '*.apk' || true
+          BASIC=output-release/OpenConvert-${GITHUB_REF_NAME}-basic-arm64-v8a.apk
+          OFFICE=output-release/OpenConvert-${GITHUB_REF_NAME}-office-arm64-v8a.apk
+          if [ ! -f "$BASIC" ] || [ ! -f "$OFFICE" ]; then
+            echo "missing packaged release APKs" >&2
+            ls -la output-release || true
             exit 1
           fi
           ./scripts/verify-release-artifacts.sh --basic "$BASIC" --office "$OFFICE" --tag "${GITHUB_REF_NAME}"
@@ -135,12 +132,21 @@ jobs:
             ls artifacts/output-release
             exit 1
           fi
+          if [ ! -f artifacts/output-release/RELEASE_NOTES.md ]; then
+            echo "RELEASE_NOTES.md missing — refusing to publish" >&2
+            exit 1
+          fi
+          if [ ! -f artifacts/output-release/BUILD_INFO.txt ] || [ ! -f artifacts/output-release/SHA256SUMS.txt ]; then
+            echo "BUILD_INFO/SHA256SUMS missing — refusing to publish" >&2
+            exit 1
+          fi
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" artifacts/output-release/* --clobber
+            gh release edit "$TAG" --notes-file artifacts/output-release/RELEASE_NOTES.md
           else
             gh release create "$TAG" artifacts/output-release/* \
               --title "OpenConvert $TAG" \
-              --notes-file release_notes.md
+              --notes-file artifacts/output-release/RELEASE_NOTES.md
           fi
 
   emulator-smoke:

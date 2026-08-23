@@ -38,6 +38,7 @@ native/out/
 
 # Test/verification artifacts
 output/
+output-release/
 
 # Re-fetchable Office Pack test fixture. Production Office Flavor libraries are tracked via Git LFS.
 app/src/androidTest/assets/office-pack.zip

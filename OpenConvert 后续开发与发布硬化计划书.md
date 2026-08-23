@@ -219,84 +219,11 @@ Keystore / 私钥本身泄露
 
 **P0**
 
-## 当前问题
-
-`release_notes.md` 当前固定写：
-
-```text
-OpenConvert v1.0.0
-```
-
-不能继续拿同一个文件服务所有版本。
-
-## 方案
-
-改成：
-
-```text
-docs/releases/
-├── v1.0.0.md
-├── v1.1.0.md
-└── v1.2.0.md
-```
-
-## Release 自动生成
-
-CI 构建后生成：
-
-```text
-RELEASE_NOTES.md
-SHA256SUMS.txt
-BUILD_INFO.txt
-```
-
-### BUILD_INFO 示例
-
-```text
-OpenConvert 1.1.0
-
-Git Commit:
-abc123
-
-Basic:
-versionCode 1100
-arm64-v8a
-31.26 MiB
-
-Office:
-versionCode 1101
-arm64-v8a
-101.xx MiB
-
-Certificate SHA256:
-xxxxxxxx
-
-Build date:
-2026-xx-xx
-```
-
-## 自动更新 APK 大小
-
-不要再手工写：
-
-```text
-35.39 MiB
-```
-
-CI 实际计算。
+**状态：已接。** 人写的说明在 `docs/releases/vX.Y.Z.md`，必须带 `<!-- RELEASE_DOWNLOADS -->`。Tag 构建跑 `scripts/package-release.sh`，用实测 APK/AAB 写出 `RELEASE_NOTES.md`、`SHA256SUMS.txt`、`BUILD_INFO.txt` 再发布。体积不再手写。
 
 ## 验收标准
 
-GitHub Release 页面中的：
-
-- 文件名
-- 大小
-- SHA256
-- versionName
-- versionCode
-- 证书指纹
-
-全部来源于实际产物。
+GitHub Release 的文件名、大小、SHA256、versionName、versionCode、证书指纹全部来自本次产物。
 
 ---
 
@@ -924,8 +851,8 @@ v1.1.0
 - [ ] Zip Bomb 测试通过
 - [ ] Zip Slip 测试通过
 - [ ] 重名压缩包测试通过
-- [ ] SHA256SUMS 自动生成
-- [ ] Release Notes 自动生成
+- [x] SHA256SUMS 自动生成
+- [x] Release Notes 自动生成
 - [ ] THIRD_PARTY_NOTICES 完成
 - [ ] README 当前体积数据正确
 

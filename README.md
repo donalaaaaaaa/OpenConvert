@@ -20,7 +20,7 @@
   ·
   <a href="docs/known-issues.md">已知问题</a>
   ·
-  <a href="release_notes.md">更新日志</a>
+  <a href="docs/releases/">更新日志</a>
 </p>
 
 ---
@@ -28,9 +28,9 @@
 ## 选哪个包
 
 | Edition | 内容 | Release APK | 给谁 |
-|---|---|---:|---|
-| **Basic** | 图片、音视频、PDF、压缩包 | 35.39 MiB | 默认选择 |
-| **Office** | Basic + DOCX/DOC/PPTX/PPT/XLSX/XLS → PDF | 105.29 MiB | 需要离线 Office |
+|---|---|---|---|
+| **Basic** | 图片、音视频、PDF、压缩包 | 以 [Releases](https://github.com/donalaaaaaaa/OpenConvert/releases) 实测为准 | 默认选择 |
+| **Office** | Basic + DOCX/DOC/PPTX/PPT/XLSX/XLS → PDF | 同上 | 需要离线 Office |
 
 两个包同一 `applicationId`、同一签名。Basic 可以原地覆盖升级到 Office，历史、预设和 SAF 授权会保留。详见 [安装说明](docs/install.md)。
 
@@ -138,13 +138,13 @@ flowchart TD
 
 | 指标 | Basic | Office |
 |---|---:|---:|
-| Release APK | 35.39 MiB | 105.29 MiB |
-| Release AAB | 65.29 MiB | 135.20 MiB |
+| Release APK（2026-08-20 基线） | 35.39 MiB | 105.29 MiB |
+| Release AAB（2026-08-20 基线） | 65.29 MiB | 135.20 MiB |
 | PHY110 估算下载 | 34.74 MiB | 103.60 MiB |
 | PHY110 即时 code | 107.23 MiB | 353.99 MiB |
 | 解压 native | 44.56 MiB | 221.15 MiB |
 
-Office 体积几乎全部来自 `liblo-native-code.so`（未压缩约 171 MiB）。完整拆分见 [`docs/apk-size-baseline-2026-08-20.md`](docs/apk-size-baseline-2026-08-20.md)。
+现网安装包大小以 [GitHub Releases](https://github.com/donalaaaaaaa/OpenConvert/releases) 的 `BUILD_INFO.txt` 为准，不要抄这张基线表。Office 体积几乎全部来自 `liblo-native-code.so`（未压缩约 171 MiB）。完整拆分见 [`docs/apk-size-baseline-2026-08-20.md`](docs/apk-size-baseline-2026-08-20.md)。
 
 PHY110 / Android 16 上：Office 全量 instrumented **61/61**，Basic → Office 覆盖升级后 DOCX/PPTX/XLSX → PDF 通过。
 
