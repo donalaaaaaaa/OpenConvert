@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Known issues / 已知问题
+    url: https://github.com/donalaaaaaaa/OpenConvert/blob/main/docs/known-issues.md
+    about: Check documented limits before filing a bug.
+  - name: Security advisory / 安全报告
+    url: https://github.com/donalaaaaaaa/OpenConvert/security/advisories/new
+    about: Private vulnerability or Code of Conduct report. Do not file these in public issues.
+  - name: Releases
+    url: https://github.com/donalaaaaaaa/OpenConvert/releases
+    about: Download Basic / Office APKs and BUILD_INFO.txt.

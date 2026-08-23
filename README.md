@@ -23,6 +23,10 @@
   <a href="docs/known-issues.md">已知问题</a>
   ·
   <a href="docs/releases/">更新日志</a>
+  ·
+  <a href="CONTRIBUTING.md">贡献</a>
+  ·
+  <a href="SECURITY.md">安全</a>
 </p>
 
 ---

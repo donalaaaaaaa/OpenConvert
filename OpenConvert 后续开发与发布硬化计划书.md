@@ -516,6 +516,8 @@ Android 系统语言切换 English 后：
 
 **P1**
 
+**状态：已接。** `SECURITY.md` / `CONTRIBUTING.md` / `CODE_OF_CONDUCT.md` 在仓库根目录。`.github` 有 Issue 表单（bug / feature）、`config.yml` 关掉空白 issue、PR 模板、Dependabot（Actions + Gradle，周一）。Bug 表单强制 Android / 设备 / 版本 / Edition / 输入输出 / 错误码 / 复现步骤，并写明不要上传私人文件。
+
 新增：
 
 ```text

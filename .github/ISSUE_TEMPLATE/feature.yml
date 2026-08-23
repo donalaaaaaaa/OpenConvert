@@ -1,0 +1,55 @@
+name: Feature request
+description: Ask for a format, tool, or product change / 新格式、新工具或产品建议
+title: "[feat] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        OpenConvert stays **100% offline**. Requests that need a network, an account, or uploading a file will be declined.
+
+        **如果文件包含私人信息，请不要公开上传。**
+        Do not attach private documents to illustrate the request.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area / 范围
+      options:
+        - Image
+        - Audio / video
+        - PDF
+        - Office
+        - Archive
+        - Tasks / presets
+        - Accessibility / i18n
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / 要解决什么
+      description: What you cannot do today.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal / 建议
+      description: The smallest change that would help. Formats, engine, or UI.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: edition
+    attributes:
+      label: Edition this should land in
+      options:
+        - Either
+        - Basic
+        - Office only
+    validations:
+      required: true

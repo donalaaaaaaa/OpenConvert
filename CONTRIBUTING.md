@@ -34,3 +34,7 @@ Thanks for looking at OpenConvert. The product rule is simple: **files never lea
 2. Include JVM tests for codec / planner / copy changes.
 3. Say how you verified (unit tests, PHY110, or why device tests were skipped).
 4. Update the plan book or `docs/releases/` if the change is user-visible.
+
+Use the issue forms under **New issue**. Do not attach private documents.
+By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
+Security reports go to [SECURITY.md](SECURITY.md), not a public issue.

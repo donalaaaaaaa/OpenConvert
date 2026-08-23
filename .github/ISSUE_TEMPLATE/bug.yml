@@ -1,0 +1,92 @@
+name: Bug report
+description: A conversion failed or the app misbehaved / 转换失败或行为异常
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **如果文件包含私人信息，请不要公开上传。**
+        If the file contains private information, do not attach it.
+
+        OpenConvert never leaves the device. Paste the on-screen error code and steps instead of uploading documents.
+
+  - type: input
+    id: android
+    attributes:
+      label: Android version / Android 版本
+      description: Settings → About phone.
+      placeholder: "16"
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device / 设备型号
+      description: Marketing name or `adb getprop ro.product.model`.
+      placeholder: "PHY110"
+    validations:
+      required: true
+
+  - type: input
+    id: app_version
+    attributes:
+      label: OpenConvert version / 版本
+      description: Settings → About, or the GitHub Release tag.
+      placeholder: "1.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: edition
+    attributes:
+      label: Edition / 安装包
+      options:
+        - Basic
+        - Office
+    validations:
+      required: true
+
+  - type: input
+    id: input_format
+    attributes:
+      label: Input format / 输入格式
+      placeholder: "HEIC / DOCX / ZIP"
+    validations:
+      required: true
+
+  - type: input
+    id: output_format
+    attributes:
+      label: Output format / 输出格式
+      placeholder: "JPG / PDF / MP3"
+    validations:
+      required: true
+
+  - type: input
+    id: error_code
+    attributes:
+      label: Error code / 错误代码
+      description: The code shown on the failed task card. Use `none` if there is no code.
+      placeholder: "CODEC_UNSUPPORTED / none"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / 复现步骤
+      description: What you picked, which tool, and what happened. Do not attach personal files.
+      placeholder: |
+        1. Home → pick file
+        2. Convert to …
+        3. Task failed with …
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Extra notes / 补充
+      description: Optional. Paste log lines as text. Do not upload the source document.
