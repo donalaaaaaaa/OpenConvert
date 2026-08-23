@@ -13,6 +13,8 @@ Thanks for looking at OpenConvert. The product rule is simple: **files never lea
 - JDK 17, Android SDK 36
 - `./gradlew.bat testBasicDebugUnitTest testOfficeDebugUnitTest`
 - On a physical arm64 device, use `scripts/run-office-instrumented.sh`. Do **not** run `connectedOfficeDebugAndroidTest` (split-APK Error -99).
+- Office / vips `.so` files are Git LFS. A Kotlin/UI PR does not need `git lfs pull`.
+- Rebuild native inputs (NDK, tarballs): `./scripts/fetch-native-deps.sh` — see [`docs/native-deps.md`](docs/native-deps.md).
 
 ## How we ship
 

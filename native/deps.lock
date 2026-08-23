@@ -1,0 +1,21 @@
+# Re-fetchable native inputs. Do not add new tarballs / NDK zips to git.
+# Fields: name|dest|sha256|url
+# Empty url = verify-only (already on disk or fetched by another script).
+ndk-r28c-linux|native/dist/android-ndk-r28c-linux.zip|dfb20d396df28ca02a8c708314b814a4d961dc9074f9a161932746f815aa552f|https://dl.google.com/android/repository/android-ndk-r28c-linux.zip
+lo-android-v1.0|native/dist/lo-viewer.apk|702b07299990150bb0ddec862a915d7492fd4f03094fe46f484b0d0ce054388d|https://github.com/gurecn/LibreOffice-android/releases/download/v1.0/app-release.apk
+meson-1.8.1|native/dist/meson-1.8.1.tar.gz|b4e3b80e8fa633555abf447a95a700aba1585419467b2710d5e5bf88df0a7011|https://github.com/mesonbuild/meson/releases/download/1.8.1/meson-1.8.1.tar.gz
+pkgconf-2.2.0|native/dist/pkgconf-2.2.0.tar.xz|b06ff63a83536aa8c2f6422fa80ad45e4833f590266feb14eaddfe1d4c853c69|https://github.com/pkgconf/pkgconf/releases/download/pkgconf-2.2.0/pkgconf-2.2.0.tar.xz
+nasm-2.16.03|native/dist/nasm-2.16.03.tar.gz|5bc940dd8a4245686976a8f7e96ba9340a0915f2d5b88356874890e207bdb581|https://www.nasm.us/pub/nasm/releasebuilds/2.16.03/nasm-2.16.03.tar.gz
+zlib-1.3.1|native/dist/zlib-1.3.1.tar.gz|9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23|https://zlib.net/fossils/zlib-1.3.1.tar.gz
+libiconv-1.17|native/dist/libiconv-1.17.tar.gz|8f74213b56238c85a50a5329f77e06198771e70dd9a739779f4c02f65d971313|https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.17.tar.gz
+libffi-3.4.6|native/dist/libffi-3.4.6.tar.gz|b0dea9df23c863a7a50e825440f3ebffabd65df1497108e5d437747843895a4e|https://github.com/libffi/libffi/releases/download/v3.4.6/libffi-3.4.6.tar.gz
+expat-2.6.2|native/dist/expat-2.6.2.tar.gz|d4cf38d26e21a56654ffe4acd9cd5481164619626802328506a2869afab29ab3|https://github.com/libexpat/libexpat/releases/download/R_2_6_2/expat-2.6.2.tar.gz
+libpng-1.6.44|native/dist/libpng-1.6.44.tar.gz|8c25a7792099a0089fa1cc76c94260d0bb3f1ec52b93671b572f8bb61577b732|https://downloads.sourceforge.net/libpng/libpng-1.6.44.tar.gz
+libjpeg-turbo-3.1.0|native/dist/libjpeg-turbo-3.1.0.tar.gz|9564c72b1dfd1d6fe6274c5f95a8d989b59854575d4bbee44ade7bc17aa9bc93|https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.1.0/libjpeg-turbo-3.1.0.tar.gz
+libwebp-1.4.0|native/dist/libwebp-1.4.0.tar.gz|61f873ec69e3be1b99535634340d5bde750b2e4447caa1db9f61be3fd49ab1e5|https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.4.0.tar.gz
+pcre2-10.44|native/dist/pcre2-10.44.tar.gz|86b9cb0aa3bcb7994faa88018292bc704cdbb708e785f7c74352ff6ea7d3175b|https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.44/pcre2-10.44.tar.gz
+vips-8.18.5|native/dist/vips-8.18.5.tar.xz|8c4e6332d818249ed05ce98e36e6ed8a08e3249ac70f69680842ab2e5fee8510|https://github.com/libvips/libvips/releases/download/v8.18.5/vips-8.18.5.tar.xz
+glib-2.80.3|native/dist/glib-2.80.3.tar.gz|09b453d2744488419e125745b5d698b5b7103e57c6c94ce385f3c5f942ed4978|
+gvdb|native/dist/gvdb.tar.gz|08352e54e8216d9001820c627c62858585465b51dc557cc22f0f4770ed182ebd|
+proxy-libintl-0.4|native/dist/proxy-libintl-0.4.tar.gz|13ef3eea0a3bc0df55293be368dfbcff5a8dd5f4759280f28e030d1494a5dffb|
+packaging-24.2|native/dist/packaging-24.2-py3-none-any.whl|09abb1bccd265c01f4a3aa3f7a7db064b36514d2cba19a2f694fe6150451a759|

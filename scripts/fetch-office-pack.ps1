@@ -6,6 +6,7 @@
 $ErrorActionPreference = 'Stop'
 
 $repo = 'https://github.com/gurecn/LibreOffice-android/releases/download/v1.0/app-release.apk'
+$expectedSha256 = '702b07299990150bb0ddec862a915d7492fd4f03094fe46f484b0d0ce054388d'
 $dist = Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..')).Path 'native\dist'
 $apk = Join-Path $dist 'lo-viewer.apk'
 $outLib = Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..')).Path 'app\src\office\jniLibs\arm64-v8a'
@@ -16,6 +17,11 @@ New-Item -ItemType Directory -Force -Path $dist, $outLib, $outAssets | Out-Null
 if (-not (Test-Path $apk)) {
     Write-Host "Downloading $repo ..."
     Invoke-WebRequest -Uri $repo -OutFile $apk
+}
+
+$actual = (Get-FileHash -Algorithm SHA256 -Path $apk).Hash.ToLowerInvariant()
+if ($actual -ne $expectedSha256) {
+    throw "SHA256 mismatch for lo-viewer.apk: expected $expectedSha256 got $actual"
 }
 
 python -c @"

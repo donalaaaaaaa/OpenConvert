@@ -643,6 +643,8 @@ Native Conversion
 
 **P2**
 
+**状态：已接。** 普通 PR `lfs: false`，不 assemble。main / tag / 真机才拉 LFS 并跑 `require-lfs-objects.sh`。NDK 722MB zip 已从树里拿掉，改走 `native/deps.lock` + `scripts/fetch-native-deps.sh`（版本、URL、SHA256）。`*.zip` 不再全局进 LFS，只留 office assets。
+
 OpenConvert 包含大型：
 
 ```text
