@@ -35,6 +35,14 @@ val hasReleaseSigning = releaseKeystore.exists() &&
     releaseStorePassword != null &&
     releaseKeyAlias != null &&
     releaseKeyPassword != null
+val requireReleaseSigning =
+    providers.gradleProperty("openconvertRequireReleaseSigning").orNull == "true"
+if (requireReleaseSigning && !hasReleaseSigning) {
+    error(
+        "OpenConvert: release signing required " +
+            "(-PopenconvertRequireReleaseSigning=true) but keystore/credentials are missing",
+    )
+}
 val releaseInstrumentationEnabled =
     providers.gradleProperty("openconvertTestBuildType").orNull == "release"
 val emulatorAbi = providers.gradleProperty("openconvertEmulatorAbi").orNull

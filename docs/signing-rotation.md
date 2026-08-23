@@ -41,7 +41,7 @@ keyPassword=...
 | `OPENCONVERT_KEY_ALIAS` | `openconvert` |
 | `OPENCONVERT_KEY_PASSWORD` | key 口令 |
 
-Tag 工作流解码 keystore 后走现有 Gradle 环境变量，不写进日志。
+Tag 工作流缺任一 Secret 立即失败，不产出 unsigned。构建后 `scripts/verify-release-artifacts.sh` 核对签名、v2 指纹、版本和 ABI。
 
 ## 生成命令（需要换证时）
 

@@ -185,134 +185,31 @@ Keystore / 私钥本身泄露
 
 ## 15.1 发布构建禁止 unsigned
 
-目前开发环境可以允许：
-
-```text
-没有签名 → unsigned
-```
-
-但是：
-
-```text
-Tag Release
-```
-
-绝对不能允许。
-
-Tag 环境中缺任意 Secret：
-
-```text
-OPENCONVERT_KEYSTORE_BASE64
-OPENCONVERT_STORE_PASSWORD
-OPENCONVERT_KEY_ALIAS
-OPENCONVERT_KEY_PASSWORD
-```
-
-立即：
-
-```text
-exit 1
-```
+**状态：已接。** Tag 上 `scripts/verify-release-artifacts.sh --require-secrets` 缺任一 Secret 即 `exit 1`。Gradle `-PopenconvertRequireReleaseSigning=true` 在无凭据时配置期失败。本地开发仍可产出 unsigned。
 
 ## 15.2 验证 APK 签名
 
-CI 构建后执行：
-
-```bash
-apksigner verify --verbose --print-certs xxx.apk
-```
-
-检查：
-
-- APK 已签名
-- 证书指纹正确
-- Basic / Office 使用相同证书
+**状态：已接。** `apksigner verify` + 证书 SHA-256 必须是 v2 `887ce064…`；Basic / Office 必须同一把。
 
 ## 15.3 验证版本
 
-读取 APK：
-
-```bash
-apkanalyzer manifest version-name
-apkanalyzer manifest version-code
-```
-
-检查：
-
-```text
-Basic versionCode
-Office versionCode
-versionName
-Tag
-```
+**状态：已接。** `aapt dump badging`：Basic `1.1.0` / `1100`，Office `1.1.0-office` / `1101`；`--tag` 必须等于 `OPENCONVERT_VERSION_NAME`。
 
 ## 15.4 验证 ABI
 
-Release 必须只有：
-
-```text
-arm64-v8a
-```
-
-避免 CI 参数意外把：
-
-```text
-x86_64
-```
-
-打进正式 APK。
+**状态：已接。** `native-code` 与 `lib/` 只允许 `arm64-v8a`。
 
 ## 15.5 权限最小化
 
-GitHub Actions 默认：
-
-```yaml
-permissions:
-  contents: read
-```
-
-只有 Release Job：
-
-```yaml
-permissions:
-  contents: write
-```
+**状态：已接。** workflow 默认 `contents: read`；仅 `publish-release` 为 `contents: write`。
 
 ## 15.6 Actions 固定版本
 
-逐渐从：
-
-```yaml
-actions/checkout@v4
-```
-
-升级到：
-
-```text
-固定 Commit SHA
-```
-
-适用于：
-
-- checkout
-- setup-java
-- upload-artifact
-- emulator runner
-
-降低供应链风险。
+**状态：已接。** checkout / setup-java / upload-artifact / download-artifact / emulator-runner 均钉到 commit SHA。
 
 ## 验收标准
 
-任何以下情况：
-
-- 无签名
-- 签名错误
-- Tag 错误
-- versionName 错误
-- versionCode 错误
-- ABI 错误
-
-均不能创建 Release。
+无签名、签名错误、Tag 错误、versionName / versionCode 错误、ABI 错误 → `build-and-test` 失败，`publish-release` 不跑，不能创建 Release。
 
 ---
 
