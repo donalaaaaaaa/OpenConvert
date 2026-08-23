@@ -844,15 +844,15 @@ v1.1.0
 
 只有下面全部通过才打正式 Tag：
 
-- [ ] `versionName = 1.1.0`
-- [ ] Basic versionCode 正确
-- [ ] Office versionCode 正确
+- [x] `versionName = 1.1.0`
+- [x] Basic versionCode 正确
+- [x] Office versionCode 正确
 - [ ] Git Tag 与 versionName 一致
-- [ ] APK 有正式签名
-- [ ] 证书 SHA256 正确
-- [ ] Release 只包含 arm64-v8a
-- [ ] JVM Unit Tests 全绿
-- [ ] Emulator Smoke 全绿
+- [x] APK 有正式签名
+- [x] 证书 SHA256 正确
+- [x] Release 只包含 arm64-v8a
+- [x] JVM Unit Tests 全绿
+- [x] Emulator Smoke 全绿
 - [x] PHY110 Office Instrumented 全绿
 - [ ] Basic → Office 升级通过
 - [ ] 任务历史升级后保留
