@@ -149,7 +149,7 @@ flowchart TD
 
 上表是 tag 前本机 `assemble*Release` 实测（`32784193` / `106076957` 字节）。上架数字只认 [GitHub Releases](https://github.com/donalaaaaaaa/OpenConvert/releases) 的 `BUILD_INFO.txt`，不要抄 2026-08-20 那张 35.39 / 105.29 基线。Office 体积几乎全部来自 `liblo-native-code.so`（未压缩约 171 MiB）。历史拆分见 [`docs/apk-size-baseline-2026-08-20.md`](docs/apk-size-baseline-2026-08-20.md)。
 
-PHY110 / Android 16 上：Office 全量 instrumented **61/61**，Basic → Office 覆盖升级后 DOCX/PPTX/XLSX → PDF 通过。
+PHY110 / Android 16 上：Office instrumented **80/80**（不含 4GB / force-stop / Release 覆盖升级，那些走独立脚本）。Basic → Office 覆盖升级后 DOCX/PPTX/XLSX → PDF 通过。
 
 ---
 

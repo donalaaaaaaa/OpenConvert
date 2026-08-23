@@ -853,7 +853,7 @@ v1.1.0
 - [ ] Release 只包含 arm64-v8a
 - [ ] JVM Unit Tests 全绿
 - [ ] Emulator Smoke 全绿
-- [ ] PHY110 Office Instrumented 全绿
+- [x] PHY110 Office Instrumented 全绿
 - [ ] Basic → Office 升级通过
 - [ ] 任务历史升级后保留
 - [ ] Preset 升级后保留

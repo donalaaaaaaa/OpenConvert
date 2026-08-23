@@ -5,8 +5,8 @@
 # sessions fail with Error -99 on PHY110. Install the two APKs, then drive
 # AndroidJUnitRunner directly.
 #
-# Skips 4GB stability and the force-stop seed/verify pair. Those have their
-# own scripts and must not ride along with a full suite.
+# Skips 4GB stability, force-stop seed/verify, and the Release overlay
+# upgrade pair (those have their own scripts).
 #
 # Usage:
 #   ./scripts/run-office-instrumented.sh
@@ -18,7 +18,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 RUNNER="com.openconvert.app.debug.test/androidx.test.runner.AndroidJUnitRunner"
-SKIP_CLASSES="com.openconvert.app.domain.work.LargeFileStabilityInstrumentedTest,com.openconvert.app.domain.converter.LargeFileConversionInstrumentedTest,com.openconvert.app.work.ForceStopLiveSeedTest,com.openconvert.app.work.ForceStopVerifyTest"
+SKIP_CLASSES="com.openconvert.app.domain.work.LargeFileStabilityInstrumentedTest,com.openconvert.app.domain.converter.LargeFileConversionInstrumentedTest,com.openconvert.app.work.ForceStopLiveSeedTest,com.openconvert.app.work.ForceStopVerifyTest,com.openconvert.app.upgrade.OfficeUpgradeVerifyInstrumentedTest"
 
 DO_INSTALL=1
 CLASS_FILTER=""
