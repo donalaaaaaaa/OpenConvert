@@ -144,13 +144,10 @@ flowchart TD
 
 | 指标 | Basic | Office |
 |---|---:|---:|
-| Release APK（2026-08-20 基线） | 35.39 MiB | 105.29 MiB |
-| Release AAB（2026-08-20 基线） | 65.29 MiB | 135.20 MiB |
-| PHY110 估算下载 | 34.74 MiB | 103.60 MiB |
-| PHY110 即时 code | 107.23 MiB | 353.99 MiB |
-| 解压 native | 44.56 MiB | 221.15 MiB |
+| 本机已签 Release APK（v1.1.0，2026-08-23） | 31.27 MiB | 101.16 MiB |
+| GitHub Release | 以 `BUILD_INFO.txt` 为准 | 同上 |
 
-现网安装包大小以 [GitHub Releases](https://github.com/donalaaaaaaa/OpenConvert/releases) 的 `BUILD_INFO.txt` 为准，不要抄这张基线表。Office 体积几乎全部来自 `liblo-native-code.so`（未压缩约 171 MiB）。完整拆分见 [`docs/apk-size-baseline-2026-08-20.md`](docs/apk-size-baseline-2026-08-20.md)。
+上表是 tag 前本机 `assemble*Release` 实测（`32784193` / `106076957` 字节）。上架数字只认 [GitHub Releases](https://github.com/donalaaaaaaa/OpenConvert/releases) 的 `BUILD_INFO.txt`，不要抄 2026-08-20 那张 35.39 / 105.29 基线。Office 体积几乎全部来自 `liblo-native-code.so`（未压缩约 171 MiB）。历史拆分见 [`docs/apk-size-baseline-2026-08-20.md`](docs/apk-size-baseline-2026-08-20.md)。
 
 PHY110 / Android 16 上：Office 全量 instrumented **61/61**，Basic → Office 覆盖升级后 DOCX/PPTX/XLSX → PDF 通过。
 

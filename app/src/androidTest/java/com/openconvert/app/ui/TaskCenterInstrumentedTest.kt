@@ -116,9 +116,17 @@ class TaskCenterInstrumentedTest {
 
             val card = vm.taskCards.value[t.id]!!
             assertNotNull(card.sizeSummary)
-            assertTrue(card.sizeSummary!!.contains("输入"))
+            assertTrue(card.sizeSummary!!.contains("100.0 MB"))
+            assertTrue(card.sizeSummary!!.contains("7.0 MB"))
             assertNotNull("应显示耗时", card.elapsedText)
-            assertEquals("引擎 · FFmpegKit", card.engineText)
+            assertEquals(
+                com.openconvert.app.AppCopy.getOr(
+                    com.openconvert.app.R.string.task_engine,
+                    "引擎 · FFmpegKit",
+                    "FFmpegKit",
+                ),
+                card.engineText,
+            )
             // 完成后不再显示瞬时速度。
             assertEquals(null, card.speedText)
         } finally {

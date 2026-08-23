@@ -19,10 +19,12 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class StringsCatalogInstrumentedTest {
 
-    private val ctx get() = InstrumentationRegistry.getInstrumentation().targetContext
+    private val deviceCtx get() = InstrumentationRegistry.getInstrumentation().targetContext
+    private val zhCtx get() = InstrumentedLocale.zhContext()
 
     @Test
     fun chromeStringsResolve() {
+        val ctx = zhCtx
         assertEquals("首页", ctx.getString(R.string.nav_home))
         assertEquals("设置", ctx.getString(R.string.nav_settings))
         assertEquals("选择文件", ctx.getString(R.string.home_pick_file))
@@ -37,7 +39,7 @@ class StringsCatalogInstrumentedTest {
 
     @Test
     fun thirdPartyNoticesAssetIsReadable() {
-        val text = ctx.assets.open("THIRD_PARTY_NOTICES.md").bufferedReader().use { it.readText() }
+        val text = deviceCtx.assets.open("THIRD_PARTY_NOTICES.md").bufferedReader().use { it.readText() }
         assertTrue(text.contains("libvips"))
         assertTrue(text.contains("LibreOfficeKit"))
         assertTrue(text.contains("FFmpegKit"))
@@ -49,10 +51,10 @@ class StringsCatalogInstrumentedTest {
 
     @Test
     fun formattedStringsKeepPlaceholders() {
-        assertEquals("3 条 · 导出报告", ctx.getString(R.string.settings_benchmark_count, 3))
-        assertEquals("速度 41 MB/s", ctx.getString(R.string.tasks_speed, "41 MB/s"))
+        assertEquals("3 条 · 导出报告", zhCtx.getString(R.string.settings_benchmark_count, 3))
+        assertEquals("速度 41 MB/s", zhCtx.getString(R.string.tasks_speed, "41 MB/s"))
         mainDestinations.forEach { dest ->
-            assertTrue(ctx.getString(dest.labelRes).isNotBlank())
+            assertTrue(zhCtx.getString(dest.labelRes).isNotBlank())
         }
     }
 
@@ -63,14 +65,14 @@ class StringsCatalogInstrumentedTest {
             assertEquals(
                 "title $code",
                 presented.title,
-                ctx.getString(ErrorCopy.titleRes(code)),
+                deviceCtx.getString(ErrorCopy.titleRes(code)),
             )
             val suggestionRes = ErrorCopy.suggestionRes(code)
             if (suggestionRes != null) {
                 assertEquals(
                     "suggestion $code",
                     presented.suggestion,
-                    ctx.getString(suggestionRes),
+                    deviceCtx.getString(suggestionRes),
                 )
             }
         }
@@ -83,8 +85,8 @@ class StringsCatalogInstrumentedTest {
             val descRes = PresetCopy.descriptionRes(preset.id)
             assertNotNull("${preset.id} missing name res", nameRes)
             assertNotNull("${preset.id} missing desc res", descRes)
-            assertEquals(preset.name, ctx.getString(nameRes!!))
-            assertEquals(preset.description, ctx.getString(descRes!!))
+            assertEquals(preset.name, zhCtx.getString(nameRes!!))
+            assertEquals(preset.description, zhCtx.getString(descRes!!))
         }
     }
 
@@ -98,13 +100,13 @@ class StringsCatalogInstrumentedTest {
                 availableBytes = (1.3 * 1024 * 1024 * 1024).toLong(),
             ),
         )
-        assertEquals(ctx.getString(R.string.error_storage_detail, required, available), presented.detail)
+        assertEquals(deviceCtx.getString(R.string.error_storage_detail, required, available), presented.detail)
 
         val route = ErrorPresenter.fromRejection(
             PlanRejection.UnsupportedRoute("HEIC", "PDF"),
         )
         assertEquals(
-            ctx.getString(R.string.error_unsupported_route, "HEIC", "PDF"),
+            deviceCtx.getString(R.string.error_unsupported_route, "HEIC", "PDF"),
             route.title,
         )
     }
@@ -112,12 +114,12 @@ class StringsCatalogInstrumentedTest {
     @Test
     fun capabilityPanelTitlesResolve() {
         val pdf = FileCapabilityResolver.resolve(FileFormat.PDF)
-        assertEquals("PDF 工具", ctx.getString(pdf.toolSectionTitleRes))
+        assertEquals("PDF 工具", zhCtx.getString(pdf.toolSectionTitleRes))
         val heic = FileCapabilityResolver.resolve(FileFormat.HEIC)
-        assertEquals("转换为", ctx.getString(heic.convertSectionTitleRes))
+        assertEquals("转换为", zhCtx.getString(heic.convertSectionTitleRes))
         pdf.tools.forEach { action ->
-            assertTrue(ctx.getString(ToolCopy.labelRes(action.kind)).isNotBlank())
-            assertTrue(ctx.getString(ToolCopy.descriptionRes(action.kind)).isNotBlank())
+            assertTrue(zhCtx.getString(ToolCopy.labelRes(action.kind)).isNotBlank())
+            assertTrue(zhCtx.getString(ToolCopy.descriptionRes(action.kind)).isNotBlank())
         }
     }
 }

@@ -864,7 +864,7 @@ v1.1.0
 - [x] SHA256SUMS 自动生成
 - [x] Release Notes 自动生成
 - [x] THIRD_PARTY_NOTICES 完成
-- [ ] README 当前体积数据正确
+- [x] README 当前体积数据正确
 
 达到以上状态后：
 

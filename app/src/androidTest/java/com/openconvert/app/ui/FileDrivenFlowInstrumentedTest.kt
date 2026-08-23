@@ -90,12 +90,11 @@ class FileDrivenFlowInstrumentedTest {
 
     @Test
     fun pdfPanelOffersToolsButNoDirectConversion() {
-        val ctx = InstrumentationRegistry.getInstrumentation().targetContext
         val caps = FileCapabilityResolver.resolve(FileFormat.PDF)
         assertTrue(caps.convertTargets.isEmpty())
         assertTrue(caps.tools.isNotEmpty())
         // 面板标题应指向 PDF 工具，而不是"转换为"。
-        assertEquals("PDF 工具", ctx.getString(caps.toolSectionTitleRes))
+        assertEquals("PDF 工具", InstrumentedLocale.zhContext().getString(caps.toolSectionTitleRes))
     }
 
     /**
