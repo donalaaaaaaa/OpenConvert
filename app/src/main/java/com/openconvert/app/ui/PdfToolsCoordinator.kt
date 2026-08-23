@@ -3,7 +3,9 @@ package com.openconvert.app.ui
 import android.content.Intent
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
+import com.openconvert.app.AppCopy
 import com.openconvert.app.OpenConvertApplication
+import com.openconvert.app.R
 import com.openconvert.app.data.saf.SelectedDocument
 import com.openconvert.app.data.saf.readSelectedDocument
 import com.openconvert.app.domain.converter.flattenPdfPages
@@ -29,6 +31,9 @@ class PdfToolsCoordinator(
     private val resolver: android.content.ContentResolver,
     private val scope: CoroutineScope,
 ) {
+    private fun copy(id: Int, fallback: String, vararg args: Any): String =
+        AppCopy.getOr(id, fallback, *args)
+
     private val _imagesToPdfDraft = MutableStateFlow<ImagesToPdfDraft?>(null)
     val imagesToPdfDraft: StateFlow<ImagesToPdfDraft?> = _imagesToPdfDraft.asStateFlow()
 
@@ -69,7 +74,7 @@ class PdfToolsCoordinator(
         val uniqueUris = uris.distinct()
         if (uniqueUris.isEmpty()) return false
         if (uniqueUris.size > MAX_PDF_IMAGES) {
-            host.postedMessage = "一次最多选择 $MAX_PDF_IMAGES 张图片"
+            host.postedMessage = copy(R.string.msg_pdf_max_images, "一次最多选择 $MAX_PDF_IMAGES 张图片", MAX_PDF_IMAGES)
             return false
         }
 
@@ -81,11 +86,11 @@ class PdfToolsCoordinator(
         }.filter { it.format.category == FileCategory.IMAGE }
 
         if (documents.isEmpty()) {
-            host.postedMessage = "没有读到可用的 JPG、PNG 或 WEBP 图片"
+            host.postedMessage = copy(R.string.msg_pdf_no_images, "没有读到可用的 JPG、PNG 或 WEBP 图片")
             return false
         }
         if (documents.size != uniqueUris.size) {
-            host.postedMessage = "已忽略无法读取或不支持的文件"
+            host.postedMessage = copy(R.string.msg_ignored_files, "已忽略无法读取或不支持的文件")
         }
 
         _imagesToPdfDraft.value = ImagesToPdfDraft(documents)
@@ -132,16 +137,16 @@ class PdfToolsCoordinator(
     fun onPdfsToMergePicked(uris: List<Uri>): Boolean {
         val uniqueUris = uris.distinct()
         if (uniqueUris.size < 2) {
-            host.postedMessage = "请至少选择 2 个 PDF"
+            host.postedMessage = copy(R.string.msg_pdf_min_merge, "请至少选择 2 个 PDF")
             return false
         }
         if (uniqueUris.size > MAX_MERGE_PDFS) {
-            host.postedMessage = "一次最多合并 $MAX_MERGE_PDFS 个 PDF"
+            host.postedMessage = copy(R.string.msg_pdf_max_merge, "一次最多合并 $MAX_MERGE_PDFS 个 PDF", MAX_MERGE_PDFS)
             return false
         }
         val documents = uniqueUris.mapNotNull(::readPdfDocument)
         if (documents.size != uniqueUris.size) {
-            host.postedMessage = "存在无法读取或不是 PDF 的文件"
+            host.postedMessage = copy(R.string.msg_pdf_bad_file, "存在无法读取或不是 PDF 的文件")
             return false
         }
         _pdfMergeDraft.value = PdfMergeDraft(documents)
@@ -188,7 +193,7 @@ class PdfToolsCoordinator(
             ConversionTask(
                 id = UUID.randomUUID().toString(),
                 sourceUri = current.documents.first().uri.toString(),
-                sourceName = if (current.documents.size == 1) current.documents.first().name else "${current.documents.size} 张图片",
+                sourceName = if (current.documents.size == 1) current.documents.first().name else copy(R.string.msg_n_images, "${current.documents.size} 张图片", current.documents.size),
                 sourceFormat = current.documents.first().format,
                 targetFormat = FileFormat.PDF,
                 outputUri = outputUri.toString(),
@@ -205,12 +210,12 @@ class PdfToolsCoordinator(
     fun startPdfToImages(outputTreeUri: Uri) {
         val current = _pdfToImagesDraft.value ?: return
         val ranges = parsePdfPageRanges(current.pageRanges, current.pageCount).getOrElse {
-            host.postedMessage = it.message ?: "页码格式不正确"
+            host.postedMessage = it.message ?: copy(R.string.msg_bad_pages, "页码格式不正确")
             return
         }
         val pages = flattenPdfPages(ranges)
         if (pages.size > MAX_EXPORTED_PDF_PAGES) {
-            host.postedMessage = "一次最多导出 $MAX_EXPORTED_PDF_PAGES 页"
+            host.postedMessage = copy(R.string.msg_max_export_pages, "一次最多导出 $MAX_EXPORTED_PDF_PAGES 页", MAX_EXPORTED_PDF_PAGES)
             return
         }
         host.persistTreePermission(outputTreeUri)
@@ -231,7 +236,7 @@ class PdfToolsCoordinator(
                     pages = pages,
                     outputTreeUri = outputTreeUri.toString(),
                 ),
-                outputName = "${pages.size} 个 ${current.targetFormat.displayName} 文件",
+                outputName = copy(R.string.msg_n_format_files, "${pages.size} 个 ${current.targetFormat.displayName} 文件", pages.size, current.targetFormat.displayName),
             ),
         )
     }
@@ -244,7 +249,7 @@ class PdfToolsCoordinator(
             ConversionTask(
                 id = UUID.randomUUID().toString(),
                 sourceUri = current.documents.first().uri.toString(),
-                sourceName = "${current.documents.size} 个 PDF",
+                sourceName = copy(R.string.msg_n_pdfs, "${current.documents.size} 个 PDF", current.documents.size),
                 sourceFormat = FileFormat.PDF,
                 targetFormat = FileFormat.PDF,
                 outputUri = outputUri.toString(),
@@ -261,11 +266,11 @@ class PdfToolsCoordinator(
     fun startPdfSplit(outputTreeUri: Uri) {
         val current = _pdfSplitDraft.value ?: return
         val ranges = parsePdfPageRanges(current.pageRanges, current.pageCount).getOrElse {
-            host.postedMessage = it.message ?: "页码格式不正确"
+            host.postedMessage = it.message ?: copy(R.string.msg_bad_pages, "页码格式不正确")
             return
         }
         if (ranges.size > MAX_SPLIT_OUTPUTS) {
-            host.postedMessage = "一次最多生成 $MAX_SPLIT_OUTPUTS 个 PDF"
+            host.postedMessage = copy(R.string.msg_max_split, "一次最多生成 $MAX_SPLIT_OUTPUTS 个 PDF", MAX_SPLIT_OUTPUTS)
             return
         }
         host.persistTreePermission(outputTreeUri)
@@ -285,7 +290,7 @@ class PdfToolsCoordinator(
                     pageRanges = current.pageRanges,
                     outputTreeUri = outputTreeUri.toString(),
                 ),
-                outputName = "${ranges.size} 个 PDF 文件",
+                outputName = copy(R.string.msg_n_format_files, "${ranges.size} 个 PDF 文件", ranges.size, "PDF"),
             ),
         )
     }
@@ -294,7 +299,7 @@ class PdfToolsCoordinator(
         val document = readPdfDocument(uri) ?: return false
         val pageCount = readPdfPageCount(uri) ?: return false
         if (pageCount <= 1) {
-            host.postedMessage = "PDF 只有一页，无需删除"
+            host.postedMessage = copy(R.string.msg_pdf_one_page, "PDF 只有一页，无需删除")
             return false
         }
         _pdfDeleteDraft.value = PdfDeletePagesDraft(document, pageCount)
@@ -316,11 +321,11 @@ class PdfToolsCoordinator(
         val current = _pdfDeleteDraft.value ?: return
         val pages = current.selectedPages.sorted()
         if (pages.isEmpty()) {
-            host.postedMessage = "请先选择要删除的页面"
+            host.postedMessage = copy(R.string.msg_pick_pages, "请先选择要删除的页面")
             return
         }
         if (pages.size >= current.pageCount) {
-            host.postedMessage = "不能删除全部页面"
+            host.postedMessage = copy(R.string.msg_cannot_delete_all, "不能删除全部页面")
             return
         }
         host.persistDocumentPermission(outputUri)
@@ -340,7 +345,7 @@ class PdfToolsCoordinator(
                     sourceUris = listOf(current.document.uri.toString()),
                     pages = pages,
                 ),
-                outputName = "${current.remaining} 页的 PDF",
+                outputName = copy(R.string.msg_n_page_pdf, "${current.remaining} 页的 PDF", current.remaining),
             ),
         )
     }
@@ -367,7 +372,7 @@ class PdfToolsCoordinator(
             emptyList()
         } else {
             val ranges = parsePdfPageRanges(current.pageRanges, current.pageCount).getOrElse {
-                host.postedMessage = it.message ?: "页码格式不正确"
+                host.postedMessage = it.message ?: copy(R.string.msg_bad_pages, "页码格式不正确")
                 return
             }
             flattenPdfPages(ranges)
@@ -390,7 +395,7 @@ class PdfToolsCoordinator(
                     pages = pages,
                     rotateDegrees = current.degrees,
                 ),
-                outputName = "旋转 ${current.degrees}° 的 PDF",
+                outputName = copy(R.string.msg_rotated_pdf, "旋转 ${current.degrees}° 的 PDF", current.degrees),
             ),
         )
     }
@@ -447,7 +452,7 @@ class PdfToolsCoordinator(
     fun startPdfSecurity(outputUri: Uri) {
         val current = _pdfSecurityDraft.value ?: return
         if (current.password.isBlank()) {
-            host.postedMessage = "请输入密码"
+            host.postedMessage = copy(R.string.msg_enter_password, "请输入密码")
             return
         }
         host.persistDocumentPermission(outputUri)
@@ -578,7 +583,7 @@ class PdfToolsCoordinator(
         val current = _pdfWatermarkDraft.value ?: return
         val text = current.text.trim()
         if (text.isEmpty()) {
-            host.postedMessage = "请输入水印文字"
+            host.postedMessage = copy(R.string.msg_enter_watermark, "请输入水印文字")
             return
         }
         host.persistDocumentPermission(outputUri)
@@ -613,7 +618,7 @@ class PdfToolsCoordinator(
                 com.openconvert.app.domain.pdf.PdfPageManager(app).parsePages(uri)
             }.getOrElse { emptyList() }
             if (pages.isEmpty()) {
-                host.postedMessage = "无法解析 PDF 页面"
+                host.postedMessage = copy(R.string.msg_pdf_pages_fail, "无法解析 PDF 页面")
                 return@launch
             }
             _pdfPageManagerDraft.value = PdfPageManagerDraft(document, pages)
@@ -639,7 +644,7 @@ class PdfToolsCoordinator(
         val deleted = runCatching {
             com.openconvert.app.domain.pdf.PdfPageManager(app).delete(current.pages, targetIds)
         }.getOrElse {
-            host.postedMessage = it.message ?: "删除失败"
+            host.postedMessage = it.message ?: copy(R.string.msg_delete_fail, "删除失败")
             return
         }
         _pdfPageManagerDraft.value = current.copy(pages = deleted)
@@ -677,11 +682,11 @@ class PdfToolsCoordinator(
             resolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         val document = runCatching { resolver.readSelectedDocument(uri) }.getOrElse {
-            host.postedMessage = "无法读取所选 PDF"
+            host.postedMessage = copy(R.string.msg_cannot_read_pdf, "无法读取所选 PDF")
             return null
         }
         if (document.format != FileFormat.PDF) {
-            host.postedMessage = "请选择 PDF 文件"
+            host.postedMessage = copy(R.string.msg_pick_pdf, "请选择 PDF 文件")
             return null
         }
         return document
@@ -692,7 +697,7 @@ class PdfToolsCoordinator(
             PdfRenderer(descriptor).use { renderer -> renderer.pageCount }
         } ?: error("无法打开 PDF")
     }.getOrElse {
-        host.postedMessage = "无法读取 PDF 页数，文件可能已损坏或带密码"
+        host.postedMessage = copy(R.string.msg_pdf_page_count, "无法读取 PDF 页数，文件可能已损坏或带密码")
         null
     }
 

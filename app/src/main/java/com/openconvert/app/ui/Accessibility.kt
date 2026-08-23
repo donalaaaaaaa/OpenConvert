@@ -10,6 +10,8 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import com.openconvert.app.AppCopy
+import com.openconvert.app.R
 import com.openconvert.app.domain.model.ConversionStatus
 import com.openconvert.app.domain.model.ConversionTask
 import com.openconvert.app.domain.task.TaskBucket
@@ -45,34 +47,52 @@ object AccessibilityCopy {
     fun setting(title: String, value: String): String =
         if (value.isBlank()) title else "$title，$value"
 
-    fun convertTo(formatDisplay: String): String = "转换为 $formatDisplay"
+    fun convertTo(formatDisplay: String): String =
+        AppCopy.getOr(R.string.a11y_convert_to, "转换为 $formatDisplay", formatDisplay)
 
     fun pickFile(formatsHint: String): String =
-        if (formatsHint.isBlank()) "选择文件" else "选择文件，$formatsHint"
+        if (formatsHint.isBlank()) {
+            AppCopy.getOr(R.string.home_pick_file, "选择文件")
+        } else {
+            AppCopy.getOr(R.string.a11y_pick_file, "选择文件，$formatsHint", formatsHint)
+        }
 
     fun preset(name: String, detail: String, selected: Boolean): String = buildString {
-        append("预设 $name")
+        append(AppCopy.getOr(R.string.a11y_preset, "预设 $name", name))
         if (detail.isNotBlank()) append("，$detail")
-        if (selected) append("，已选用")
+        if (selected) append("，").append(AppCopy.getOr(R.string.a11y_preset_selected, "已选用"))
     }
 
     fun history(task: ConversionTask): String {
         val status = when (task.status) {
-            ConversionStatus.PENDING -> "排队中"
-            ConversionStatus.RUNNING -> "进行中 ${task.progress}%"
-            ConversionStatus.FAILED -> "失败"
-            ConversionStatus.CANCELLED -> "已取消"
-            ConversionStatus.COMPLETED -> "已完成"
+            ConversionStatus.PENDING -> AppCopy.getOr(R.string.a11y_status_pending, "排队中")
+            ConversionStatus.RUNNING -> AppCopy.getOr(R.string.a11y_status_running, "进行中 ${task.progress}%", task.progress)
+            ConversionStatus.FAILED -> AppCopy.getOr(R.string.a11y_status_failed, "失败")
+            ConversionStatus.CANCELLED -> AppCopy.getOr(R.string.a11y_status_cancelled, "已取消")
+            ConversionStatus.COMPLETED -> AppCopy.getOr(R.string.a11y_status_completed, "已完成")
         }
-        return "${task.sourceName}，${task.sourceFormat.displayName} 转为 ${task.targetFormat.displayName}，$status"
+        return AppCopy.getOr(
+            R.string.a11y_history,
+            "${task.sourceName}，${task.sourceFormat.displayName} 转为 ${task.targetFormat.displayName}，$status",
+            task.sourceName,
+            task.sourceFormat.displayName,
+            task.targetFormat.displayName,
+            status,
+        )
     }
 
     fun progress(percent: Int, bytesProcessed: Long = 0L, bytesTotal: Long = 0L): String {
         val clamped = percent.coerceIn(0, 100)
         return if (bytesTotal > 0L && bytesProcessed > 0L) {
-            "正在转换 $clamped%，已处理 ${TaskCardFactory.formatSize(bytesProcessed)} / ${TaskCardFactory.formatSize(bytesTotal)}"
+            AppCopy.getOr(
+                R.string.a11y_progress_bytes,
+                "正在转换 $clamped%，已处理 ${TaskCardFactory.formatSize(bytesProcessed)} / ${TaskCardFactory.formatSize(bytesTotal)}",
+                clamped,
+                TaskCardFactory.formatSize(bytesProcessed),
+                TaskCardFactory.formatSize(bytesTotal),
+            )
         } else {
-            "正在转换 $clamped%"
+            AppCopy.getOr(R.string.a11y_progress, "正在转换 $clamped%", clamped)
         }
     }
 
@@ -80,8 +100,8 @@ object AccessibilityCopy {
         val extra = when (bucket) {
             TaskBucket.RUNNING, TaskBucket.PAUSED -> "，${card.progressPercent}%"
             TaskBucket.FAILED -> card.error?.title?.let { "，$it" }.orEmpty()
-            TaskBucket.COMPLETED -> "，已完成"
-            TaskBucket.WAITING -> "，等待中"
+            TaskBucket.COMPLETED -> "，${AppCopy.getOr(R.string.a11y_completed, "已完成")}"
+            TaskBucket.WAITING -> "，${AppCopy.getOr(R.string.a11y_waiting, "等待中")}"
         }
         return "${card.title}，${card.route}$extra"
     }

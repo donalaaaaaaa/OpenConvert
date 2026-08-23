@@ -1,5 +1,6 @@
 package com.openconvert.app.domain.task
 
+import com.openconvert.app.AppCopy
 import com.openconvert.app.domain.error.ErrorPresentation
 import com.openconvert.app.domain.error.ErrorPresenter
 import com.openconvert.app.domain.model.ConversionStatus
@@ -49,7 +50,9 @@ object TaskCardFactory {
             },
             sizeSummary = sizeSummary(task),
             elapsedText = elapsedText(task),
-            engineText = task.actualEngine?.let { "引擎 · ${it.displayName}" },
+            engineText = task.actualEngine?.let {
+                AppCopy.getOr(com.openconvert.app.R.string.task_engine, "引擎 · ${it.displayName}", it.displayName)
+            },
             error = if (task.status == ConversionStatus.FAILED) {
                 ErrorPresenter.fromStoredMessage(
                     message = task.errorMessage,
@@ -69,8 +72,13 @@ object TaskCardFactory {
         if (task.status != ConversionStatus.COMPLETED) return null
         val input = task.fileSize.takeIf { it > 0 } ?: return null
         val output = task.outputSize?.takeIf { it > 0 }
-            ?: return "输入 ${formatSize(input)}"
-        return "输入 ${formatSize(input)} → 输出 ${formatSize(output)}"
+            ?: return AppCopy.getOr(com.openconvert.app.R.string.task_input, "输入 ${formatSize(input)}", formatSize(input))
+        return AppCopy.getOr(
+            com.openconvert.app.R.string.task_input_output,
+            "输入 ${formatSize(input)} → 输出 ${formatSize(output)}",
+            formatSize(input),
+            formatSize(output),
+        )
     }
 
     /** 「耗时 13 秒」。缺时间戳时返回 null 而不是显示 0 秒。 */
@@ -80,10 +88,28 @@ object TaskCardFactory {
         if (elapsed <= 0L) return null
         val seconds = elapsed / 1000
         return when {
-            seconds >= 3600 -> "耗时 ${seconds / 3600} 小时 ${(seconds % 3600) / 60} 分"
-            seconds >= 60 -> "耗时 ${seconds / 60} 分 ${seconds % 60} 秒"
-            seconds > 0 -> "耗时 $seconds 秒"
-            else -> "耗时 ${elapsed}ms"
+            seconds >= 3600 -> AppCopy.getOr(
+                com.openconvert.app.R.string.task_elapsed_h,
+                "耗时 ${seconds / 3600} 小时 ${(seconds % 3600) / 60} 分",
+                seconds / 3600,
+                (seconds % 3600) / 60,
+            )
+            seconds >= 60 -> AppCopy.getOr(
+                com.openconvert.app.R.string.task_elapsed_m,
+                "耗时 ${seconds / 60} 分 ${seconds % 60} 秒",
+                seconds / 60,
+                seconds % 60,
+            )
+            seconds > 0 -> AppCopy.getOr(
+                com.openconvert.app.R.string.task_elapsed_s,
+                "耗时 $seconds 秒",
+                seconds,
+            )
+            else -> AppCopy.getOr(
+                com.openconvert.app.R.string.task_elapsed_ms,
+                "耗时 ${elapsed}ms",
+                elapsed,
+            )
         }
     }
 

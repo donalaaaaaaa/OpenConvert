@@ -6,7 +6,9 @@ import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.openconvert.app.AppCopy
 import com.openconvert.app.OpenConvertApplication
+import com.openconvert.app.R
 import com.openconvert.app.data.saf.SelectedDocument
 import com.openconvert.app.data.saf.readSelectedDocument
 import com.openconvert.app.domain.converter.flattenPdfPages
@@ -198,7 +200,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             app.cacheManager.clearCache()
             _cacheStats.value = app.cacheManager.getCacheStats()
-            host.postedMessage = "缓存已清理"
+            host.postedMessage = AppCopy.getOr(R.string.msg_cache_cleared, "缓存已清理")
         }
     }
 
@@ -220,10 +222,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         com.openconvert.app.domain.benchmark.BenchmarkReportFormat.MARKDOWN -> "Markdown"
                         com.openconvert.app.domain.benchmark.BenchmarkReportFormat.CSV -> "CSV"
                     }
-                    host.postedMessage = "已导出 $label 报告（${exported.recordCount} 条记录）"
+                    host.postedMessage = AppCopy.getOr(
+                        R.string.msg_exported_report,
+                        "已导出 $label 报告（${exported.recordCount} 条记录）",
+                        label,
+                        exported.recordCount,
+                    )
                 },
                 onFailure = { error ->
-                    host.postedMessage = error.message ?: "Benchmark 报告导出失败"
+                    host.postedMessage = error.message ?: AppCopy.getOr(R.string.msg_export_failed, "Benchmark 报告导出失败")
                 },
             )
         }
@@ -233,7 +240,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val customs = app.presetStore.customPresets()
             if (customs.isEmpty()) {
-                host.postedMessage = "没有可导出的自定义预设"
+                host.postedMessage = AppCopy.getOr(R.string.msg_no_custom_presets, "没有可导出的自定义预设")
                 return@launch
             }
             runCatching {
@@ -244,9 +251,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     )
                 } ?: error("无法写入文件")
             }.onSuccess {
-                host.postedMessage = "已导出 ${customs.size} 条自定义预设"
+                host.postedMessage = AppCopy.getOr(R.string.msg_exported_presets, "已导出 ${customs.size} 条自定义预设", customs.size)
             }.onFailure { error ->
-                host.postedMessage = error.message ?: "预设导出失败"
+                host.postedMessage = error.message ?: AppCopy.getOr(R.string.msg_preset_export_failed, "预设导出失败")
             }
         }
     }
@@ -258,19 +265,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     stream.readBytes().toString(Charsets.UTF_8)
                 } ?: error("无法读取文件")
             }.getOrElse { error ->
-                host.postedMessage = error.message ?: "无法读取预设文件"
+                host.postedMessage = error.message ?: AppCopy.getOr(R.string.msg_preset_read_failed, "无法读取预设文件")
                 return@launch
             }
             app.presetStore.importPack(raw).fold(
                 onSuccess = { report ->
                     host.postedMessage = if (report.imported == 0) {
-                        "预设文件里没有可用条目"
+                        AppCopy.getOr(R.string.msg_preset_empty, "预设文件里没有可用条目")
                     } else {
-                        "已导入 ${report.imported} 条预设"
+                        AppCopy.getOr(R.string.msg_preset_imported, "已导入 ${report.imported} 条预设", report.imported)
                     }
                 },
                 onFailure = { error ->
-                    host.postedMessage = error.message ?: "预设导入失败"
+                    host.postedMessage = error.message ?: AppCopy.getOr(R.string.msg_preset_import_failed, "预设导入失败")
                 },
             )
         }

@@ -431,11 +431,11 @@ internal fun OfficeToolsScreen(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    OfficeFormatRow("Word 文档", "DOCX / DOC → PDF", "保留完整排版、字体样式、表格与图片")
+                    OfficeFormatRow(stringResource(R.string.office_word), stringResource(R.string.office_word_route), stringResource(R.string.office_word_desc))
                     HorizontalDivider(color = Border)
-                    OfficeFormatRow("演示文稿", "PPTX / PPT → PDF", "按幻灯片页转换为 PDF 页面，保持版式")
+                    OfficeFormatRow(stringResource(R.string.office_ppt), stringResource(R.string.office_ppt_route), stringResource(R.string.office_ppt_desc))
                     HorizontalDivider(color = Border)
-                    OfficeFormatRow("电子表格", "XLSX / XLS → PDF", "将表格报表与工作表结构转为文档")
+                    OfficeFormatRow(stringResource(R.string.office_xls), stringResource(R.string.office_xls_route), stringResource(R.string.office_xls_desc))
                 }
             }
         }

@@ -15,7 +15,16 @@ enum class TaskBucket(val label: String) {
     WAITING("等待中"),
     PAUSED("暂停"),
     FAILED("失败"),
-    COMPLETED("已完成"),
+    COMPLETED("已完成");
+
+    val labelRes: Int
+        get() = when (this) {
+            RUNNING -> com.openconvert.app.R.string.bucket_running
+            WAITING -> com.openconvert.app.R.string.bucket_waiting
+            PAUSED -> com.openconvert.app.R.string.bucket_paused
+            FAILED -> com.openconvert.app.R.string.bucket_failed
+            COMPLETED -> com.openconvert.app.R.string.bucket_completed
+        }
 }
 
 data class TaskGroup(

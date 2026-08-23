@@ -84,7 +84,7 @@ fun TaskCenterScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        group.bucket.label,
+                        stringResource(group.bucket.labelRes),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
                         color = Muted,

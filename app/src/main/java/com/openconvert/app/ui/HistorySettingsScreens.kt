@@ -155,12 +155,12 @@ internal fun HistoryScreen(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        if (selecting) "已选 ${selected.size} 项" else "历史",
+                        if (selecting) stringResource(R.string.history_selected, selected.size) else stringResource(R.string.history_title),
                         fontSize = 28.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        if (selecting) "进行中的任务不能删除" else "仅保存在这台设备上",
+                        if (selecting) stringResource(R.string.history_in_progress_locked) else stringResource(R.string.history_device_only),
                         color = Muted,
                         fontSize = 14.sp,
                     )
@@ -170,7 +170,7 @@ internal fun HistoryScreen(
                         TextButton(onClick = {
                             selecting = false
                             selected = emptySet()
-                        }) { Text("取消", color = Ink) }
+                        }) { Text(stringResource(R.string.action_cancel), color = Ink) }
                         TextButton(
                             onClick = {
                                 onDelete(selected)
@@ -178,17 +178,17 @@ internal fun HistoryScreen(
                                 selecting = false
                             },
                             enabled = selected.isNotEmpty(),
-                        ) { Text("删除", color = Ink) }
+                        ) { Text(stringResource(R.string.history_delete), color = Ink) }
                     } else {
-                        TextButton(onClick = { selecting = true }) { Text("选择", color = Ink) }
-                        TextButton(onClick = onClear) { Text("清空", color = Ink) }
+                        TextButton(onClick = { selecting = true }) { Text(stringResource(R.string.history_select), color = Ink) }
+                        TextButton(onClick = onClear) { Text(stringResource(R.string.history_clear), color = Ink) }
                     }
                 }
             }
         }
         if (history.isEmpty()) {
             item {
-                EmptyState("暂无历史记录", "完成或加入转换任务后会显示在这里。")
+                EmptyState(stringResource(R.string.history_empty_title), stringResource(R.string.history_empty_body))
             }
         } else {
             if (selecting && selectable.isNotEmpty()) {
@@ -198,11 +198,11 @@ internal fun HistoryScreen(
                             selected = if (selected.size == selectable.size) emptySet() else selectable.map { it.id }.toSet()
                         },
                     ) {
-                        Text(if (selected.size == selectable.size) "取消全选" else "全选", color = Ink)
+                        Text(if (selected.size == selectable.size) stringResource(R.string.history_unselect_all) else stringResource(R.string.history_select_all), color = Ink)
                     }
                 }
             }
-            item { SectionTitle("最近") }
+            item { SectionTitle(stringResource(R.string.history_recent)) }
             items(history, key = { it.id }) { task ->
                 val canSelect = task.status != ConversionStatus.PENDING && task.status != ConversionStatus.RUNNING
                 HistoryRow(
@@ -280,13 +280,13 @@ internal fun HistoryActionSheet(
                 fontSize = 13.sp,
             )
             task.actualEngine?.let { engine ->
-                Text("实际引擎 · ${engine.displayName}", color = Muted, fontSize = 12.sp)
+                Text(stringResource(R.string.history_engine, engine.displayName), color = Muted, fontSize = 12.sp)
             }
             Spacer(Modifier.height(8.dp))
-            HistoryActionRow(Icons.AutoMirrored.Outlined.OpenInNew, "打开文件", enabled = outputs.isNotEmpty(), onClick = onOpen)
-            HistoryActionRow(Icons.Outlined.Share, "分享", enabled = outputs.isNotEmpty(), onClick = onShare)
-            HistoryActionRow(Icons.Outlined.Refresh, "再次转换", onClick = onReuse)
-            HistoryActionRow(Icons.Outlined.DeleteOutline, "删除记录", tint = Muted, onClick = onDelete)
+            HistoryActionRow(Icons.AutoMirrored.Outlined.OpenInNew, stringResource(R.string.history_open), enabled = outputs.isNotEmpty(), onClick = onOpen)
+            HistoryActionRow(Icons.Outlined.Share, stringResource(R.string.action_share), enabled = outputs.isNotEmpty(), onClick = onShare)
+            HistoryActionRow(Icons.Outlined.Refresh, stringResource(R.string.history_reuse), onClick = onReuse)
+            HistoryActionRow(Icons.Outlined.DeleteOutline, stringResource(R.string.history_delete_record), tint = Muted, onClick = onDelete)
         }
     }
 }
@@ -378,9 +378,9 @@ internal fun SettingsScreen(
                 HorizontalDivider(color = Border)
                 SettingRow(stringResource(R.string.settings_save_location), stringResource(R.string.settings_save_location_value))
                 HorizontalDivider(color = Border)
-                SettingRow(stringResource(R.string.settings_image_quality), imageQuality.label, onClick = { picking = "image" })
+                SettingRow(stringResource(R.string.settings_image_quality), stringResource(imageQuality.labelRes), onClick = { picking = "image" })
                 HorizontalDivider(color = Border)
-                SettingRow(stringResource(R.string.settings_video_quality), videoQuality.label, onClick = { picking = "video" })
+                SettingRow(stringResource(R.string.settings_video_quality), stringResource(videoQuality.labelRes), onClick = { picking = "video" })
             }
         }
         item { SectionTitle(stringResource(R.string.settings_section_system)) }
@@ -455,8 +455,8 @@ internal fun SettingsScreen(
     }
 
     val title = when (picking) {
-        "image" -> "图片默认质量"
-        "video" -> "视频默认质量"
+        "image" -> stringResource(R.string.settings_quality_image)
+        "video" -> stringResource(R.string.settings_quality_video)
         else -> null
     }
     if (title != null) {
@@ -490,7 +490,7 @@ internal fun SettingsScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { picking = null }) { Text("关闭", color = Ink) }
+                TextButton(onClick = { picking = null }) { Text(stringResource(R.string.action_close), color = Ink) }
             },
             containerColor = MaterialTheme.colorScheme.background,
         )
@@ -498,17 +498,17 @@ internal fun SettingsScreen(
     if (showBenchmarkExport) {
         AlertDialog(
             onDismissRequest = { showBenchmarkExport = false },
-            title = { Text("导出性能报告") },
+            title = { Text(stringResource(R.string.settings_export_report)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        "共 $benchmarkRecordCount 条记录。报告仅包含格式、体积和性能指标，不包含文件名或文件内容。",
+                        stringResource(R.string.settings_export_report_body, benchmarkRecordCount),
                         color = Muted,
                         fontSize = 13.sp,
                     )
                     HistoryActionRow(
                         icon = Icons.AutoMirrored.Outlined.Article,
-                        label = "Markdown 汇总报告",
+                        label = stringResource(R.string.settings_export_md),
                         onClick = {
                             showBenchmarkExport = false
                             markdownExporter.launch("OpenConvert-Benchmark-$reportTimestamp.md")
@@ -516,7 +516,7 @@ internal fun SettingsScreen(
                     )
                     HistoryActionRow(
                         icon = Icons.Outlined.Description,
-                        label = "CSV 原始明细",
+                        label = stringResource(R.string.settings_export_csv),
                         onClick = {
                             showBenchmarkExport = false
                             csvExporter.launch("OpenConvert-Benchmark-$reportTimestamp.csv")
@@ -525,7 +525,7 @@ internal fun SettingsScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showBenchmarkExport = false }) { Text("取消") }
+                TextButton(onClick = { showBenchmarkExport = false }) { Text(stringResource(R.string.action_cancel)) }
             },
         )
     }
@@ -542,14 +542,14 @@ internal fun PrivacyScreen(onBack: () -> Unit) {
     ) {
         item {
             IconButton(onClick = onBack, modifier = Modifier.size(44.dp)) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "返回")
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.action_back))
             }
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("隐私", fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.privacy_title), fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "OpenConvert 的转换工作全部在您的设备本地完成。应用不会上传、收集或保存您的文件。",
+                    stringResource(R.string.privacy_body),
                     color = Muted,
                     lineHeight = 22.sp,
                 )
@@ -557,13 +557,13 @@ internal fun PrivacyScreen(onBack: () -> Unit) {
         }
         item {
             SettingsGroup {
-                PrivacyFact("无网络权限")
+                PrivacyFact(stringResource(R.string.privacy_no_network))
                 HorizontalDivider(color = Border)
-                PrivacyFact("无文件上传")
+                PrivacyFact(stringResource(R.string.privacy_no_upload))
                 HorizontalDivider(color = Border)
-                PrivacyFact("无服务器")
+                PrivacyFact(stringResource(R.string.privacy_no_server))
                 HorizontalDivider(color = Border)
-                PrivacyFact("本地处理")
+                PrivacyFact(stringResource(R.string.privacy_local))
             }
         }
     }

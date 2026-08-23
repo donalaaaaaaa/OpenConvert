@@ -3,7 +3,14 @@ package com.openconvert.app.domain.converter
 enum class PdfWatermarkPosition(val label: String) {
     DIAGONAL("斜向居中"),
     CENTER("正中"),
-    FOOTER("页脚"),
+    FOOTER("页脚");
+
+    val labelRes: Int
+        get() = when (this) {
+            DIAGONAL -> com.openconvert.app.R.string.watermark_diagonal
+            CENTER -> com.openconvert.app.R.string.watermark_center
+            FOOTER -> com.openconvert.app.R.string.watermark_footer
+        }
 }
 
 data class PdfWatermarkPlacement(

@@ -15,6 +15,13 @@ enum class QualityPreset(val label: String) {
     BALANCED("平衡"),
     SMALL("节省空间");
 
+    val labelRes: Int
+        get() = when (this) {
+            HIGH -> com.openconvert.app.R.string.quality_high
+            BALANCED -> com.openconvert.app.R.string.quality_balanced
+            SMALL -> com.openconvert.app.R.string.quality_small
+        }
+
     val compressionQuality: Int
         get() = when (this) {
             HIGH -> 95
@@ -26,7 +33,14 @@ enum class QualityPreset(val label: String) {
 enum class ResolutionPreset(val label: String, val scalePercent: Int) {
     ORIGINAL("原始尺寸", 100),
     MEDIUM("缩小至 75%", 75),
-    SMALL("缩小至 50%", 50),
+    SMALL("缩小至 50%", 50);
+
+    val labelRes: Int
+        get() = when (this) {
+            ORIGINAL -> com.openconvert.app.R.string.resolution_original
+            MEDIUM -> com.openconvert.app.R.string.resolution_75
+            SMALL -> com.openconvert.app.R.string.resolution_50
+        }
 }
 
 data class ConversionTask(

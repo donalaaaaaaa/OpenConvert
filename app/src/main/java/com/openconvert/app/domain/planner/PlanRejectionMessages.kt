@@ -1,5 +1,7 @@
 package com.openconvert.app.domain.planner
 
+import com.openconvert.app.AppCopy
+import com.openconvert.app.R
 import com.openconvert.app.domain.engine.EngineType
 
 /**
@@ -12,30 +14,48 @@ object PlanRejectionMessages {
 
     fun describe(rejection: PlanRejection): String = when (rejection) {
         is PlanRejection.UnsupportedRoute ->
-            "暂不支持 ${rejection.input} → ${rejection.target}"
+            AppCopy.getOr(
+                R.string.error_unsupported_route,
+                "暂不支持 ${rejection.input} → ${rejection.target}",
+                rejection.input,
+                rejection.target,
+            )
 
         is PlanRejection.InsufficientSpace -> buildString {
-            append("存储空间不足\n\n需要：")
-            append(formatBytes(rejection.requiredBytes))
-            append("\n当前剩余：")
-            append(formatBytes(rejection.availableBytes))
+            append(AppCopy.getOr(R.string.error_storage, "存储空间不足"))
+            append("\n\n")
+            append(
+                AppCopy.getOr(
+                    R.string.error_storage_need,
+                    "需要：${formatBytes(rejection.requiredBytes)}\n当前剩余：${formatBytes(rejection.availableBytes)}",
+                    formatBytes(rejection.requiredBytes),
+                    formatBytes(rejection.availableBytes),
+                ),
+            )
         }
 
         is PlanRejection.NoUsableEncoder -> buildString {
-            append("视频编码不受当前设备硬件支持\n\n已尝试：")
-            append(rejection.attempted.joinToString("、") { engineLabel(it) })
+            append(AppCopy.getOr(R.string.error_codec_device, "视频编码不受当前设备硬件支持"))
+            append("\n\n")
+            append(
+                AppCopy.getOr(
+                    R.string.error_codec_tried,
+                    "已尝试：" + rejection.attempted.joinToString("、") { engineLabel(it) },
+                    rejection.attempted.joinToString("、") { engineLabel(it) },
+                ),
+            )
         }
 
         is PlanRejection.InvalidInput ->
-            "文件无法处理：${rejection.detail}"
+            AppCopy.getOr(R.string.error_invalid_input, "文件无法处理") + "：${rejection.detail}"
     }
 
     fun engineLabel(engine: EngineType): String = when (engine) {
         EngineType.LIBVIPS -> "libvips"
-        EngineType.BITMAP_FACTORY -> "系统解码器"
-        EngineType.MEDIA3_MEDIACODEC -> "MediaCodec 硬件编码"
-        EngineType.LITR -> "LiTr 硬件编码"
-        EngineType.FFMPEG_KIT -> "FFmpeg 软件编码"
+        EngineType.BITMAP_FACTORY -> AppCopy.getOr(R.string.engine_bitmap, "系统解码器")
+        EngineType.MEDIA3_MEDIACODEC -> AppCopy.getOr(R.string.engine_mediacodec, "MediaCodec 硬件编码")
+        EngineType.LITR -> AppCopy.getOr(R.string.engine_litr, "LiTr 硬件编码")
+        EngineType.FFMPEG_KIT -> AppCopy.getOr(R.string.engine_ffmpeg, "FFmpeg 软件编码")
         EngineType.LIBREOFFICE_KIT -> "LibreOfficeKit"
         EngineType.PDFBOX -> "PdfBox"
         EngineType.COMMONS_COMPRESS -> "Commons Compress"

@@ -2,7 +2,9 @@ package com.openconvert.app.ui
 
 import android.content.Intent
 import android.net.Uri
+import com.openconvert.app.AppCopy
 import com.openconvert.app.OpenConvertApplication
+import com.openconvert.app.R
 import com.openconvert.app.data.saf.SelectedDocument
 import com.openconvert.app.data.saf.readSelectedDocument
 import com.openconvert.app.domain.capability.FileCapabilityResolver
@@ -38,6 +40,8 @@ class ConvertCoordinator(
     private val resolver: android.content.ContentResolver,
     private val scope: CoroutineScope,
 ) {
+    private fun copy(id: Int, fallback: String, vararg args: Any): String =
+        AppCopy.getOr(id, fallback, *args)
     private var batchObserveJob: Job? = null
 
     private val _draft = MutableStateFlow<ConversionDraft?>(null)
@@ -95,16 +99,16 @@ class ConvertCoordinator(
         }
         val document = runCatching { resolver.readSelectedDocument(uri) }
             .getOrElse {
-                host.postedMessage = "无法读取所选文件"
+                host.postedMessage = copy(R.string.msg_cannot_read, "无法读取所选文件")
                 return false
             }
 
         val capabilities = FileCapabilityResolver.resolve(document.format)
         if (!capabilities.hasAnything) {
             host.postedMessage = if (document.format == FileFormat.UNKNOWN) {
-                "暂不支持此文件格式"
+                copy(R.string.msg_unsupported_format, "暂不支持此文件格式")
             } else {
-                "暂不支持 ${document.format.displayName}"
+                copy(R.string.msg_unsupported_named, "暂不支持 ${document.format.displayName}", document.format.displayName)
             }
             return false
         }
@@ -119,9 +123,9 @@ class ConvertCoordinator(
         val document = _pickedFile.value ?: return false
         if (!FileCapabilityResolver.canConvertInEdition(document.format, format)) {
             host.postedMessage = if (document.format.category == FileCategory.OFFICE) {
-                "当前为轻量版，Office 转换需要安装 Office 版"
+                copy(R.string.msg_basic_office, "当前为轻量版，Office 转换需要安装 Office 版")
             } else {
-                "暂不支持 ${document.format.displayName} → ${format.displayName}"
+                copy(R.string.msg_unsupported_route, "暂不支持 ${document.format.displayName} → ${format.displayName}", document.format.displayName, format.displayName)
             }
             return false
         }
@@ -142,12 +146,12 @@ class ConvertCoordinator(
 
         val document = runCatching { resolver.readSelectedDocument(uri) }
             .getOrElse {
-                host.postedMessage = "无法读取所选文件"
+                host.postedMessage = copy(R.string.msg_cannot_read, "无法读取所选文件")
                 return false
             }
 
         if (document.format == FileFormat.UNKNOWN) {
-            host.postedMessage = "暂不支持此文件格式"
+            host.postedMessage = copy(R.string.msg_unsupported_format, "暂不支持此文件格式")
             return false
         }
 
@@ -156,11 +160,11 @@ class ConvertCoordinator(
             // 有工具能力但没有一进一出的转换边（典型：PDF）——引导到对应工具页，
             // 而不是笼统地说「不支持」。
             host.postedMessage = if (document.format.category == FileCategory.OFFICE) {
-                "当前为轻量版，Office 转换需要安装 Office 版"
+                copy(R.string.msg_basic_office, "当前为轻量版，Office 转换需要安装 Office 版")
             } else if (com.openconvert.app.domain.model.ConversionGraph.toolsFor(document.format).size > 1) {
-                "${document.format.displayName} 请在工具页处理"
+                copy(R.string.msg_use_tools, "${document.format.displayName} 请在工具页处理", document.format.displayName)
             } else {
-                "暂不支持 ${document.format.displayName} 转换"
+                copy(R.string.msg_unsupported_convert, "暂不支持 ${document.format.displayName} 转换", document.format.displayName)
             }
             return false
         }
@@ -210,7 +214,13 @@ class ConvertCoordinator(
         val current = _draft.value ?: return false
         if (!ConversionGraph.canConvert(current.document.format, preset.targetFormat)) {
             host.postedMessage =
-                "「${preset.name}」的目标格式 ${preset.targetFormat.displayName} 不适用于 ${current.document.format.displayName}"
+                copy(
+                    R.string.msg_preset_mismatch,
+                    "「${preset.name}」的目标格式 ${preset.targetFormat.displayName} 不适用于 ${current.document.format.displayName}",
+                    preset.name,
+                    preset.targetFormat.displayName,
+                    current.document.format.displayName,
+                )
             return false
         }
         _draft.value = current.copy(
@@ -241,7 +251,7 @@ class ConvertCoordinator(
     fun saveDraftAsPreset(name: String) {
         val draft = _draft.value ?: return
         if (name.isBlank()) {
-            host.postedMessage = "请输入预设名称"
+            host.postedMessage = copy(R.string.msg_preset_name_required, "请输入预设名称")
             return
         }
         scope.launch {
@@ -254,7 +264,7 @@ class ConvertCoordinator(
                         append(draft.targetFormat.displayName)
                         append(" · ")
                         append(draft.quality.label)
-                        if (draft.stripMetadata) append(" · 去元数据")
+                        if (draft.stripMetadata) append(copy(R.string.convert_strip_tag, " · 去元数据"))
                     },
                     targetFormat = draft.targetFormat,
                     quality = draft.quality,
@@ -268,7 +278,7 @@ class ConvertCoordinator(
                 ),
             )
             _appliedPresetId.value = saved.id
-            host.postedMessage = "已保存预设「${saved.name}」"
+            host.postedMessage = copy(R.string.msg_preset_saved, "已保存预设「${saved.name}」", saved.name)
         }
     }
 
@@ -276,9 +286,9 @@ class ConvertCoordinator(
         scope.launch {
             val deleted = app.presetStore.deleteCustom(preset.id)
             host.postedMessage = if (deleted) {
-                "已删除预设「${preset.name}」"
+                copy(R.string.msg_preset_deleted, "已删除预设「${preset.name}」", preset.name)
             } else {
-                "内置预设不可删除"
+                copy(R.string.msg_preset_builtin, "内置预设不可删除")
             }
         }
     }
@@ -286,14 +296,14 @@ class ConvertCoordinator(
     fun setDefaultPreset(preset: com.openconvert.app.domain.preset.Preset) {
         scope.launch {
             app.presetStore.setDefault(preset)
-            host.postedMessage = "「${preset.name}」已设为默认"
+            host.postedMessage = copy(R.string.msg_preset_default, "「${preset.name}」已设为默认", preset.name)
         }
     }
 
     fun startConversion(outputUri: Uri) {
         val current = _draft.value ?: return
         if (!current.engineAvailable) {
-            host.postedMessage = "${current.document.format.displayName} → ${current.targetFormat.displayName} 引擎尚未接入"
+            host.postedMessage = copy(R.string.msg_engine_not_ready, "${current.document.format.displayName} → ${current.targetFormat.displayName} 引擎尚未接入", current.document.format.displayName, current.targetFormat.displayName)
             return
         }
         host.persistDocumentPermission(outputUri)
@@ -331,7 +341,7 @@ class ConvertCoordinator(
         val uniqueUris = uris.distinct()
         if (uniqueUris.isEmpty()) return false
         if (uniqueUris.size > MAX_BATCH_FILES) {
-            host.postedMessage = "一次最多选择 $MAX_BATCH_FILES 个文件"
+            host.postedMessage = copy(R.string.msg_batch_max, "一次最多选择 $MAX_BATCH_FILES 个文件", MAX_BATCH_FILES)
             return false
         }
         val documents = uniqueUris.mapNotNull { uri ->
@@ -341,11 +351,11 @@ class ConvertCoordinator(
             runCatching { resolver.readSelectedDocument(uri) }.getOrNull()
         }.filter { it.format != FileFormat.UNKNOWN }
         if (documents.isEmpty()) {
-            host.postedMessage = "没有读到可用的文件"
+            host.postedMessage = copy(R.string.msg_no_usable_files, "没有读到可用的文件")
             return false
         }
         if (documents.size != uniqueUris.size) {
-            host.postedMessage = "已忽略无法读取或不支持的文件"
+            host.postedMessage = copy(R.string.msg_ignored_files, "已忽略无法读取或不支持的文件")
         }
         val firstTarget = if (documents.size == 1) FileFormat.ZIP else FileFormat.ZIP
         _archiveCompressDraft.value = ArchiveCompressDraft(documents, firstTarget)
@@ -365,7 +375,7 @@ class ConvertCoordinator(
             )
         ) return
         if (format in setOf(FileFormat.GZIP, FileFormat.BZIP2, FileFormat.XZ) && current.documents.size > 1) {
-            host.postedMessage = "${format.displayName} 只支持单个文件压缩"
+            host.postedMessage = copy(R.string.msg_single_compress, "${format.displayName} 只支持单个文件压缩", format.displayName)
             return
         }
         _archiveCompressDraft.value = current.copy(targetFormat = format)
@@ -374,7 +384,7 @@ class ConvertCoordinator(
     fun startArchiveCompress(outputUri: Uri) {
         val current = _archiveCompressDraft.value ?: return
         if (current.singleFileOnly && current.documents.size > 1) {
-            host.postedMessage = "${current.targetFormat.displayName} 只支持单个文件压缩"
+            host.postedMessage = copy(R.string.msg_single_compress, "${current.targetFormat.displayName} 只支持单个文件压缩", current.targetFormat.displayName)
             return
         }
         host.persistDocumentPermission(outputUri)
@@ -385,7 +395,7 @@ class ConvertCoordinator(
                 sourceName = if (current.documents.size == 1) {
                     current.documents.first().name
                 } else {
-                    "${current.documents.size} 个文件"
+                    copy(R.string.msg_n_files, "${current.documents.size} 个文件", current.documents.size)
                 },
                 sourceFormat = current.documents.first().format,
                 targetFormat = current.targetFormat,
@@ -408,14 +418,14 @@ class ConvertCoordinator(
             resolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
             resolver.readSelectedDocument(uri)
         }.getOrElse {
-            host.postedMessage = "无法读取所选文件"
+            host.postedMessage = copy(R.string.msg_cannot_read, "无法读取所选文件")
             return false
         }
         val lower = document.name.lowercase()
         if (!(lower.endsWith(".zip") || lower.endsWith(".tar.gz") || lower.endsWith(".tgz") ||
                 lower.endsWith(".tar.bz2") || lower.endsWith(".tbz2"))
         ) {
-            host.postedMessage = "请选择 ZIP / TAR.GZ / TAR.BZ2 压缩包"
+            host.postedMessage = copy(R.string.msg_pick_archive, "请选择 ZIP / TAR.GZ / TAR.BZ2 压缩包")
             return false
         }
         _archiveExtractDraft.value = ArchiveExtractDraft(document)
@@ -441,7 +451,7 @@ class ConvertCoordinator(
                     sourceUris = listOf(current.document.uri.toString()),
                     outputTreeUri = outputTreeUri.toString(),
                 ),
-                outputName = "解压到 ${current.suggestedFolderName}",
+                outputName = copy(R.string.msg_extract_to, "解压到 ${current.suggestedFolderName}", current.suggestedFolderName),
             ),
         )
     }
@@ -449,11 +459,11 @@ class ConvertCoordinator(
     fun onBatchFilesPicked(uris: List<Uri>): Boolean {
         val uniqueUris = uris.distinct()
         if (uniqueUris.size < 2) {
-            host.postedMessage = "批量转换至少选择 2 个文件"
+            host.postedMessage = copy(R.string.msg_batch_min, "批量转换至少选择 2 个文件")
             return false
         }
         if (uniqueUris.size > MAX_BATCH_FILES) {
-            host.postedMessage = "一次最多选择 $MAX_BATCH_FILES 个文件"
+            host.postedMessage = copy(R.string.msg_batch_max, "一次最多选择 $MAX_BATCH_FILES 个文件", MAX_BATCH_FILES)
             return false
         }
         val documents = uniqueUris.mapNotNull { uri ->
@@ -464,24 +474,24 @@ class ConvertCoordinator(
         }.filter { it.format != FileFormat.UNKNOWN }
 
         if (documents.isEmpty()) {
-            host.postedMessage = "没有读到可用的文件"
+            host.postedMessage = copy(R.string.msg_no_usable_files, "没有读到可用的文件")
             return false
         }
         if (documents.size != uniqueUris.size) {
-            host.postedMessage = "已忽略无法读取或不支持的文件"
+            host.postedMessage = copy(R.string.msg_ignored_files, "已忽略无法读取或不支持的文件")
         }
         val categories = documents.map { it.format.category }.distinct()
         if (categories.size != 1) {
-            host.postedMessage = "批量转换需要同一类文件（如图片或视频）"
+            host.postedMessage = copy(R.string.msg_batch_same_kind, "批量转换需要同一类文件（如图片或视频）")
             return false
         }
         val draft = BatchDraft(
             documents = documents,
             targetFormat = FileCapabilityResolver.targetsForEdition(documents.first().format).firstOrNull()
-                ?: return false.also { host.postedMessage = "暂不支持 ${documents.first().format.displayName} 批量转换" },
+                ?: return false.also { host.postedMessage = copy(R.string.msg_batch_unsupported, "暂不支持 ${documents.first().format.displayName} 批量转换", documents.first().format.displayName) },
         )
         if (draft.commonFormats.isEmpty()) {
-            host.postedMessage = "所选文件没有共同的输出格式"
+            host.postedMessage = copy(R.string.msg_batch_no_common, "所选文件没有共同的输出格式")
             return false
         }
         _batchDraft.value = draft
@@ -523,7 +533,7 @@ class ConvertCoordinator(
             )
         ) {
             host.postedMessage =
-                "「${preset.name}」不适用于所选全部文件"
+                copy(R.string.msg_preset_not_for_all, "「${preset.name}」不适用于所选全部文件", preset.name)
             return false
         }
         val updated = current.copy(
@@ -555,7 +565,7 @@ class ConvertCoordinator(
     fun startBatch(outputTreeUri: Uri) {
         val draft = _batchDraft.value ?: return
         if (!draft.engineAvailable) {
-            host.postedMessage = "${draft.targetFormat.displayName} 引擎尚未接入"
+            host.postedMessage = copy(R.string.msg_engine_not_ready, "${draft.targetFormat.displayName} 引擎尚未接入", draft.documents.first().format.displayName, draft.targetFormat.displayName)
             return
         }
         host.persistTreePermission(outputTreeUri)
@@ -572,7 +582,12 @@ class ConvertCoordinator(
         )
         val job = BatchJob(
             id = batchId,
-            name = "${draft.documents.size} 个文件 → ${draft.targetFormat.displayName}",
+            name = copy(
+                R.string.batch_job_name,
+                "${draft.documents.size} 个文件 → ${draft.targetFormat.displayName}",
+                draft.documents.size,
+                draft.targetFormat.displayName,
+            ),
             status = BatchJobStatus.RUNNING,
             total = draft.documents.size,
             done = 0,
@@ -659,18 +674,18 @@ class ConvertCoordinator(
     fun reuseConversion(task: ConversionTask): Boolean {
         val uri = runCatching { Uri.parse(task.sourceUri) }.getOrNull()
         if (uri == null) {
-            host.postedMessage = "找不到原来的文件"
+            host.postedMessage = copy(R.string.msg_file_gone, "找不到原来的文件")
             return false
         }
         runCatching {
             resolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         val document = runCatching { resolver.readSelectedDocument(uri) }.getOrElse {
-            host.postedMessage = "原文件已不可用，请重新选择"
+            host.postedMessage = copy(R.string.msg_file_unavailable, "原文件已不可用，请重新选择")
             return false
         }
         if (document.format == FileFormat.UNKNOWN) {
-            host.postedMessage = "暂不支持此文件格式"
+            host.postedMessage = copy(R.string.msg_unsupported_format, "暂不支持此文件格式")
             return false
         }
         val target = FileCapabilityResolver.targetsForEdition(document.format).let { targets ->
@@ -680,7 +695,7 @@ class ConvertCoordinator(
             host.postedMessage = if (document.format.category == FileCategory.OFFICE) {
                 "当前为轻量版，Office 转换记录需要安装 Office 版才能重试"
             } else {
-                "暂不支持 ${document.format.displayName} 转换"
+                copy(R.string.msg_unsupported_convert, "暂不支持 ${document.format.displayName} 转换", document.format.displayName)
             }
             return false
         }

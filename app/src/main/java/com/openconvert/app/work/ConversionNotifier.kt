@@ -26,10 +26,10 @@ object ConversionNotifier {
         manager.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_ID,
-                "文件转换",
+                context.getString(com.openconvert.app.R.string.notif_channel),
                 NotificationManager.IMPORTANCE_LOW,
             ).apply {
-                description = "后台转换进度"
+                description = context.getString(com.openconvert.app.R.string.notif_channel_desc)
                 setShowBadge(false)
             },
         )
@@ -56,10 +56,14 @@ object ConversionNotifier {
     fun notifyFinished(context: Context, task: ConversionTask) {
         ensureChannel(context)
         manager(context).cancel(PROGRESS_NOTIFICATION_ID)
-        val title = if (task.status == ConversionStatus.COMPLETED) "转换完成" else "转换失败"
+        val title = if (task.status == ConversionStatus.COMPLETED) {
+            context.getString(com.openconvert.app.R.string.conversion_complete)
+        } else {
+            context.getString(com.openconvert.app.R.string.conversion_failed)
+        }
         val text = when (task.status) {
             ConversionStatus.COMPLETED -> task.outputName ?: task.sourceName
-            ConversionStatus.FAILED -> task.errorMessage ?: "转换失败"
+            ConversionStatus.FAILED -> task.errorMessage ?: context.getString(com.openconvert.app.R.string.conversion_failed)
             else -> task.sourceName
         }
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -80,11 +84,11 @@ object ConversionNotifier {
     private fun progressNotification(context: Context, task: ConversionTask?): Notification {
         ensureChannel(context)
         val progress = task?.progress?.coerceIn(0, 100) ?: 0
-        val name = task?.sourceName ?: "文件"
+        val name = task?.sourceName ?: context.getString(com.openconvert.app.R.string.notif_file)
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setContentTitle("OpenConvert")
-            .setContentText("正在转换 $name")
+            .setContentText(context.getString(com.openconvert.app.R.string.notif_running, name))
             .setSubText("$progress%")
             .setProgress(100, progress, progress <= 0)
             .setOngoing(true)
@@ -94,7 +98,7 @@ object ConversionNotifier {
         if (task != null) {
             builder.addAction(
                 android.R.drawable.ic_menu_close_clear_cancel,
-                "取消",
+                context.getString(com.openconvert.app.R.string.action_cancel),
                 cancelIntent(context, task.id),
             )
         }

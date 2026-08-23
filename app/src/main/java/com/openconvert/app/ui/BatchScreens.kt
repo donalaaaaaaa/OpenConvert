@@ -91,6 +91,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -108,6 +109,7 @@ import com.openconvert.app.domain.model.ConversionStatus
 import com.openconvert.app.domain.model.ConversionKind
 import com.openconvert.app.domain.model.ConversionTask
 import com.openconvert.app.BuildConfig
+import com.openconvert.app.R
 import com.openconvert.app.domain.benchmark.BenchmarkReportFormat
 import java.io.File
 import com.openconvert.app.domain.model.BatchJob
@@ -206,14 +208,19 @@ internal fun BatchConfigureScreen(
     ) {
         item {
             IconButton(onClick = onBack, modifier = Modifier.size(44.dp)) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "返回")
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.action_back))
             }
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("批量转换", fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.batch_title), fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "已选择 ${draft.documents.size} 个文件 · ${draft.documents.first().format.displayName} → ${draft.targetFormat.displayName}",
+                    stringResource(
+                        R.string.batch_selected,
+                        draft.documents.size,
+                        draft.documents.first().format.displayName,
+                        draft.targetFormat.displayName,
+                    ),
                     color = Muted,
                     fontSize = 14.sp,
                 )
@@ -355,13 +362,13 @@ internal fun BatchProgressScreen(
         Spacer(Modifier.height(12.dp))
         Text("${job.progressPercent}%", fontSize = 18.sp, fontWeight = FontWeight.Medium)
         if (isPaused) {
-            Text("已暂停", color = Muted, fontSize = 13.sp)
+            Text(stringResource(R.string.batch_paused_label), color = Muted, fontSize = 13.sp)
         } else if (isFinished) {
-            Text("完成 $doneCount · 失败 $failedCount", color = Muted, fontSize = 13.sp)
+            Text(stringResource(R.string.batch_done_fail, doneCount, failedCount), color = Muted, fontSize = 13.sp)
         } else {
             current?.let {
-                Text("当前：${it.sourceName}", color = Muted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("剩余：$remaining 个文件", color = Muted, fontSize = 13.sp)
+                Text(stringResource(R.string.batch_current, it.sourceName), color = Muted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(stringResource(R.string.batch_remaining_files, remaining), color = Muted, fontSize = 13.sp)
             }
         }
         Spacer(Modifier.height(34.dp))

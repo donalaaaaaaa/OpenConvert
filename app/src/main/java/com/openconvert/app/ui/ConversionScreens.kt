@@ -146,7 +146,7 @@ internal fun ConversionScreen(
 ) {
     if (draft == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("没有已选择的文件", color = Muted)
+            Text(stringResource(R.string.convert_empty), color = Muted)
         }
         return
     }
@@ -168,11 +168,11 @@ internal fun ConversionScreen(
     ) {
         item {
             IconButton(onClick = onBack, modifier = Modifier.size(44.dp)) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "返回")
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.action_back))
             }
         }
         item {
-            Text("转换文件", fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.convert_title), fontSize = 28.sp, fontWeight = FontWeight.SemiBold)
         }
         item {
             FileCard(
@@ -192,7 +192,7 @@ internal fun ConversionScreen(
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                FieldLabel("转换为")
+                FieldLabel(stringResource(R.string.convert_to))
                 Box {
                     Surface(
                         modifier = Modifier
@@ -240,7 +240,7 @@ internal fun ConversionScreen(
         if (hasQualitySetting) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    FieldLabel(if (draft.document.format.category == FileCategory.VIDEO) "压缩质量" else "质量")
+                    FieldLabel(if (draft.document.format.category == FileCategory.VIDEO) stringResource(R.string.convert_quality_video) else stringResource(R.string.convert_quality))
                     QualityPreset.entries.forEach { preset ->
                         Row(
                             modifier = Modifier
@@ -254,9 +254,9 @@ internal fun ConversionScreen(
                                 onClick = { onQuality(preset) },
                             )
                             Column {
-                                Text(preset.label, fontWeight = FontWeight.Medium)
+                                Text(stringResource(preset.labelRes), fontWeight = FontWeight.Medium)
                                 if (preset == QualityPreset.BALANCED) {
-                                    Text("推荐", color = Muted, fontSize = 12.sp)
+                                    Text(stringResource(R.string.quality_recommended), color = Muted, fontSize = 12.sp)
                                 }
                             }
                         }
@@ -266,7 +266,7 @@ internal fun ConversionScreen(
         } else {
             item {
                 Text(
-                    "${draft.targetFormat.displayName} 使用无损编码，不需要调整质量。",
+                    stringResource(R.string.convert_lossless, draft.targetFormat.displayName),
                     color = Muted,
                     fontSize = 13.sp,
                 )
@@ -275,7 +275,7 @@ internal fun ConversionScreen(
         if (draft.targetFormat.category in setOf(FileCategory.IMAGE, FileCategory.VIDEO)) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    FieldLabel("尺寸")
+                    FieldLabel(stringResource(R.string.convert_size))
                     ResolutionPreset.entries.forEach { preset ->
                         Row(
                             modifier = Modifier
@@ -288,7 +288,7 @@ internal fun ConversionScreen(
                                 selected = draft.resolution == preset,
                                 onClick = { onResolution(preset) },
                             )
-                            Text(preset.label, fontWeight = FontWeight.Medium)
+                            Text(stringResource(preset.labelRes), fontWeight = FontWeight.Medium)
                         }
                     }
                 }
@@ -297,8 +297,13 @@ internal fun ConversionScreen(
         if (draft.targetFormat.category == FileCategory.IMAGE) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    FieldLabel("旋转")
-                    listOf(0 to "不旋转", 90 to "90°", 180 to "180°", 270 to "270°").forEach { (degrees, label) ->
+                    FieldLabel(stringResource(R.string.convert_rotate))
+                    listOf(
+                        0 to stringResource(R.string.convert_rotate_none),
+                        90 to "90°",
+                        180 to "180°",
+                        270 to "270°",
+                    ).forEach { (degrees, label) ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -317,14 +322,14 @@ internal fun ConversionScreen(
             }
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    FieldLabel("裁剪比例")
+                    FieldLabel(stringResource(R.string.convert_crop))
                     listOf(
-                        "free" to "原始比例",
-                        "1:1" to "1:1 方形",
+                        "free" to stringResource(R.string.convert_crop_free),
+                        "1:1" to stringResource(R.string.convert_crop_square),
                         "4:3" to "4:3",
                         "3:2" to "3:2",
                         "16:9" to "16:9",
-                        "9:16" to "9:16 竖屏",
+                        "9:16" to stringResource(R.string.convert_crop_portrait),
                     ).forEach { (aspect, label) ->
                         Row(
                             modifier = Modifier
@@ -344,8 +349,12 @@ internal fun ConversionScreen(
             }
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    FieldLabel("翻转")
-                    listOf(0 to "不翻转", 1 to "水平翻转", 2 to "垂直翻转").forEach { (flip, label) ->
+                    FieldLabel(stringResource(R.string.convert_flip))
+                    listOf(
+                        0 to stringResource(R.string.convert_flip_none),
+                        1 to stringResource(R.string.convert_flip_h),
+                        2 to stringResource(R.string.convert_flip_v),
+                    ).forEach { (flip, label) ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -376,8 +385,8 @@ internal fun ConversionScreen(
                         onCheckedChange = onStripMetadata,
                     )
                     Column {
-                        Text("删除全部元数据（隐私模式）", fontWeight = FontWeight.Medium)
-                        Text("移除 EXIF、GPS 位置等拍摄信息", color = Muted, fontSize = 12.sp)
+                        Text(stringResource(R.string.convert_strip_meta), fontWeight = FontWeight.Medium)
+                        Text(stringResource(R.string.convert_strip_meta_sub), color = Muted, fontSize = 12.sp)
                     }
                 }
             }
@@ -392,7 +401,7 @@ internal fun ConversionScreen(
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Ink),
             ) {
-                Text(if (draft.engineAvailable) "选择位置并开始转换" else "该转换引擎尚未接入", fontSize = 16.sp)
+                Text(if (draft.engineAvailable) stringResource(R.string.convert_start) else stringResource(R.string.convert_engine_missing), fontSize = 16.sp)
             }
         }
         item {
@@ -403,7 +412,7 @@ internal fun ConversionScreen(
             ) {
                 Icon(Icons.Outlined.Lock, contentDescription = null, tint = Muted, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.size(6.dp))
-                Text("文件不会离开您的设备", color = Muted, fontSize = 13.sp)
+                Text(stringResource(R.string.privacy_hint), color = Muted, fontSize = 13.sp)
             }
         }
     }
@@ -412,12 +421,19 @@ internal fun ConversionScreen(
     if (showSavePresetDialog) {
         AlertDialog(
             onDismissRequest = { showSavePresetDialog = false },
-            title = { Text("存为预设") },
+            title = { Text(stringResource(R.string.presets_save)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        "将保存：${draft.targetFormat.displayName} · ${draft.quality.label}" +
-                            if (draft.stripMetadata) " · 去元数据" else "",
+                        stringResource(
+                            R.string.convert_save_preset_hint,
+                            buildString {
+                                append(draft.targetFormat.displayName)
+                                append(" · ")
+                                append(stringResource(draft.quality.labelRes))
+                                if (draft.stripMetadata) append(stringResource(R.string.convert_strip_tag))
+                            },
+                        ),
                         color = Muted,
                         fontSize = 13.sp,
                     )
@@ -425,7 +441,7 @@ internal fun ConversionScreen(
                         value = presetNameInput,
                         onValueChange = { presetNameInput = it },
                         singleLine = true,
-                        placeholder = { Text("预设名称") },
+                        placeholder = { Text(stringResource(R.string.convert_preset_name)) },
                     )
                 }
             },
@@ -437,10 +453,10 @@ internal fun ConversionScreen(
                         showSavePresetDialog = false
                     },
                     enabled = presetNameInput.isNotBlank(),
-                ) { Text("保存") }
+                ) { Text(stringResource(R.string.action_save)) }
             },
             dismissButton = {
-                TextButton(onClick = { showSavePresetDialog = false }) { Text("取消") }
+                TextButton(onClick = { showSavePresetDialog = false }) { Text(stringResource(R.string.action_cancel)) }
             },
         )
     }
@@ -577,7 +593,7 @@ internal fun ConversionCompleteScreen(
                                 }
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             }
-                            context.startActivity(Intent.createChooser(share, "分享转换后的文件"))
+                            context.startActivity(Intent.createChooser(share, context.getString(R.string.convert_share_chooser)))
                         }
                     },
                     modifier = Modifier.weight(1f),

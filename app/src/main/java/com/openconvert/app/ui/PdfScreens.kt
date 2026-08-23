@@ -356,8 +356,8 @@ internal fun PdfToImagesScreen(
                     value = draft.pageRanges,
                     onValueChange = onRanges,
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("留空表示全部页面") },
-                    supportingText = { Text("支持 1-3, 5, 8-10；范围 1-${draft.pageCount}") },
+                    placeholder = { Text(stringResource(R.string.pdf_export_all)) },
+                    supportingText = { Text(stringResource(R.string.pdf_range_hint, draft.pageCount)) },
                     shape = RoundedCornerShape(12.dp),
                 )
             }
@@ -443,7 +443,7 @@ internal fun PdfSplitScreen(
                     onValueChange = onRanges,
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text("例如：1-3, 5, 8-10") },
-                    supportingText = { Text("页码范围 1-${draft.pageCount}") },
+                    supportingText = { Text(stringResource(R.string.pdf_page_range, draft.pageCount)) },
                     shape = RoundedCornerShape(12.dp),
                 )
             }
@@ -482,7 +482,7 @@ internal fun PdfDeletePagesScreen(
             FileCard(draft.document.name, stringResource(R.string.pdf_file_card, draft.pageCount, formatFileSize(draft.document.sizeBytes)))
         }
         item {
-            Text("删除后剩余 ${draft.remaining} 页", color = Muted, fontSize = 13.sp)
+            Text(stringResource(R.string.pdf_remaining, draft.remaining), color = Muted, fontSize = 13.sp)
         }
         item {
             androidx.compose.foundation.layout.FlowRow(
@@ -574,7 +574,7 @@ internal fun PdfRotatePagesScreen(
                     onValueChange = onRanges,
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text("例如：1-3, 5, 8-10") },
-                    supportingText = { Text("页码范围 1-${draft.pageCount}") },
+                    supportingText = { Text(stringResource(R.string.pdf_page_range, draft.pageCount)) },
                     shape = RoundedCornerShape(12.dp),
                 )
             }
@@ -629,7 +629,7 @@ internal fun PdfCompressScreen(
                             Spacer(Modifier.width(8.dp))
                             Column {
                                 Text(preset.displayName, fontWeight = FontWeight.SemiBold)
-                                Text("目标分辨率 ${preset.maxDpi} DPI", color = Muted, fontSize = 13.sp)
+                                Text(stringResource(R.string.pdf_compress_dpi, preset.maxDpi), color = Muted, fontSize = 13.sp)
                             }
                         }
                     }
@@ -722,7 +722,7 @@ internal fun PdfCropScreen(
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                FieldLabel("裁剪边距（左 / 上 / 右 / 下）")
+                FieldLabel(stringResource(R.string.pdf_crop_margins))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = left.toString(),
@@ -841,7 +841,7 @@ internal fun PdfWatermarkScreen(
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                FieldLabel("透明度 ${(opacity * 100).toInt()}%")
+                FieldLabel(stringResource(R.string.pdf_watermark_opacity, (opacity * 100).toInt()))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(0.12f, 0.18f, 0.28f, 0.40f).forEach { value ->
                         OutlinedButton(
@@ -1002,7 +1002,7 @@ internal fun PdfPageManagerScreen(
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text("第 ${index + 1} 页 (原第 ${page.originalPageIndex + 1} 页)", fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                            Text(stringResource(R.string.pdf_page_n_orig, index + 1, page.originalPageIndex + 1), fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
                             if (page.rotationDegrees != 0) {
                                 Text("${page.rotationDegrees}°", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(end = 8.dp))
                             }

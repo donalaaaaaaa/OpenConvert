@@ -34,6 +34,7 @@ class OpenConvertApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        AppCopy.bind(this)
         PDFBoxResourceLoader.init(applicationContext)
         ConversionNotifier.ensureChannel(this)
         conversionScheduler.cancelLegacyQueue()

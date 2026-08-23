@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.openconvert.app.AppCopy
 import com.openconvert.app.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,7 +76,7 @@ fun FileCapabilitySheet(
                         append(document.format.displayName)
                         append(" · ")
                         append(formatSheetSize(document.sizeBytes))
-                        if (document.magicVerified) append(" · 已校验内容")
+                        if (document.magicVerified) append(" · ").append(stringResource(R.string.verified_content))
                     },
                     color = Muted,
                     fontSize = 13.sp,
@@ -174,7 +175,7 @@ private fun ToolRow(action: ToolAction, onClick: () -> Unit) {
 }
 
 private fun formatSheetSize(bytes: Long): String = when {
-    bytes <= 0L -> "大小未知"
+    bytes <= 0L -> AppCopy.getOr(R.string.size_unknown, "大小未知")
     bytes >= 1024L * 1024 * 1024 -> String.format("%.1f GB", bytes / (1024.0 * 1024 * 1024))
     bytes >= 1024L * 1024 -> String.format("%.1f MB", bytes / (1024.0 * 1024))
     bytes >= 1024L -> String.format("%.1f KB", bytes / 1024.0)

@@ -441,7 +441,7 @@ Release 包内或应用中可以查看第三方许可证信息。
 
 **P1 / P2**
 
-当前字符串资源已经外置，因此现在做英文成本最低。
+**状态：已接。** 默认 `res/values` 仍是中文。`res/values-en/strings.xml` 与中文 1:1 覆盖首页、转换、Task Center、PDF、Archive、Preset、Settings、Error、History。领域文案走 `AppCopy.getOr`。仓库根目录有 `README_EN.md`、`SECURITY.md`、`CONTRIBUTING.md`，中文 README 顶部可切 English。
 
 ## 19.1 英文 UI
 

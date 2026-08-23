@@ -108,6 +108,7 @@ import androidx.navigation.compose.rememberNavController
 import com.openconvert.app.domain.model.ConversionStatus
 import com.openconvert.app.domain.model.ConversionKind
 import com.openconvert.app.domain.model.ConversionTask
+import com.openconvert.app.AppCopy
 import com.openconvert.app.BuildConfig
 import com.openconvert.app.R
 import com.openconvert.app.domain.benchmark.BenchmarkReportFormat
@@ -476,15 +477,15 @@ internal fun FieldLabel(text: String) {
 }
 
 internal fun historyStatus(task: ConversionTask): String = when (task.status) {
-    ConversionStatus.PENDING -> "排队中"
+    ConversionStatus.PENDING -> AppCopy.getOr(R.string.status_pending, "排队中")
     ConversionStatus.RUNNING -> "${task.progress}%"
-    ConversionStatus.FAILED -> "失败"
-    ConversionStatus.CANCELLED -> "已取消"
+    ConversionStatus.FAILED -> AppCopy.getOr(R.string.status_failed, "失败")
+    ConversionStatus.CANCELLED -> AppCopy.getOr(R.string.status_cancelled, "已取消")
     ConversionStatus.COMPLETED -> formatFileSize(task.outputSize ?: task.fileSize)
 }
 
 internal fun formatFileSize(bytes: Long): String = when {
-    bytes <= 0 -> "大小未知"
+    bytes <= 0 -> AppCopy.getOr(R.string.size_unknown, "大小未知")
     bytes < 1024 -> "$bytes B"
     bytes < 1024 * 1024 -> String.format(Locale.getDefault(), "%.1f KB", bytes / 1024.0)
     bytes < 1024L * 1024 * 1024 -> String.format(Locale.getDefault(), "%.1f MB", bytes / (1024.0 * 1024))

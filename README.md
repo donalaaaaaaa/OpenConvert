@@ -1,5 +1,7 @@
 # OpenConvert
 
+**简体中文** | [English](README_EN.md)
+
 完全本地的 Android 文件转换中心。
 
 > **Your files never leave your device.**
