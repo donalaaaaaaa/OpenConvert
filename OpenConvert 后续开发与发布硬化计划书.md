@@ -854,10 +854,10 @@ v1.1.0
 - [x] JVM Unit Tests 全绿
 - [x] Emulator Smoke 全绿
 - [x] PHY110 Office Instrumented 全绿
-- [ ] Basic → Office 升级通过
-- [ ] 任务历史升级后保留
-- [ ] Preset 升级后保留
-- [ ] SAF Grant 升级后保留
+- [x] Basic → Office 升级通过
+- [x] 任务历史升级后保留
+- [x] Preset 升级后保留
+- [x] SAF Grant 升级后保留
 - [x] Zip Bomb 测试通过
 - [x] Zip Slip 测试通过
 - [x] 重名压缩包测试通过

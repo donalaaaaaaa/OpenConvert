@@ -7,19 +7,34 @@ $workspacePath = Split-Path -Parent $PSScriptRoot
 $adbPrefix = if ($DeviceId) { @("-s", $DeviceId) } else { @() }
 $remoteUiDump = "/sdcard/openconvert-upgrade-ui.xml"
 $remoteFixture = "/sdcard/Download/OpenConvert-upgrade-SAF-marker.jpg"
+$uiLabels = Get-Content -LiteralPath (Join-Path $PSScriptRoot "upgrade-ui-labels.json") -Raw -Encoding UTF8 | ConvertFrom-Json
 
 function Invoke-Adb {
     $commandArgs = @($args)
-    $commandOutput = & adb @adbPrefix @commandArgs 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw "adb failed: adb $($CommandArgs -join ' ')`n$($commandOutput | Out-String)"
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $commandOutput = & adb @adbPrefix @commandArgs 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw "adb failed: adb $($commandArgs -join ' ')`n$($commandOutput | Out-String)"
+        }
+        return $commandOutput
+    } finally {
+        $ErrorActionPreference = $prev
     }
-    return $commandOutput
 }
 
 function Get-UiHierarchy {
     Invoke-Adb shell uiautomator dump $remoteUiDump | Out-Null
-    return [xml](Invoke-Adb shell cat $remoteUiDump | Out-String)
+    $localDump = Join-Path ([System.IO.Path]::GetTempPath()) "openconvert-upgrade-ui.xml"
+    Invoke-Adb pull $remoteUiDump $localDump | Out-Null
+    return [xml](Get-Content -LiteralPath $localDump -Raw -Encoding UTF8)
+}
+
+function Node-Attr {
+    param($Node, [string]$Name)
+    if ($null -eq $Node) { return "" }
+    return [string]$Node.GetAttribute($Name)
 }
 
 function Tap-UiNode {
@@ -76,19 +91,25 @@ try {
 
     Invoke-Adb shell am force-stop com.openconvert.app | Out-Null
     Invoke-Adb shell monkey -p com.openconvert.app -c android.intent.category.LAUNCHER 1 | Out-Null
-    Start-Sleep -Milliseconds 700
-    Tap-UiNode "OpenConvert 选择文件" { param($node) $node.text -eq "选择文件" }
-    Tap-UiNode "文件页签" {
-        param($node) $node.text -in @("文件", "Files")
+    Start-Sleep -Milliseconds 1500
+    Tap-UiNode "OpenConvert pick file" { param($node) (Node-Attr $node "text") -eq $uiLabels.pickFileText }
+    Tap-UiNode "files tab" {
+        param($node) (Node-Attr $node "text") -in @($uiLabels.filesTab, $uiLabels.filesTabEn)
     }
-    Tap-UiNode "下载目录" {
-        param($node) $node.'content-desc' -in @("下载", "Downloads")
+    Tap-UiNode "downloads folder" {
+        param($node) (Node-Attr $node "content-desc") -in @($uiLabels.downloads, $uiLabels.downloadsEn)
     }
-    Tap-UiNode "升级 SAF JPG" {
+    Tap-UiNode "picker search" {
+        param($node) (Node-Attr $node "content-desc") -in @($uiLabels.search, $uiLabels.searchEn)
+    }
+    Invoke-Adb shell input text "OpenConvert-upgrade-SAF-marker.jpg" | Out-Null
+    Start-Sleep -Milliseconds 800
+    Tap-UiNode "upgrade SAF JPG" {
         param($node)
-        $node.'resource-id' -like "*:id/title_tv" -and
-            $node.text -like "*OpenConvert*" -and
-            $node.text -like "*.jpg*"
+        ((Node-Attr $node "resource-id") -like "*:id/file_list_item_title" -or
+            (Node-Attr $node "resource-id") -like "*:id/title_tv") -and
+            (Node-Attr $node "text") -like "*OpenConvert*" -and
+            (Node-Attr $node "text") -like "*.jpg*"
     }
     Start-Sleep -Milliseconds 800
 
