@@ -144,12 +144,12 @@ flowchart TD
 
 | 指标 | Basic | Office |
 |---|---:|---:|
-| 本机已签 Release APK（v1.1.0，2026-08-23） | 31.27 MiB | 101.16 MiB |
-| GitHub Release | 以 `BUILD_INFO.txt` 为准 | 同上 |
+| [v1.1.0](https://github.com/donalaaaaaaa/OpenConvert/releases/tag/v1.1.0) Release APK | 31.40 MiB | 102.85 MiB |
+| 同上 AAB（商店上传，不是用户下载体积） | 56.49 MiB | 127.95 MiB |
 
-上表是 tag 前本机 `assemble*Release` 实测（`32784193` / `106076957` 字节）。上架数字只认 [GitHub Releases](https://github.com/donalaaaaaaa/OpenConvert/releases) 的 `BUILD_INFO.txt`，不要抄 2026-08-20 那张 35.39 / 105.29 基线。Office 体积几乎全部来自 `liblo-native-code.so`（未压缩约 171 MiB）。历史拆分见 [`docs/apk-size-baseline-2026-08-20.md`](docs/apk-size-baseline-2026-08-20.md)。
+数字来自该 tag 的 `BUILD_INFO.txt`（Basic `32928596` / Office `107845032` 字节）。以后只认 [GitHub Releases](https://github.com/donalaaaaaaa/OpenConvert/releases) 实测，不要抄 2026-08-20 那张 35.39 / 105.29 基线。Office 体积几乎全部来自 `liblo-native-code.so`（未压缩约 171 MiB）。历史拆分见 [`docs/apk-size-baseline-2026-08-20.md`](docs/apk-size-baseline-2026-08-20.md)。
 
-PHY110 / Android 16 上：Office instrumented **80/80**（不含 4GB / force-stop / Release 覆盖升级，那些走独立脚本）。Basic → Office 覆盖升级后 DOCX/PPTX/XLSX → PDF 通过。
+PHY110 / Android 16：Office debug instrumented **80/80**（不含 4GB / force-stop，那些走独立脚本）。v2 签名 Basic → Office 覆盖后历史 / 预设 / SAF 保留，DOCX/PPTX/XLSX → PDF 通过。已装 v1.0.0 须卸载重装。
 
 ---
 
@@ -175,8 +175,8 @@ PHY110 / Android 16 上：Office instrumented **80/80**（不含 4GB / force-sto
 .\gradlew.bat assembleBasicRelease assembleOfficeRelease
 .\gradlew.bat bundleBasicRelease bundleOfficeRelease
 
-# 已连接真机时跑 instrumented
-.\gradlew.bat connectedOfficeDebugAndroidTest
+# 已连接真机时跑 Office instrumented（不要 connectedOfficeDebugAndroidTest）
+bash scripts/run-office-instrumented.sh
 ```
 
 签名凭据放在已 gitignore 的 `signing.properties`，或使用 `OPENCONVERT_STORE_PASSWORD` / `_KEY_ALIAS` / `_KEY_PASSWORD`。模板见 `signing.properties.example`。缺凭据时产出 unsigned 包。

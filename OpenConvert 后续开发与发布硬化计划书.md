@@ -81,7 +81,7 @@ Phase 18～20 可继续进入：
 
 ## 13.1 建立统一版本配置
 
-**状态：已接。** 未打 `v1.1.0` tag。
+**状态：已接。** tag `v1.1.0` 打在 `7d78e95`，Release 已发布。
 
 工作树：
 
@@ -118,7 +118,7 @@ Office = 1201
 
 ## 13.3 CI 增加版本校验
 
-**状态：已接。** `:app:verifyOpenConvertVersion` 每趟 CI 跑；`GITHUB_REF=refs/tags/v*` 时 tag 必须等于 `OPENCONVERT_VERSION_NAME`，否则失败。未打 tag 前此项只锁住属性格式。
+**状态：已接。** `:app:verifyOpenConvertVersion` 每趟 CI 跑；`GITHUB_REF=refs/tags/v*` 时 tag 必须等于 `OPENCONVERT_VERSION_NAME`，否则失败。`v1.1.0` 已过该项并发布（CI `32629728370`）。
 
 ## 验收标准
 
@@ -127,7 +127,7 @@ Office = 1201
 - Basic APK versionCode > 旧版 — 已验：Release 清单 `1100` / `1.1.0`
 - Office APK versionCode > Basic — 已验：Release 清单 `1101` / `1.1.0-office`
 - Basic 可直接升级 Office — PHY110 debug：`100` office → `1100` basic → `1101` office，均未加 `-r` 即 Success。发布证覆盖仍取决于证书（v1.1 用 v2，已装 1.0 不能覆盖）
-- Tag 与 APK versionName 一致 — CI 已接线（错 tag 会红）；未打 `v1.1.0`
+- Tag 与 APK versionName 一致 — `v1.1.0` = `1.1.0`，CI `32629728370` 绿
 - CI 自动检测版本不一致 — `:app:verifyOpenConvertVersion`
 - 不再依赖 adb 进行普通升级 — 安装器侧已具备条件；1.0.0→1.1.0 还取决于签名（Phase 14）
 
@@ -847,7 +847,7 @@ v1.1.0
 - [x] `versionName = 1.1.0`
 - [x] Basic versionCode 正确
 - [x] Office versionCode 正确
-- [ ] Git Tag 与 versionName 一致
+- [x] Git Tag 与 versionName 一致
 - [x] APK 有正式签名
 - [x] 证书 SHA256 正确
 - [x] Release 只包含 arm64-v8a
@@ -869,6 +869,8 @@ v1.1.0
 达到以上状态后：
 
 **OpenConvert v1.1.0 可以作为长期维护版本正式发布。**
+
+已于 2026-08-23 发布：https://github.com/donalaaaaaaa/OpenConvert/releases/tag/v1.1.0
 
 ---
 
