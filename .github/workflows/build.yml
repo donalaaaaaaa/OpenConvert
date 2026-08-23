@@ -163,23 +163,32 @@ jobs:
               --notes-file artifacts/output-release/RELEASE_NOTES.md
           fi
 
+  # Job-level `if` cannot read `matrix.*` (GitHub evaluates it before expand).
   # PR: API 34 only. main / tag / dispatch: 31 + 34 + 36.
+  smoke-matrix:
+    name: Smoke matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set.outputs.matrix }}
+    steps:
+      - id: set
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            matrix='{"include":[{"api-level":34,"target":"default"}]}'
+          else
+            matrix='{"include":[{"api-level":31,"target":"google_apis"},{"api-level":34,"target":"default"},{"api-level":36,"target":"google_apis"}]}'
+          fi
+          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+
   # Hosted AVD is x86_64 — Java/Room/Compose smoke, no arm64 native convert.
   emulator-smoke:
     name: x86_64 smoke (API ${{ matrix.api-level }})
-    if: ${{ github.event_name != 'pull_request' || matrix.api-level == 34 }}
+    needs: smoke-matrix
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - api-level: 31
-            target: google_apis
-          - api-level: 34
-            target: default
-          - api-level: 36
-            target: google_apis
+      matrix: ${{ fromJson(needs.smoke-matrix.outputs.matrix) }}
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0

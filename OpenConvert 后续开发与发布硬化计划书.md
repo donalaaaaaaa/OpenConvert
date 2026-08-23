@@ -569,7 +569,7 @@ Basic / Office
 
 **P1**
 
-**状态：已接。** `build-and-test` 在 Unit 之后跑 `lintBasicDebug` + `lintOfficeDebug`。`emulator-smoke` 矩阵 API 31 / 34 / 36（x86_64，`-PopenconvertCiSmoke=true`，不含原生转换）。PR 只跑 API 34；push main / tag / dispatch 跑三档。Tag 发布 `needs` 构建和全部 smoke。真机仍只走 `workflow_dispatch`。
+**状态：已接。** `build-and-test` 在 Unit 之后跑 `lintBasicDebug` + `lintOfficeDebug`。`emulator-smoke` 矩阵 API 31 / 34 / 36（x86_64，`-PopenconvertCiSmoke=true`，不含原生转换）。PR 只跑 API 34；push main / tag / dispatch 跑三档。矩阵由 `smoke-matrix` 输出，禁止在 job `if` 里读 `matrix.*`（会让整趟 workflow 0 秒失败）。Tag 发布 `needs` 构建和全部 smoke。真机仍只走 `workflow_dispatch`。
 
 当前 Hosted Emulator 可以扩展成：
 
