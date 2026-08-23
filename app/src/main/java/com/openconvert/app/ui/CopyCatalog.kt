@@ -73,6 +73,7 @@ object ErrorCopy {
         ConversionError.Code.PASSWORD_REQUIRED -> R.string.error_password
         ConversionError.Code.WRONG_PASSWORD -> R.string.error_wrong_password
         ConversionError.Code.ENGINE_FAILURE -> R.string.error_engine
+        ConversionError.Code.ARCHIVE_EXPANSION_LIMIT -> R.string.error_archive_limit
         ConversionError.Code.UNKNOWN -> R.string.error_fallback
     }
 
@@ -88,6 +89,7 @@ object ErrorCopy {
         ConversionError.Code.PASSWORD_REQUIRED -> R.string.error_password_hint
         ConversionError.Code.WRONG_PASSWORD -> R.string.error_wrong_password_hint
         ConversionError.Code.ENGINE_FAILURE -> R.string.error_engine_hint
+        ConversionError.Code.ARCHIVE_EXPANSION_LIMIT -> R.string.error_archive_limit_hint
         ConversionError.Code.UNKNOWN -> R.string.error_unknown_hint
     }
 

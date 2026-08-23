@@ -69,6 +69,9 @@ class ErrorPresenterTest {
             ConversionException.EngineFailure("boom"),
             ConversionException.TaskCancelled(),
             ConversionException.Unknown(""),
+            ConversionException.ArchiveExpansionLimit(
+                com.openconvert.app.domain.converter.ArchiveRejectReason.RATIO_TOO_HIGH,
+            ),
         )
         samples.forEach { exception ->
             val presentation = ErrorPresenter.fromException(exception)

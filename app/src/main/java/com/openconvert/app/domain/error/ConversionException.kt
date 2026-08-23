@@ -74,6 +74,14 @@ sealed class ConversionException(
         "Process killed or work vanished",
     )
 
+    class ArchiveExpansionLimit(
+        val reason: com.openconvert.app.domain.converter.ArchiveRejectReason,
+    ) : ConversionException(
+        ConversionError.Code.ARCHIVE_EXPANSION_LIMIT,
+        reason.userMessage(),
+        "ArchiveExtractionPolicy rejected: $reason",
+    )
+
     class Unknown(message: String, cause: Throwable? = null) : ConversionException(
         ConversionError.Code.UNKNOWN,
         message.ifBlank { "转换失败，请确认文件正常后重试" },

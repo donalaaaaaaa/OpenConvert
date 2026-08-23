@@ -7,10 +7,13 @@ import android.provider.MediaStore
 import androidx.documentfile.provider.DocumentFile
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.openconvert.app.domain.error.ConversionError
 import com.openconvert.app.domain.model.ConversionResult
 import com.openconvert.app.domain.model.FileFormat
 import com.openconvert.app.domain.model.FileTypeDetector
 import java.io.ByteArrayOutputStream
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
+import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream
 import java.util.UUID
 import java.util.zip.ZipInputStream
 import kotlinx.coroutines.runBlocking
@@ -274,6 +277,211 @@ class ArchiveConverterInstrumentedTest {
             runCatching { resolver.delete(pack, null, null) }
             outputDir.deleteRecursively()
         }
+    }
+
+    @Test
+    fun restoresNestedDirectoriesAndKeepsDuplicateBasenames() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val resolver = context.contentResolver
+        val testId = UUID.randomUUID().toString()
+        val zip = createPendingDownload(resolver, "nested-$testId.zip", "application/zip")
+        writeZip(resolver, zip) { out ->
+            putText(out, "a/config.json", "from-a")
+            putText(out, "b/config.json", "from-b")
+        }
+        val outputDir = java.io.File(context.cacheDir, "extract-nested-$testId")
+        outputDir.mkdirs()
+        try {
+            val result = ArchiveConverter(context).extract(
+                inputUri = zip,
+                outputDirectory = DocumentFile.fromFile(outputDir),
+                sourceName = "nested-$testId.zip",
+            )
+            assertTrue("Expected success, got $result", result is ConversionResult.Success)
+            assertEquals("from-a", java.io.File(outputDir, "a/config.json").readText())
+            assertEquals("from-b", java.io.File(outputDir, "b/config.json").readText())
+        } finally {
+            runCatching { resolver.delete(zip, null, null) }
+            outputDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun renamesDuplicateEntriesInsteadOfOverwrite() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val resolver = context.contentResolver
+        val testId = UUID.randomUUID().toString()
+        val zip = createPendingDownload(resolver, "dup-$testId.zip", "application/zip")
+        writeZip(resolver, zip) { out ->
+            putText(out, "photo.jpg", "first")
+            putText(out, "photo.jpg", "second")
+        }
+        val outputDir = java.io.File(context.cacheDir, "extract-dup-$testId")
+        outputDir.mkdirs()
+        try {
+            val result = ArchiveConverter(context).extract(
+                inputUri = zip,
+                outputDirectory = DocumentFile.fromFile(outputDir),
+                sourceName = "dup-$testId.zip",
+            )
+            assertTrue("Expected success, got $result", result is ConversionResult.Success)
+            val names = outputDir.list()?.toSet().orEmpty()
+            assertTrue(names.contains("photo.jpg"))
+            assertTrue(names.contains("photo (1).jpg"))
+            assertEquals("first", java.io.File(outputDir, "photo.jpg").readText())
+            assertEquals("second", java.io.File(outputDir, "photo (1).jpg").readText())
+        } finally {
+            runCatching { resolver.delete(zip, null, null) }
+            outputDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun rejectsZipSlipAndLeavesDestinationClean() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val resolver = context.contentResolver
+        val testId = UUID.randomUUID().toString()
+        val zip = createPendingDownload(resolver, "slip-$testId.zip", "application/zip")
+        writeZip(resolver, zip) { out ->
+            putText(out, "../../evil-$testId.txt", "pwned")
+            putText(out, "ok.txt", "safe")
+        }
+        val outputDir = java.io.File(context.cacheDir, "extract-slip-$testId")
+        outputDir.mkdirs()
+        val outside = java.io.File(context.cacheDir, "evil-$testId.txt")
+        try {
+            val result = ArchiveConverter(context).extract(
+                inputUri = zip,
+                outputDirectory = DocumentFile.fromFile(outputDir),
+                sourceName = "slip-$testId.zip",
+            )
+            assertTrue("Expected failure, got $result", result is ConversionResult.Failure)
+            val failure = result as ConversionResult.Failure
+            assertEquals(ConversionError.Code.ARCHIVE_EXPANSION_LIMIT.name, failure.errorCode)
+            assertTrue(!outside.exists())
+            assertTrue(outputDir.walkTopDown().none { it.isFile })
+        } finally {
+            runCatching { resolver.delete(zip, null, null) }
+            runCatching { outside.delete() }
+            outputDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun rejectsForgedZipExtension() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val resolver = context.contentResolver
+        val testId = UUID.randomUUID().toString()
+        val fake = createPendingDownload(resolver, "forged-$testId.zip", "application/zip")
+        resolver.openOutputStream(fake, "w")!!.use { stream ->
+            stream.write(
+                byteArrayOf(
+                    0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+                ),
+            )
+        }
+        val outputDir = java.io.File(context.cacheDir, "extract-forged-$testId")
+        outputDir.mkdirs()
+        try {
+            val result = ArchiveConverter(context).extract(
+                inputUri = fake,
+                outputDirectory = DocumentFile.fromFile(outputDir),
+                sourceName = "forged-$testId.zip",
+            )
+            assertTrue("Expected failure, got $result", result is ConversionResult.Failure)
+            val failure = result as ConversionResult.Failure
+            assertEquals(ConversionError.Code.INVALID_FILE.name, failure.errorCode)
+        } finally {
+            runCatching { resolver.delete(fake, null, null) }
+            outputDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun rejectsOverLimitEntriesAndCleansPartialOutput() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val resolver = context.contentResolver
+        val testId = UUID.randomUUID().toString()
+        val zip = createPendingDownload(resolver, "limit-$testId.zip", "application/zip")
+        writeZip(resolver, zip) { out ->
+            putText(out, "one.txt", "1")
+            putText(out, "two.txt", "2")
+            putText(out, "three.txt", "3")
+        }
+        val outputDir = java.io.File(context.cacheDir, "extract-limit-$testId")
+        outputDir.mkdirs()
+        val tight = ArchiveExtractionPolicy(
+            maxEntries = 2,
+            maxSingleFileBytes = 1024,
+            maxTotalUncompressedBytes = 1024,
+        )
+        try {
+            val result = ArchiveConverter(context, policy = tight).extract(
+                inputUri = zip,
+                outputDirectory = DocumentFile.fromFile(outputDir),
+                sourceName = "limit-$testId.zip",
+            )
+            assertTrue("Expected failure, got $result", result is ConversionResult.Failure)
+            assertEquals(
+                ConversionError.Code.ARCHIVE_EXPANSION_LIMIT.name,
+                (result as ConversionResult.Failure).errorCode,
+            )
+            assertTrue(outputDir.walkTopDown().none { it.isFile })
+        } finally {
+            runCatching { resolver.delete(zip, null, null) }
+            outputDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun rejectsTruncatedTarAndCorruptSevenZ() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val resolver = context.contentResolver
+        val testId = UUID.randomUUID().toString()
+        val tar = createPendingDownload(resolver, "trunc-$testId.tar", "application/x-tar")
+        val seven = createPendingDownload(resolver, "bad-$testId.7z", "application/x-7z-compressed")
+        resolver.openOutputStream(tar, "w")!!.use { it.write(ByteArray(40) { 0x41 }) }
+        resolver.openOutputStream(seven, "w")!!.use { it.write("not-a-seven-z".toByteArray()) }
+        val tarDir = java.io.File(context.cacheDir, "extract-trunc-tar-$testId").apply { mkdirs() }
+        val sevenDir = java.io.File(context.cacheDir, "extract-bad-7z-$testId").apply { mkdirs() }
+        try {
+            val tarResult = ArchiveConverter(context).extract(
+                inputUri = tar,
+                outputDirectory = DocumentFile.fromFile(tarDir),
+                sourceName = "trunc-$testId.tar",
+            )
+            val sevenResult = ArchiveConverter(context).extract(
+                inputUri = seven,
+                outputDirectory = DocumentFile.fromFile(sevenDir),
+                sourceName = "bad-$testId.7z",
+            )
+            assertTrue("truncated tar should fail: $tarResult", tarResult is ConversionResult.Failure)
+            assertTrue("corrupt 7z should fail: $sevenResult", sevenResult is ConversionResult.Failure)
+        } finally {
+            runCatching { resolver.delete(tar, null, null) }
+            runCatching { resolver.delete(seven, null, null) }
+            tarDir.deleteRecursively()
+            sevenDir.deleteRecursively()
+        }
+    }
+
+    private fun writeZip(
+        resolver: android.content.ContentResolver,
+        uri: android.net.Uri,
+        block: (ZipArchiveOutputStream) -> Unit,
+    ) {
+        resolver.openOutputStream(uri, "w")!!.use { raw ->
+            ZipArchiveOutputStream(raw).use(block)
+        }
+    }
+
+    private fun putText(zip: ZipArchiveOutputStream, name: String, content: String) {
+        val bytes = content.toByteArray()
+        val entry = ZipArchiveEntry(name)
+        entry.size = bytes.size.toLong()
+        zip.putArchiveEntry(entry)
+        zip.write(bytes)
+        zip.closeArchiveEntry()
     }
 
     private fun createTextFile(resolver: ContentResolver, name: String, content: String): Uri {

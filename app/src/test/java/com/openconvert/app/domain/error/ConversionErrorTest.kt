@@ -63,4 +63,16 @@ class ConversionErrorTest {
         assertEquals(null, ConversionError.parse("FUTURE_CODE"))
         assertEquals(null, ConversionError.parse(null))
     }
+
+    @Test
+    fun archiveLimitMessageMapsToCode() {
+        assertEquals(
+            ConversionError.Code.ARCHIVE_EXPANSION_LIMIT,
+            ConversionError.fromMessage("压缩包展开体积超过安全限制，已停止解压"),
+        )
+        assertEquals(
+            ConversionError.Code.ARCHIVE_EXPANSION_LIMIT,
+            ConversionError.fromMessage("压缩包包含不安全路径，已停止解压"),
+        )
+    }
 }

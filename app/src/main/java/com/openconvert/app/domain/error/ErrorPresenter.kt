@@ -108,6 +108,12 @@ object ErrorPresenter {
             suggestion = "重新开始该转换",
         )
 
+        is ConversionException.ArchiveExpansionLimit -> ErrorPresentation(
+            title = "压缩包超出安全限制",
+            detail = exception.userFriendlyMessage,
+            suggestion = "换一个压缩包，或减少其中的文件后重试",
+        )
+
         is ConversionException.EngineFailure -> ErrorPresentation(
             title = "转换引擎执行失败",
             suggestion = "可尝试切换兼容模式后重试",
@@ -168,6 +174,13 @@ object ErrorPresenter {
                 title = text,
                 suggestion = "重新开始该转换",
             )
+            text.contains("超出安全限制") ||
+                text.contains("展开体积") ||
+                text.contains("不安全路径") ||
+                text.contains("文件数量超过") -> ErrorPresentation(
+                title = text,
+                suggestion = "换一个压缩包，或减少其中的文件后重试",
+            )
             else -> {
                 val coded = fromCode(resolved)
                 ErrorPresentation(title = text, suggestion = coded.suggestion.takeIf { resolved != ConversionError.Code.UNKNOWN })
@@ -216,6 +229,10 @@ object ErrorPresenter {
         ConversionError.Code.ENGINE_FAILURE -> ErrorPresentation(
             title = "转换引擎执行失败",
             suggestion = "可尝试切换兼容模式后重试",
+        )
+        ConversionError.Code.ARCHIVE_EXPANSION_LIMIT -> ErrorPresentation(
+            title = "压缩包超出安全限制",
+            suggestion = "换一个压缩包，或减少其中的文件后重试",
         )
         ConversionError.Code.UNKNOWN -> ErrorPresentation(
             title = FALLBACK_TITLE,

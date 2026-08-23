@@ -233,6 +233,8 @@ GitHub Release 的文件名、大小、SHA256、versionName、versionCode、证�
 
 **P1**
 
+**状态：已接。** `ArchiveExtractionPolicy` 限制 entry 数 / 单文件 / 总展开 / 压缩比 / 深度 / 文件名。解压恢复目录、拒绝 `../` 与盘符路径、重名改为 `photo (1).jpg`，超限返回 `ARCHIVE_EXPANSION_LIMIT` 并删除未完成输出。
+
 OpenConvert 开始支持：
 
 - ZIP
@@ -848,9 +850,9 @@ v1.1.0
 - [ ] 任务历史升级后保留
 - [ ] Preset 升级后保留
 - [ ] SAF Grant 升级后保留
-- [ ] Zip Bomb 测试通过
-- [ ] Zip Slip 测试通过
-- [ ] 重名压缩包测试通过
+- [x] Zip Bomb 测试通过
+- [x] Zip Slip 测试通过
+- [x] 重名压缩包测试通过
 - [x] SHA256SUMS 自动生成
 - [x] Release Notes 自动生成
 - [ ] THIRD_PARTY_NOTICES 完成

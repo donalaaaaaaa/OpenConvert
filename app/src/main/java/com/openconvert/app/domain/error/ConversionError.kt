@@ -19,6 +19,7 @@ object ConversionError {
         ENGINE_FAILURE,
         TASK_CANCELLED,
         INTERRUPTED,
+        ARCHIVE_EXPANSION_LIMIT,
         UNKNOWN,
     }
 
@@ -45,6 +46,10 @@ object ConversionError {
             text.contains("内存") || text.contains("分辨率过高") -> Code.OUT_OF_MEMORY
             text.contains("中断") -> Code.INTERRUPTED
             text.contains("取消") -> Code.TASK_CANCELLED
+            text.contains("展开体积") ||
+                text.contains("不安全路径") ||
+                text.contains("超出安全限制") ||
+                text.contains("文件数量超过") -> Code.ARCHIVE_EXPANSION_LIMIT
             text.contains("损坏") || text.contains("无效") -> Code.INVALID_FILE
             text.contains("编码") && (text.contains("不支持") || text.contains("硬件")) -> Code.CODEC_UNAVAILABLE
             text.contains("不支持") -> Code.UNSUPPORTED_FORMAT

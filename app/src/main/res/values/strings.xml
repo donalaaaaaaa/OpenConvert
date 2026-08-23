@@ -206,6 +206,8 @@
     <string name="error_wrong_password_hint">确认密码后重试</string>
     <string name="error_engine">转换引擎执行失败</string>
     <string name="error_engine_hint">可尝试切换兼容模式后重试</string>
+    <string name="error_archive_limit">压缩包超出安全限制</string>
+    <string name="error_archive_limit_hint">换一个压缩包，或减少其中的文件后重试</string>
     <string name="error_unknown_hint">重新选择文件后重试</string>
 
     <string name="pdf_empty_selection">没有已选择的 PDF</string>

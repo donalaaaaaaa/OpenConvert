@@ -4,8 +4,11 @@ import android.content.Context
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import com.openconvert.app.domain.engine.EngineType
+import com.openconvert.app.domain.error.ConversionException
 import com.openconvert.app.domain.model.ConversionResult
+import com.openconvert.app.domain.model.FileCategory
 import com.openconvert.app.domain.model.FileFormat
+import com.openconvert.app.domain.model.FileTypeDetector
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.FileNotFoundException
@@ -42,6 +45,9 @@ import org.apache.commons.compress.compressors.xz.XZCompressorOutputStream
 class ArchiveConverter(
     private val context: Context,
     private val onProgress: suspend (Int) -> Unit = {},
+    private val policy: ArchiveExtractionPolicy = ArchiveExtractionPolicy.forUsableSpace(
+        context.cacheDir.usableSpace,
+    ),
 ) {
     private val resolver = context.contentResolver
 
@@ -99,24 +105,30 @@ class ArchiveConverter(
         outputDirectory: DocumentFile,
         sourceName: String,
     ): ConversionResult = withContext(Dispatchers.IO) {
+        val created = mutableListOf<DocumentFile>()
         try {
+            rejectForgedExtension(inputUri, sourceName)
+            val session = ArchiveExtractionSession(policy)
             val lower = sourceName.lowercase()
             when {
-                lower.endsWith(".zip") -> extractZip(inputUri, outputDirectory)
-                lower.endsWith(".7z") -> extractSevenZ(inputUri, outputDirectory)
+                lower.endsWith(".zip") -> extractZip(inputUri, outputDirectory, session, created)
+                lower.endsWith(".7z") -> extractSevenZ(inputUri, outputDirectory, session, created)
                 lower.endsWith(".tar.gz") || lower.endsWith(".tgz") ->
-                    extractTar(inputUri, outputDirectory, CompressKind.GZIP)
+                    extractTar(inputUri, outputDirectory, CompressKind.GZIP, session, created)
                 lower.endsWith(".tar.bz2") || lower.endsWith(".tbz2") ->
-                    extractTar(inputUri, outputDirectory, CompressKind.BZIP2)
+                    extractTar(inputUri, outputDirectory, CompressKind.BZIP2, session, created)
                 lower.endsWith(".tar.xz") || lower.endsWith(".txz") ->
-                    extractTar(inputUri, outputDirectory, CompressKind.XZ)
-                lower.endsWith(".tar") -> extractTar(inputUri, outputDirectory, CompressKind.NONE)
-                lower.endsWith(".gz") -> extractSingle(inputUri, outputDirectory, sourceName, CompressKind.GZIP)
-                lower.endsWith(".bz2") -> extractSingle(inputUri, outputDirectory, sourceName, CompressKind.BZIP2)
-                lower.endsWith(".xz") -> extractSingle(inputUri, outputDirectory, sourceName, CompressKind.XZ)
+                    extractTar(inputUri, outputDirectory, CompressKind.XZ, session, created)
+                lower.endsWith(".tar") -> extractTar(inputUri, outputDirectory, CompressKind.NONE, session, created)
+                lower.endsWith(".gz") -> extractSingle(inputUri, outputDirectory, sourceName, CompressKind.GZIP, session, created)
+                lower.endsWith(".bz2") -> extractSingle(inputUri, outputDirectory, sourceName, CompressKind.BZIP2, session, created)
+                lower.endsWith(".xz") -> extractSingle(inputUri, outputDirectory, sourceName, CompressKind.XZ, session, created)
                 else -> return@withContext ConversionResult.Failure(
                     "仅支持 ZIP / 7Z / TAR / TAR.GZ / TAR.BZ2 / TAR.XZ / GZIP / BZIP2 / XZ 解压",
                 )
+            }
+            if (session.entryCount == 0) {
+                throw ConversionException.InvalidFile("压缩包为空或已损坏")
             }
             onProgress(100)
             ConversionResult.Success(
@@ -125,8 +137,13 @@ class ArchiveConverter(
                 EngineType.COMMONS_COMPRESS,
             )
         } catch (cancelled: CancellationException) {
+            deleteCreated(created)
             ConversionResult.Cancelled
+        } catch (error: ConversionException) {
+            deleteCreated(created)
+            ConversionResult.Failure(error.userFriendlyMessage, error, error.code.name)
         } catch (error: Throwable) {
+            deleteCreated(created)
             ConversionResult.Failure(error.toUserMessage("解压失败，请检查压缩包是否损坏"), error)
         }
     }
@@ -216,7 +233,12 @@ class ArchiveConverter(
         } ?: throw FileNotFoundException("无法写入压缩文件")
     }
 
-    private suspend fun extractZip(inputUri: Uri, directory: DocumentFile) {
+    private suspend fun extractZip(
+        inputUri: Uri,
+        directory: DocumentFile,
+        session: ArchiveExtractionSession,
+        created: MutableList<DocumentFile>,
+    ) {
         resolver.openInputStream(inputUri)?.use { stream ->
             ZipArchiveInputStream(BufferedInputStream(stream), "UTF-8").use { zip ->
                 var index = 0
@@ -224,11 +246,15 @@ class ArchiveConverter(
                     currentCoroutineContext().ensureActive()
                     val entry = zip.nextEntry ?: break
                     if (entry.isDirectory) continue
-                    val name = entry.name.substringAfterLast('/')
-                    if (name.isBlank()) continue
-                    val target = directory.createFile(FileFormat.fromFileName(name).mimeType, name)
-                        ?: throw IOException("无法创建解压文件 $name")
-                    writeTo(target.uri, zip)
+                    writeEntry(
+                        directory = directory,
+                        rawName = entry.name,
+                        input = zip,
+                        compressedSize = entry.compressedSize,
+                        uncompressedSize = entry.size,
+                        session = session,
+                        created = created,
+                    )
                     index++
                     onProgress(((index + 1) * 90 / 100).coerceAtMost(90))
                 }
@@ -236,7 +262,12 @@ class ArchiveConverter(
         } ?: throw FileNotFoundException("无法读取压缩包")
     }
 
-    private suspend fun extractSevenZ(inputUri: Uri, directory: DocumentFile) {
+    private suspend fun extractSevenZ(
+        inputUri: Uri,
+        directory: DocumentFile,
+        session: ArchiveExtractionSession,
+        created: MutableList<DocumentFile>,
+    ) {
         val temps = com.openconvert.app.domain.work.TempWorkspaceManager(context)
         val pack = temps.file(
             com.openconvert.app.domain.work.TempWorkspaceManager.NS_ARCHIVE,
@@ -252,11 +283,17 @@ class ArchiveConverter(
                     currentCoroutineContext().ensureActive()
                     val entry = seven.nextEntry ?: break
                     if (entry.isDirectory) continue
-                    val name = entry.name.substringAfterLast('/').substringAfterLast('\\')
-                    if (name.isBlank() || name.contains("..")) continue
-                    val target = directory.createFile(FileFormat.fromFileName(name).mimeType, name)
-                        ?: throw IOException("无法创建解压文件 $name")
-                    seven.getInputStream(entry).use { stream -> writeTo(target.uri, stream) }
+                    seven.getInputStream(entry).use { stream ->
+                        writeEntry(
+                            directory = directory,
+                            rawName = entry.name,
+                            input = stream,
+                            compressedSize = -1L,
+                            uncompressedSize = entry.size,
+                            session = session,
+                            created = created,
+                        )
+                    }
                     index++
                     onProgress(((index + 1) * 90 / 100).coerceAtMost(90))
                 }
@@ -266,7 +303,13 @@ class ArchiveConverter(
         }
     }
 
-    private suspend fun extractTar(inputUri: Uri, directory: DocumentFile, wrap: CompressKind) {
+    private suspend fun extractTar(
+        inputUri: Uri,
+        directory: DocumentFile,
+        wrap: CompressKind,
+        session: ArchiveExtractionSession,
+        created: MutableList<DocumentFile>,
+    ) {
         resolver.openInputStream(inputUri)?.use { stream ->
             wrapStream(BufferedInputStream(stream), wrap).use { decompressed ->
                 org.apache.commons.compress.archivers.tar.TarArchiveInputStream(decompressed).use { tar ->
@@ -275,11 +318,15 @@ class ArchiveConverter(
                         currentCoroutineContext().ensureActive()
                         val entry = tar.nextEntry ?: break
                         if (entry.isDirectory) continue
-                        val name = entry.name.substringAfterLast('/')
-                        if (name.isBlank()) continue
-                        val target = directory.createFile(FileFormat.fromFileName(name).mimeType, name)
-                            ?: throw IOException("无法创建解压文件 $name")
-                        writeTo(target.uri, tar)
+                        writeEntry(
+                            directory = directory,
+                            rawName = entry.name,
+                            input = tar,
+                            compressedSize = -1L,
+                            uncompressedSize = entry.size,
+                            session = session,
+                            created = created,
+                        )
                         index++
                         if (index % 5 == 0) onProgress((index % 100).coerceAtLeast(1))
                     }
@@ -293,6 +340,8 @@ class ArchiveConverter(
         directory: DocumentFile,
         sourceName: String,
         wrap: CompressKind,
+        session: ArchiveExtractionSession,
+        created: MutableList<DocumentFile>,
     ) {
         val outName = sourceName
             .substringAfterLast('/')
@@ -300,11 +349,18 @@ class ArchiveConverter(
             .removeSuffix(".bz2")
             .removeSuffix(".xz")
             .ifBlank { "extracted" }
+        val compressedHint = resolver.openFileDescriptor(inputUri, "r")?.use { it.statSize } ?: -1L
         resolver.openInputStream(inputUri)?.use { stream ->
             wrapStream(BufferedInputStream(stream), wrap).use { input ->
-                val target = directory.createFile(FileFormat.fromFileName(outName).mimeType, outName)
-                    ?: throw IOException("无法创建解压文件 $outName")
-                writeTo(target.uri, input)
+                writeEntry(
+                    directory = directory,
+                    rawName = outName,
+                    input = input,
+                    compressedSize = compressedHint,
+                    uncompressedSize = -1L,
+                    session = session,
+                    created = created,
+                )
             }
         } ?: throw FileNotFoundException("无法读取压缩文件")
     }
@@ -316,14 +372,125 @@ class ArchiveConverter(
         CompressKind.XZ -> XZCompressorInputStream(input)
     }
 
-    /** 写入输出：content:// 走 ContentResolver，file:// 走 File（测试/缓存目录）。 */
-    private suspend fun writeTo(targetUri: Uri, input: java.io.InputStream) {
+    private suspend fun writeEntry(
+        directory: DocumentFile,
+        rawName: String,
+        input: java.io.InputStream,
+        compressedSize: Long,
+        uncompressedSize: Long,
+        session: ArchiveExtractionSession,
+        created: MutableList<DocumentFile>,
+    ) {
+        when (val decision = session.decidePath(rawName)) {
+            ArchivePathDecision.Skip -> return
+            is ArchivePathDecision.Reject -> throw ConversionException.ArchiveExpansionLimit(decision.reason)
+            is ArchivePathDecision.Accept -> {
+                session.beginEntry(compressedSize, uncompressedSize)?.let { reason ->
+                    throw ConversionException.ArchiveExpansionLimit(reason)
+                }
+                val target = createNestedFile(directory, decision, session, created)
+                writeLimited(target.uri, input, session, compressedSize)
+            }
+        }
+    }
+
+    private fun createNestedFile(
+        root: DocumentFile,
+        decision: ArchivePathDecision.Accept,
+        session: ArchiveExtractionSession,
+        created: MutableList<DocumentFile>,
+    ): DocumentFile {
+        val fileRoot = root.uri.takeIf { it.scheme == "file" }?.path?.let { java.io.File(it) }
+        if (fileRoot != null) {
+            var dir = fileRoot
+            for (segment in decision.directories) {
+                dir = java.io.File(dir, segment)
+                if (!dir.exists() && !dir.mkdirs()) {
+                    throw IOException("无法创建解压目录 $segment")
+                }
+                if (!dir.isDirectory) {
+                    throw ConversionException.InvalidFile("压缩包路径与已有文件冲突: $segment")
+                }
+            }
+            val name = session.uniqueName(decision.fileName, dir.list()?.toSet().orEmpty())
+            val dest = java.io.File(dir, name)
+            if (!dest.exists() && !dest.createNewFile()) {
+                throw IOException("无法创建解压文件 $name")
+            }
+            val document = DocumentFile.fromFile(dest)
+            created += document
+            return document
+        }
+        var dir = root
+        for (segment in decision.directories) {
+            val existing = dir.findFile(segment)
+            dir = when {
+                existing == null -> {
+                    val made = dir.createDirectory(segment)
+                        ?: throw IOException("无法创建解压目录 $segment")
+                    created += made
+                    made
+                }
+                existing.isDirectory -> existing
+                else -> throw ConversionException.InvalidFile("压缩包路径与已有文件冲突: $segment")
+            }
+        }
+        val existingNames = dir.listFiles()?.mapNotNull { it.name }?.toSet().orEmpty()
+        val name = session.uniqueName(decision.fileName, existingNames)
+        val target = dir.createFile(mimeForExtractedName(name), name)
+            ?: throw IOException("无法创建解压文件 $name")
+        created += target
+        return target
+    }
+
+    private fun mimeForExtractedName(@Suppress("UNUSED_PARAMETER") name: String): String {
+        // RawDocumentFile 会按 MIME 补后缀（image/jpeg → .jpeg），所以解压一律用无映射类型。
+        return "application/x.openconvert.extract"
+    }
+
+    private suspend fun writeLimited(
+        targetUri: Uri,
+        input: java.io.InputStream,
+        session: ArchiveExtractionSession?,
+        compressedSize: Long,
+    ) {
         val output: java.io.OutputStream = when (targetUri.scheme) {
             "file" -> java.io.FileOutputStream(java.io.File(targetUri.path!!))
             else -> resolver.openOutputStream(targetUri, "w")
                 ?: throw FileNotFoundException("无法写入解压文件")
         }
-        output.use { input.copyTo(it, BUFFER_SIZE) }
+        output.use { dest ->
+            val buffer = ByteArray(BUFFER_SIZE)
+            while (true) {
+                currentCoroutineContext().ensureActive()
+                val read = input.read(buffer)
+                if (read < 0) break
+                if (session != null) {
+                    session.recordWritten(read, compressedSize)?.let { reason ->
+                        throw ConversionException.ArchiveExpansionLimit(reason)
+                    }
+                }
+                dest.write(buffer, 0, read)
+            }
+        }
+    }
+
+    private fun rejectForgedExtension(inputUri: Uri, sourceName: String) {
+        val named = FileFormat.fromFileName(sourceName)
+        if (named.category != FileCategory.ARCHIVE) return
+        val magic = resolver.openInputStream(inputUri)?.use { FileTypeDetector.fromMagicNumber(it) }
+            ?: return
+        val nonArchive = magic.category == FileCategory.IMAGE ||
+            magic.category == FileCategory.AUDIO ||
+            magic.category == FileCategory.VIDEO ||
+            magic.category == FileCategory.PDF
+        if (nonArchive) {
+            throw ConversionException.InvalidFile("扩展名与文件内容不符")
+        }
+    }
+
+    private fun deleteCreated(created: List<DocumentFile>) {
+        created.asReversed().forEach { file -> runCatching { file.delete() } }
     }
 
     private suspend fun copyResolverStream(inputUri: Uri, output: java.io.OutputStream, name: String) {
